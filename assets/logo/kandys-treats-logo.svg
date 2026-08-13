@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Kandy's Treats logo placeholder">
+  <!--
+    ======================================================================
+    PLACEHOLDER ONLY — this is NOT the Kandy's Treats logo.
+    Replace this file with the official logo, keeping the same filename:
+
+        assets/logo/kandys-treats-logo.svg
+
+    A PNG works too: save it as kandys-treats-logo.png and update the two
+    references in js/components/navbar.js and js/components/footer.js.
+    Nothing else in the codebase points at the logo.
+    ======================================================================
+  -->
+  <circle cx="60" cy="60" r="56" fill="#fff"/>
+  <circle cx="60" cy="60" r="55" fill="none" stroke="#d6127e" stroke-width="4"
+          stroke-dasharray="7 6" stroke-linecap="round" opacity="0.55"/>
+  <circle cx="60" cy="60" r="43" fill="#fff3f9"/>
+  <text x="60" y="55" text-anchor="middle" font-family="'Plus Jakarta Sans',Arial,sans-serif"
+        font-size="17" font-weight="800" letter-spacing="1.5" fill="#d6127e">LOGO</text>
+  <text x="60" y="72" text-anchor="middle" font-family="'Plus Jakarta Sans',Arial,sans-serif"
+        font-size="8.5" font-weight="600" letter-spacing="0.4" fill="#a99da4">drop yours here</text>
+</svg>

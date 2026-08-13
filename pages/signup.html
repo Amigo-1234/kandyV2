@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Create an account — Kandy's Treats</title>
+<meta name="description" content="Create a Kandy's Treats account to save addresses, track orders and earn points.">
+<meta name="theme-color" content="#d6127e">
+
+<link rel="icon" href="../assets/logo/kandys-treats-mark.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../css/global.css">
+<link rel="stylesheet" href="../css/navbar.css">
+<link rel="stylesheet" href="../css/forms.css">
+<link rel="stylesheet" href="../css/cart.css">
+<link rel="stylesheet" href="../css/cards.css">
+<link rel="stylesheet" href="../css/product.css">
+<link rel="stylesheet" href="../css/footer.css">
+<link rel="stylesheet" href="../css/animations.css">
+<link rel="stylesheet" href="../css/responsive.css">
+<script>window.KT_BASE = "../";</script>
+<style>
+  /* Password strength meter — local to this page */
+  .pwmeter { margin-top: 8px; }
+  .pwmeter__track {
+    height: 5px; border-radius: var(--r-pill); background: var(--line); overflow: hidden;
+  }
+  .pwmeter__track::after {
+    content: ""; display: block; height: 100%; width: var(--pw, 0%);
+    background: var(--pwc, var(--ink-4)); border-radius: var(--r-pill);
+    transition: width var(--t-mid) var(--ease-out), background-color var(--t-mid) linear;
+  }
+  .pwmeter__label {
+    display: block; font-size: 0.75rem; font-weight: 700; color: var(--ink-3); margin-top: 6px;
+    min-height: 1em;
+  }
+</style>
+</head>
+
+<body data-page="signup">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div data-navbar></div>
+
+<main id="main">
+  <section class="auth">
+
+    <div class="auth__form">
+      <div class="auth__inner">
+        <p class="eyebrow">First time here</p>
+        <h1 class="display-lg">Create your account</h1>
+        <p class="lede">Takes about a minute. You only need it to save addresses and track orders.</p>
+
+        <form class="authform" data-signup-form novalidate>
+          <div class="authrow">
+            <label class="field">
+              <span class="field__label">First name</span>
+              <input class="input" type="text" autocomplete="given-name" placeholder="Amaka">
+            </label>
+            <label class="field">
+              <span class="field__label">Last name</span>
+              <input class="input" type="text" autocomplete="family-name" placeholder="Obi">
+            </label>
+          </div>
+
+          <label class="field">
+            <span class="field__label">Email address</span>
+            <span class="input-group">
+              <span class="input-group__icon" data-icon="mail" aria-hidden="true"></span>
+              <input class="input" type="email" autocomplete="email" placeholder="you@example.com">
+            </span>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Phone number</span>
+            <span class="input-group">
+              <span class="input-group__icon" data-icon="phone" aria-hidden="true"></span>
+              <input class="input" type="tel" autocomplete="tel" placeholder="+234 801 234 5678">
+            </span>
+            <span class="field__hint">Riders use this to reach you on delivery.</span>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Password</span>
+            <span class="input-group">
+              <span class="input-group__icon" data-icon="lock" aria-hidden="true"></span>
+              <input class="input" type="password" id="suPassword" autocomplete="new-password"
+                     placeholder="At least 8 characters">
+              <button class="input-group__action" type="button" data-pw-toggle="suPassword"
+                      aria-label="Show password"></button>
+            </span>
+            <span class="pwmeter" data-pw-meter>
+              <span class="pwmeter__track"></span>
+              <span class="pwmeter__label" data-pw-label></span>
+            </span>
+          </label>
+
+          <label class="checkline">
+            <input type="checkbox">
+            <span class="checkline__box" data-icon="check" data-icon-size="12"></span>
+            <span>I agree to the <a href="#">terms</a> and <a href="#">privacy policy</a>.</span>
+          </label>
+
+          <label class="checkline">
+            <input type="checkbox" checked>
+            <span class="checkline__box" data-icon="check" data-icon-size="12"></span>
+            <span>Send me offers and new menu items. No more than twice a month.</span>
+          </label>
+
+          <button class="btn btn--primary btn--lg btn--block" type="submit">Create account</button>
+        </form>
+
+        <p class="authsep">or</p>
+
+        <div class="authsocial">
+          <button class="btn btn--ghost btn--block" type="button" data-social>Continue with Google</button>
+          <button class="btn btn--ghost btn--block" type="button" data-social>Continue with Apple</button>
+        </div>
+
+        <p class="authswap">Already have an account? <a href="login.html">Sign in</a></p>
+
+        <p class="uinote">
+          <span data-icon="lock" data-icon-size="16" aria-hidden="true"></span>
+          <span>Phase 1 is UI only — this form does not create an account or send anything.</span>
+        </p>
+      </div>
+    </div>
+
+    <aside class="auth__art">
+      <img data-food data-auth-art alt="" src="">
+      <div class="auth__quote">
+        <h2 class="display-md">Everything you order, remembered.</h2>
+        <p>Set your pepper level once. Save the office and the house. Reorder Friday's small chops without thinking about it.</p>
+        <ul class="auth__points">
+          <li><span data-icon="check" data-icon-size="18" aria-hidden="true"></span>Two-tap reorder from your history</li>
+          <li><span data-icon="check" data-icon-size="18" aria-hidden="true"></span>Multiple saved delivery addresses</li>
+          <li><span data-icon="check" data-icon-size="18" aria-hidden="true"></span>Points on every order, redeemable on treats</li>
+        </ul>
+      </div>
+    </aside>
+
+  </section>
+</main>
+
+<div data-footer></div>
+
+<script src="../js/core/kt.js"></script>
+<script src="../js/core/store.js"></script>
+<script src="../js/core/reveal.js"></script>
+<script src="../js/data/images.js"></script>
+<script src="../js/data/menu.js"></script>
+<script src="../js/data/orders.js"></script>
+<script src="../js/components/toast.js"></script>
+<script src="../js/components/navbar.js"></script>
+<script src="../js/components/footer.js"></script>
+<script src="../js/components/food-card.js"></script>
+<script src="../js/components/cart-drawer.js"></script>
+<script src="../js/components/product-modal.js"></script>
+<script src="../js/pages/auth.js"></script>
+<script src="../js/app.js"></script>
+</body>
+</html>

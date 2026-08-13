@@ -1,0 +1,432 @@
+/* ==========================================================================
+   Responsive
+   --------------------------------------------------------------------------
+   Mobile is designed, not derived. Below 768px the site switches to an
+   app shell: bottom tab bar, sticky basket bar, sheet navigation, horizontal
+   category scrolling and dense row cards.
+
+   Breakpoints
+     1200  laptop           grids relax
+     1024  small laptop     primary nav collapses into the sheet
+      900  tablet           hero stacks, promo band unstacks its notch
+      768  large mobile     app shell turns on
+      520  small mobile     single column everywhere, tighter type
+   ========================================================================== */
+
+/* ---- ≤1200 ------------------------------------------------------------ */
+@media (max-width: 1200px) {
+  :root {
+    --gutter: 20px;
+  }
+  .cats__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .trend__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .trend__grid > .fcard--feature {
+    grid-column: span 2;
+    grid-row: auto;
+  }
+  .trend__grid > .fcard--feature .fcard__media {
+    aspect-ratio: 16 / 9;
+  }
+}
+
+/* ---- ≤1024 ------------------------------------------------------------ */
+@media (max-width: 1024px) {
+  .nav__links,
+  .nav__cta {
+    display: none;
+  }
+  .nav__burger {
+    display: grid;
+  }
+  .nav__inner {
+    gap: 12px;
+  }
+
+  .disco__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .disco__side {
+    position: static;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .foot__top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .foot__cols {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 30px 24px;
+  }
+}
+
+/* ---- ≤900 ------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .hero__inner {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+  .hero__text {
+    max-width: 640px;
+  }
+  .hero__art {
+    max-width: 420px;
+    order: -1;
+  }
+  .hero__wash {
+    top: -30%;
+    right: -30%;
+    width: 130vw;
+  }
+  .hero__dots {
+    display: none;
+  }
+  .herochip--eta {
+    padding: 9px 15px;
+  }
+  .herochip--eta strong {
+    font-size: 1.05rem;
+  }
+
+  .promo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .promo::before,
+  .promo::after {
+    left: auto;
+    right: -15px;
+    top: auto;
+    bottom: calc(100% - 340px);
+  }
+  .promo::after {
+    right: auto;
+    left: -15px;
+  }
+  .promo__media {
+    min-height: 260px;
+    max-height: 300px;
+  }
+  .promo__media::after {
+    background: linear-gradient(
+      to bottom,
+      rgba(43, 14, 32, 0) 40%,
+      rgba(43, 14, 32, 0.9) 100%
+    );
+  }
+
+  .menu__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .menu__aside {
+    display: none;
+  }
+
+  .pdp__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pdp__buybox {
+    position: static;
+  }
+
+  .cartpage__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cartpage__side {
+    position: static;
+  }
+
+  .auth {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .auth__art {
+    display: none;
+  }
+
+  .account__grid,
+  .orders__grid,
+  .orderdetail__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .account__nav {
+    position: static;
+  }
+}
+
+/* ---- ≤768 : the app shell turns on ------------------------------------ */
+@media (max-width: 768px) {
+  body {
+    padding-bottom: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom));
+  }
+  .tabbar {
+    display: grid;
+  }
+  .stickycart {
+    display: flex;
+  }
+
+  .promostrip__msg--alt {
+    display: none;
+  }
+  .promostrip__inner {
+    justify-content: flex-start;
+    height: 34px;
+    font-size: 0.75rem;
+  }
+
+  .nav__inner,
+  .nav.is-stuck .nav__inner {
+    height: 62px;
+  }
+  .locpill {
+    height: 40px;
+    padding: 0 12px 0 8px;
+    max-width: 190px;
+  }
+  .locpill__icon {
+    width: 26px;
+    height: 26px;
+  }
+  .logo img,
+  .nav.is-stuck .logo img {
+    width: 42px;
+    height: 42px;
+  }
+  .nav__search {
+    display: none;
+  }
+
+  .section {
+    padding-block: 46px;
+  }
+  .section-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .cats__all,
+  .trend__all {
+    display: none;
+  }
+
+  /* Categories scroll sideways instead of wrapping into a cramped grid */
+  .cats__grid {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    margin-inline: calc(var(--gutter) * -1);
+    padding-inline: var(--gutter);
+  }
+  .cats__grid::-webkit-scrollbar {
+    display: none;
+  }
+  .cattile {
+    flex: none;
+    width: 132px;
+    scroll-snap-align: start;
+    padding: 16px 10px 14px;
+  }
+  .cattile__ring {
+    width: 68px;
+    height: 68px;
+  }
+  .cattile__blurb {
+    display: none;
+  }
+  .cattile__count {
+    opacity: 1;
+    transform: none;
+  }
+
+  .trend__grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .trend__grid > .fcard--feature {
+    grid-column: auto;
+  }
+  .trend__railhead .rail-nav {
+    display: none;
+  }
+  .trend__rail {
+    margin-inline: calc(var(--gutter) * -1);
+    padding-inline: var(--gutter);
+  }
+  .trend__rail > .fcard {
+    width: 230px;
+  }
+
+  .promo__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .promo__buy {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .promo__buy .btn {
+    width: 100%;
+  }
+
+  .disco__side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .foot__notes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .foot__bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .toasts {
+    bottom: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom) + 76px);
+  }
+
+  /* Drawer becomes a bottom sheet */
+  .drawer__panel {
+    inset: auto 0 0 0;
+    width: 100%;
+    max-height: 88vh;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    transform: translateY(100%);
+  }
+  .drawer__grab {
+    display: block;
+  }
+
+  .modal__panel {
+    inset: auto 0 0 0;
+    width: 100%;
+    max-height: 92vh;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    transform: translateY(100%);
+  }
+  .modal__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .modal__media {
+    aspect-ratio: 16 / 10;
+  }
+}
+
+/* ---- ≤520 ------------------------------------------------------------- */
+@media (max-width: 520px) {
+  :root {
+    --gutter: 16px;
+  }
+
+  .hero {
+    padding-block: 22px 40px;
+  }
+  .hero__title {
+    font-size: 2.05rem;
+  }
+  .hero__art {
+    max-width: 300px;
+  }
+  .herosearch {
+    padding: 6px 6px 6px 44px;
+    flex-wrap: nowrap;
+  }
+  .herosearch__go {
+    padding: 0 16px;
+    font-size: 0.86rem;
+  }
+  .hero__facts {
+    gap: 8px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .herocard--a {
+    left: -4%;
+    top: 16%;
+    scale: 0.82;
+  }
+  .herocard--b {
+    right: -4%;
+    bottom: 20%;
+    scale: 0.82;
+  }
+  .herochip--eta {
+    right: 0;
+    scale: 0.9;
+  }
+  .herochip--live {
+    left: 2%;
+    scale: 0.9;
+  }
+
+  .cardgrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .menu__toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .menu__search {
+    max-width: none;
+  }
+  .menu__sort {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .pdp__gallery {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .pdp__info {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pdp__infocard {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+  }
+  .pdp__infocard span {
+    margin: 0;
+  }
+  .pdp__buybox {
+    flex-wrap: wrap;
+  }
+  .pdp__add {
+    flex: 1 1 100%;
+    order: -1;
+  }
+
+  .sheet__catgrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .cline--compact {
+    gap: 10px;
+  }
+  .cline__media {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+/* ---- Very small ------------------------------------------------------- */
+@media (max-width: 360px) {
+  .locpill__text small {
+    display: none;
+  }
+  .tabbar__item span:last-child {
+    font-size: 0.62rem;
+  }
+}
+
+/* ---- Large desktop ---------------------------------------------------- */
+@media (min-width: 1440px) {
+  :root {
+    --wrap: 1320px;
+  }
+}

@@ -1,0 +1,143 @@
+/* ==========================================================================
+   Promotional band
+   Deep plum, notched "ticket" edge borrowed from bakery boxes and receipts.
+   One per page, maximum — it earns attention by being rare.
+   ========================================================================== */
+
+.promo-wrap {
+  padding-block: clamp(20px, 3vw, 40px);
+}
+
+.promo {
+  position: relative;
+  display: grid;
+  grid-template-columns: 0.92fr 1.08fr;
+  align-items: stretch;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  background: var(--kt-plum);
+  color: #fff;
+  isolation: isolate;
+}
+
+/* Notch pair on the vertical seam — the ticket tell */
+.promo::before,
+.promo::after {
+  content: "";
+  position: absolute;
+  left: calc(46% - 15px);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  z-index: 3;
+}
+.promo::before {
+  top: -15px;
+}
+.promo::after {
+  bottom: -15px;
+}
+
+.promo__media {
+  position: relative;
+  min-height: 340px;
+  overflow: hidden;
+}
+.promo__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: translate(var(--px, 0), var(--py, 0)) scale(1.06);
+  transition: transform 600ms var(--ease-out);
+}
+.promo__media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    rgba(43, 14, 32, 0) 45%,
+    rgba(43, 14, 32, 0.85) 92%
+  );
+}
+
+.promo__body {
+  padding: clamp(28px, 3.6vw, 52px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  background: radial-gradient(
+      120% 120% at 100% 0%,
+      rgba(214, 18, 126, 0.32) 0%,
+      rgba(214, 18, 126, 0) 58%
+    ),
+    var(--kt-plum);
+}
+.promo__body .display-lg {
+  color: #fff;
+}
+.promo__desc {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  max-width: 46ch;
+}
+
+.promo__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 18px;
+  margin-top: 6px;
+}
+.promo__list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.865rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+.promo__list svg {
+  flex: none;
+  margin-top: 3px;
+  color: var(--kt-pink-bright);
+}
+
+.promo__buy {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 14px;
+  padding-top: 20px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.22);
+}
+.promo__price {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.promo__price .price {
+  color: #fff;
+}
+.promo__price .price--strike {
+  color: rgba(255, 255, 255, 0.5);
+}
+.promo__save {
+  font-style: normal;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: var(--r-pill);
+  background: var(--kt-pink);
+  color: #fff;
+}
+.promo__fine {
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.55);
+}

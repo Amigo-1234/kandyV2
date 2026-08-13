@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sign in — Kandy's Treats</title>
+<meta name="description" content="Sign in to your Kandy's Treats account to reorder favourites and track deliveries.">
+<meta name="theme-color" content="#d6127e">
+
+<link rel="icon" href="../assets/logo/kandys-treats-mark.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="../css/global.css">
+<link rel="stylesheet" href="../css/navbar.css">
+<link rel="stylesheet" href="../css/forms.css">
+<link rel="stylesheet" href="../css/cart.css">
+<link rel="stylesheet" href="../css/cards.css">
+<link rel="stylesheet" href="../css/product.css">
+<link rel="stylesheet" href="../css/footer.css">
+<link rel="stylesheet" href="../css/animations.css">
+<link rel="stylesheet" href="../css/responsive.css">
+<script>window.KT_BASE = "../";</script>
+</head>
+
+<body data-page="login">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div data-navbar></div>
+
+<main id="main">
+  <section class="auth">
+
+    <div class="auth__form">
+      <div class="auth__inner">
+        <p class="eyebrow">Welcome back</p>
+        <h1 class="display-lg">Sign in to Kandy's</h1>
+        <p class="lede">Your addresses, past orders and favourites, all where you left them.</p>
+
+        <form class="authform" data-login-form novalidate>
+          <label class="field">
+            <span class="field__label">Email or phone number</span>
+            <span class="input-group">
+              <span class="input-group__icon" data-icon="mail" aria-hidden="true"></span>
+              <input class="input" type="text" id="liEmail" autocomplete="username"
+                     placeholder="you@example.com">
+            </span>
+          </label>
+
+          <label class="field">
+            <span class="field__label">Password</span>
+            <span class="input-group">
+              <span class="input-group__icon" data-icon="lock" aria-hidden="true"></span>
+              <input class="input" type="password" id="liPassword" autocomplete="current-password"
+                     placeholder="••••••••">
+              <button class="input-group__action" type="button" data-pw-toggle="liPassword"
+                      aria-label="Show password"></button>
+            </span>
+          </label>
+
+          <div class="authmeta">
+            <label class="checkline">
+              <input type="checkbox" checked>
+              <span class="checkline__box" data-icon="check" data-icon-size="12"></span>
+              <span>Keep me signed in</span>
+            </label>
+            <a href="#">Forgot password?</a>
+          </div>
+
+          <button class="btn btn--primary btn--lg btn--block" type="submit">Sign in</button>
+        </form>
+
+        <p class="authsep">or</p>
+
+        <div class="authsocial">
+          <button class="btn btn--ghost btn--block" type="button" data-social>Continue with Google</button>
+          <button class="btn btn--ghost btn--block" type="button" data-social>Continue with Apple</button>
+        </div>
+
+        <p class="authswap">New to Kandy's? <a href="signup.html">Create an account</a></p>
+
+        <p class="uinote">
+          <span data-icon="lock" data-icon-size="16" aria-hidden="true"></span>
+          <span>Phase 1 is UI only — this form does not authenticate, store or send anything.</span>
+        </p>
+      </div>
+    </div>
+
+    <aside class="auth__art">
+      <img data-food data-auth-art alt="" src="">
+      <div class="auth__quote">
+        <h2 class="display-md">Reorder your usual in two taps.</h2>
+        <p>Saved addresses, one-tap reorder from your history, and a delivery slot that actually holds.</p>
+        <ul class="auth__points">
+          <li><span data-icon="check" data-icon-size="18" aria-hidden="true"></span>Track every order from kitchen to door</li>
+          <li><span data-icon="check" data-icon-size="18" aria-hidden="true"></span>Save addresses and pepper preferences</li>
+          <li><span data-icon="check" data-icon-size="18" aria-hidden="true"></span>Earn points on everything you order</li>
+        </ul>
+      </div>
+    </aside>
+
+  </section>
+</main>
+
+<div data-footer></div>
+
+<script src="../js/core/kt.js"></script>
+<script src="../js/core/store.js"></script>
+<script src="../js/core/reveal.js"></script>
+<script src="../js/data/images.js"></script>
+<script src="../js/data/menu.js"></script>
+<script src="../js/data/orders.js"></script>
+<script src="../js/components/toast.js"></script>
+<script src="../js/components/navbar.js"></script>
+<script src="../js/components/footer.js"></script>
+<script src="../js/components/food-card.js"></script>
+<script src="../js/components/cart-drawer.js"></script>
+<script src="../js/components/product-modal.js"></script>
+<script src="../js/pages/auth.js"></script>
+<script src="../js/app.js"></script>
+</body>
+</html>

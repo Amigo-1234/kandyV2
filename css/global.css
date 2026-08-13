@@ -1,0 +1,792 @@
+/* ==========================================================================
+   Kandy's Treats — V2 Design System
+   Foundation: tokens, reset, typography, buttons, form primitives, utilities
+   --------------------------------------------------------------------------
+   Brand logic
+   - White & warm cream carry the layout. Pink is a tool, not a wallpaper.
+   - Pink is reserved for: primary CTAs, active states, price emphasis,
+     brand marks, and the "ring" motif borrowed from the circular logo badge.
+   - Deep plum grounds the heavy sections (promo band, footer) so the page has
+     weight without ever going flat grey.
+   ========================================================================== */
+
+:root {
+  /* ---- Brand -------------------------------------------------------- */
+  --kt-pink: #d6127e;
+  --kt-pink-hover: #c00f70;
+  --kt-pink-press: #a60c60;
+  --kt-pink-bright: #ff4fa6;
+  --kt-pink-200: #ffc9e3;
+  --kt-pink-100: #ffe2f1;
+  --kt-pink-50: #fff3f9;
+
+  --kt-plum: #2b0e20;
+  --kt-plum-2: #3f1730;
+  --kt-plum-3: #57223f;
+
+  /* ---- Warm neutrals ------------------------------------------------ */
+  --ink: #1c1017;
+  --ink-2: #4c3b45;
+  --ink-3: #7e6e78;
+  --ink-4: #a99da4;
+
+  --line: #f0e9ed;
+  --line-2: #e3d9df;
+
+  --surface: #ffffff;
+  --surface-2: #fffbf8; /* warm cream — page background */
+  --surface-3: #faf5f7; /* recessed panels */
+
+  /* ---- Functional accents (used sparingly, for meaning only) --------- */
+  --amber: #f5a524;
+  --mint: #0fa47f;
+  --mint-50: #e8f7f2;
+  --chili: #e4572e;
+  --chili-50: #fdeee9;
+
+  /* ---- Radii -------------------------------------------------------- */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 26px;
+  --r-xl: 34px;
+  --r-pill: 999px;
+
+  /* ---- Elevation (warm-tinted, never neutral grey) ------------------- */
+  --sh-1: 0 1px 2px rgba(28, 16, 23, 0.05), 0 2px 8px rgba(28, 16, 23, 0.04);
+  --sh-2: 0 2px 6px rgba(28, 16, 23, 0.06), 0 12px 28px rgba(28, 16, 23, 0.07);
+  --sh-3: 0 4px 12px rgba(28, 16, 23, 0.07), 0 24px 56px rgba(28, 16, 23, 0.1);
+  --sh-pink: 0 6px 18px rgba(214, 18, 126, 0.28);
+  --sh-pink-lg: 0 10px 30px rgba(214, 18, 126, 0.32);
+
+  /* ---- Motion ------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --t-fast: 140ms;
+  --t-mid: 260ms;
+  --t-slow: 520ms;
+
+  /* ---- Layout ------------------------------------------------------- */
+  --wrap: 1240px;
+  --gutter: 24px;
+  --nav-h: 76px;
+  --mobile-nav-h: 66px;
+
+  /* ---- Type --------------------------------------------------------- */
+  --font-display: "Bricolage Grotesque", "Trebuchet MS", "Segoe UI", sans-serif;
+  --font-ui: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+}
+
+/* ==========================================================================
+   Reset
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  /* `clip` (not `hidden`) so stray overflow never widens the mobile layout
+     viewport — which would push fixed elements like the tab bar off-screen —
+     while position: sticky keeps working. */
+  overflow-x: clip;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--surface-2);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+}
+
+body.is-locked {
+  overflow: hidden;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* Author-level `display` on a class beats the UA rule for [hidden],
+   which would otherwise leave empty badges and toggles on screen. */
+[hidden] {
+  display: none !important;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 3px solid var(--kt-pink-bright);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--kt-pink-100);
+  color: var(--kt-plum);
+}
+
+/* ==========================================================================
+   Typography
+   ========================================================================== */
+
+.display-xl,
+.display-lg,
+.display-md,
+.display-sm {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.028em;
+  line-height: 1.02;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.display-xl {
+  font-size: clamp(2.6rem, 6.2vw, 4.6rem);
+}
+.display-lg {
+  font-size: clamp(2.1rem, 4.4vw, 3.3rem);
+  line-height: 1.06;
+}
+.display-md {
+  font-size: clamp(1.55rem, 3vw, 2.15rem);
+  line-height: 1.12;
+}
+.display-sm {
+  font-size: clamp(1.2rem, 2.1vw, 1.45rem);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.lede {
+  font-size: clamp(1rem, 1.35vw, 1.115rem);
+  line-height: 1.62;
+  color: var(--ink-2);
+  max-width: 52ch;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--kt-pink);
+}
+
+.eyebrow::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2.5px solid currentColor;
+}
+
+.eyebrow--light {
+  color: var(--kt-pink-bright);
+}
+
+.muted {
+  color: var(--ink-3);
+}
+
+/* Pink underline swash — a brand device, used on one word per heading max */
+.swash {
+  position: relative;
+  display: inline-block;
+  color: var(--kt-pink);
+  white-space: nowrap;
+}
+.swash::after {
+  content: "";
+  position: absolute;
+  left: -2%;
+  right: -2%;
+  bottom: 0.03em;
+  height: 0.34em;
+  background: var(--kt-pink-100);
+  border-radius: var(--r-pill);
+  z-index: -1;
+}
+
+/* ==========================================================================
+   Layout helpers
+   ========================================================================== */
+
+.wrap {
+  width: 100%;
+  max-width: var(--wrap);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.section {
+  padding-block: clamp(56px, 7vw, 104px);
+}
+
+.section--tight {
+  padding-block: clamp(40px, 5vw, 68px);
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 28px;
+  margin-bottom: clamp(26px, 3.2vw, 44px);
+}
+
+.section-head__text {
+  max-width: 62ch;
+}
+
+.section-head__text .display-lg {
+  margin-top: 12px;
+}
+
+.section-head__text .lede {
+  margin-top: 12px;
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+.btn {
+  --btn-bg: var(--kt-pink);
+  --btn-fg: #fff;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 24px;
+  height: 50px;
+  border-radius: var(--r-pill);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  transition: transform var(--t-fast) var(--ease-out),
+    background-color var(--t-fast) linear, box-shadow var(--t-mid) var(--ease-out),
+    color var(--t-fast) linear;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.btn:disabled:hover {
+  transform: none;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+.btn:active {
+  transform: translateY(0) scale(0.985);
+  transition-duration: 60ms;
+}
+
+.btn--primary {
+  box-shadow: var(--sh-pink);
+}
+.btn--primary:hover {
+  --btn-bg: var(--kt-pink-hover);
+  box-shadow: var(--sh-pink-lg);
+}
+.btn--primary:active {
+  --btn-bg: var(--kt-pink-press);
+}
+
+.btn--dark {
+  --btn-bg: var(--kt-plum);
+  box-shadow: 0 6px 18px rgba(43, 14, 32, 0.24);
+}
+.btn--dark:hover {
+  --btn-bg: var(--kt-plum-2);
+}
+
+.btn--ghost {
+  --btn-bg: transparent;
+  --btn-fg: var(--ink);
+  border: 1.5px solid var(--line-2);
+}
+.btn--ghost:hover {
+  --btn-bg: var(--surface);
+  border-color: var(--kt-pink-200);
+  --btn-fg: var(--kt-pink);
+}
+
+.btn--soft {
+  --btn-bg: var(--kt-pink-50);
+  --btn-fg: var(--kt-pink);
+}
+.btn--soft:hover {
+  --btn-bg: var(--kt-pink-100);
+}
+
+.btn--onDark {
+  --btn-bg: #fff;
+  --btn-fg: var(--kt-plum);
+}
+.btn--onDark:hover {
+  --btn-bg: #fff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+}
+
+.btn--lg {
+  height: 58px;
+  padding: 0 32px;
+  font-size: 1rem;
+}
+.btn--sm {
+  height: 40px;
+  padding: 0 18px;
+  font-size: 0.86rem;
+}
+.btn--block {
+  width: 100%;
+}
+
+.btn svg {
+  flex: none;
+}
+
+/* Icon-only round button */
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  color: var(--ink-2);
+  background: transparent;
+  transition: background-color var(--t-fast) linear,
+    color var(--t-fast) linear, transform var(--t-fast) var(--ease-out);
+}
+.icon-btn:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+.icon-btn:active {
+  transform: scale(0.92);
+}
+
+/* ==========================================================================
+   Chips / badges / pills
+   ========================================================================== */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  border: 1.5px solid var(--line-2);
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all var(--t-fast) var(--ease-out);
+}
+.chip:hover {
+  border-color: var(--kt-pink-200);
+  color: var(--kt-pink);
+}
+.chip[aria-pressed="true"],
+.chip.is-active {
+  background: var(--kt-pink);
+  border-color: var(--kt-pink);
+  color: #fff;
+  box-shadow: var(--sh-pink);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  background: var(--surface-3);
+  color: var(--ink-2);
+}
+.tag--hot {
+  background: var(--chili-50);
+  color: var(--chili);
+}
+.tag--new {
+  background: var(--kt-pink-100);
+  color: var(--kt-pink);
+}
+.tag--veg {
+  background: var(--mint-50);
+  color: var(--mint);
+}
+.tag--deal {
+  background: var(--kt-plum);
+  color: #fff;
+}
+
+.rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.rating svg {
+  color: var(--amber);
+}
+
+/* ==========================================================================
+   The "ring" — signature motif lifted from the circular logo badge
+   ========================================================================== */
+
+.ring {
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--surface-3);
+  box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--kt-pink-100);
+  transition: box-shadow var(--t-mid) var(--ease-out),
+    transform var(--t-mid) var(--ease-out);
+}
+.ring img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ==========================================================================
+   Forms
+   ========================================================================== */
+
+.field {
+  display: block;
+}
+
+.field__label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  margin-bottom: 7px;
+  letter-spacing: -0.005em;
+}
+
+.input,
+.select,
+.textarea {
+  width: 100%;
+  height: 52px;
+  padding: 0 16px;
+  border-radius: var(--r-sm);
+  border: 1.5px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.95rem;
+  transition: border-color var(--t-fast) linear, box-shadow var(--t-fast) linear;
+}
+.textarea {
+  height: auto;
+  min-height: 110px;
+  padding: 14px 16px;
+  resize: vertical;
+}
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--ink-4);
+}
+.input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--kt-pink);
+  box-shadow: 0 0 0 4px var(--kt-pink-50);
+}
+
+.field__hint {
+  font-size: 0.78rem;
+  color: var(--ink-3);
+  margin-top: 6px;
+}
+
+.input-group {
+  position: relative;
+}
+.input-group .input {
+  padding-left: 46px;
+}
+.input-group__icon {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-4);
+  pointer-events: none;
+}
+.input-group__action {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+}
+.input-group__action:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+/* ==========================================================================
+   Quantity stepper
+   ========================================================================== */
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface-3);
+  border-radius: var(--r-pill);
+  padding: 4px;
+}
+.stepper__btn {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ink-2);
+  background: var(--surface);
+  box-shadow: var(--sh-1);
+  transition: transform var(--t-fast) var(--ease-spring),
+    color var(--t-fast) linear;
+}
+.stepper__btn:hover {
+  color: var(--kt-pink);
+}
+.stepper__btn:active {
+  transform: scale(0.88);
+}
+.stepper__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.stepper__value {
+  min-width: 34px;
+  text-align: center;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+}
+
+/* ==========================================================================
+   Price
+   ========================================================================== */
+
+.price {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.price--lg {
+  font-size: 1.6rem;
+}
+.price--strike {
+  color: var(--ink-4);
+  font-weight: 600;
+  text-decoration: line-through;
+  font-size: 0.9em;
+}
+
+/* ==========================================================================
+   Skeleton / empty states
+   ========================================================================== */
+
+.empty {
+  text-align: center;
+  padding: clamp(40px, 7vw, 80px) 24px;
+}
+.empty__art {
+  width: 96px;
+  height: 96px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--kt-pink-50);
+  color: var(--kt-pink);
+}
+.empty h3 {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
+}
+.empty p {
+  color: var(--ink-3);
+  margin: 8px auto 22px;
+  max-width: 40ch;
+}
+
+/* ==========================================================================
+   Scroll rails (horizontal, snap)
+   ========================================================================== */
+
+.rail {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+.rail::-webkit-scrollbar {
+  display: none;
+}
+.rail > * {
+  scroll-snap-align: start;
+  flex: none;
+}
+
+.rail-nav {
+  display: inline-flex;
+  gap: 8px;
+}
+.rail-nav__btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--line-2);
+  background: var(--surface);
+  color: var(--ink-2);
+  transition: all var(--t-fast) var(--ease-out);
+}
+.rail-nav__btn:hover:not(:disabled) {
+  background: var(--kt-pink);
+  border-color: var(--kt-pink);
+  color: #fff;
+}
+.rail-nav__btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Utilities
+   ========================================================================== */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -60px;
+  z-index: 200;
+  background: var(--kt-pink);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: var(--r-pill);
+  font-weight: 700;
+  transition: top var(--t-fast) var(--ease-out);
+}
+.skip-link:focus {
+  top: 12px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--line);
+  border: 0;
+  margin: 0;
+}
+
+.stack-8 > * + * {
+  margin-top: 8px;
+}
+.stack-16 > * + * {
+  margin-top: 16px;
+}
+.stack-24 > * + * {
+  margin-top: 24px;
+}

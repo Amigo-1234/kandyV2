@@ -1,0 +1,214 @@
+/* ==========================================================================
+   Auth pages — login, signup
+   Split layout: form on the left, a warm brand panel on the right.
+   ========================================================================== */
+
+.auth {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
+  min-height: calc(100vh - var(--nav-h) - 38px);
+  align-items: stretch;
+}
+
+.auth__form {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(32px, 5vw, 72px) clamp(20px, 5vw, 80px);
+}
+.auth__inner {
+  width: 100%;
+  max-width: 420px;
+  margin-inline: auto;
+}
+.auth__inner h1 {
+  margin-top: 12px;
+}
+.auth__inner > .lede {
+  margin-top: 10px;
+  font-size: 0.95rem;
+}
+
+.authform {
+  display: grid;
+  gap: 16px;
+  margin-top: 30px;
+}
+.authform .btn {
+  margin-top: 4px;
+}
+
+.authrow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.authmeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 0.84rem;
+}
+.authmeta a {
+  font-weight: 700;
+  color: var(--kt-pink);
+}
+
+.checkline {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.84rem;
+  color: var(--ink-2);
+  cursor: pointer;
+  line-height: 1.5;
+}
+.checkline input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.checkline__box {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  margin-top: 1px;
+  border-radius: 6px;
+  border: 1.8px solid var(--line-2);
+  color: transparent;
+  transition: all var(--t-fast) var(--ease-out);
+}
+.checkline input:checked + .checkline__box {
+  background: var(--kt-pink);
+  border-color: var(--kt-pink);
+  color: #fff;
+}
+.checkline a {
+  color: var(--kt-pink);
+  font-weight: 700;
+}
+
+.authsep {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 26px 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink-4);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.authsep::before,
+.authsep::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.authsocial {
+  display: grid;
+  gap: 10px;
+}
+.authsocial .btn {
+  justify-content: center;
+}
+
+.authswap {
+  margin-top: 28px;
+  font-size: 0.9rem;
+  color: var(--ink-3);
+  text-align: center;
+}
+.authswap a {
+  font-weight: 700;
+  color: var(--kt-pink);
+}
+
+/* ---- Brand panel ------------------------------------------------------ */
+
+.auth__art {
+  position: relative;
+  overflow: hidden;
+  background: var(--kt-plum);
+  display: flex;
+  align-items: flex-end;
+  padding: clamp(28px, 3.5vw, 52px);
+  isolation: isolate;
+}
+.auth__art img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+}
+.auth__art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    to top,
+    rgba(43, 14, 32, 0.94) 8%,
+    rgba(43, 14, 32, 0.35) 60%,
+    rgba(214, 18, 126, 0.28) 100%
+  );
+}
+.auth__quote {
+  color: #fff;
+  max-width: 34ch;
+}
+.auth__quote .display-md {
+  color: #fff;
+}
+.auth__quote p {
+  margin-top: 14px;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.92rem;
+  line-height: 1.62;
+}
+.auth__points {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+}
+.auth__points li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+.auth__points svg {
+  color: var(--kt-pink-bright);
+  flex: none;
+}
+
+/* Phase-1 banner shown above auth forms */
+.uinote {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 15px;
+  border-radius: var(--r-md);
+  background: var(--surface-3);
+  border: 1px dashed var(--line-2);
+  font-size: 0.79rem;
+  line-height: 1.55;
+  color: var(--ink-3);
+  margin-top: 22px;
+}
+.uinote svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--ink-4);
+}

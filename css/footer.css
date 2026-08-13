@@ -1,0 +1,162 @@
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+
+.foot {
+  position: relative;
+  background: var(--kt-plum);
+  color: rgba(255, 255, 255, 0.72);
+  overflow: hidden;
+  padding-top: clamp(48px, 6vw, 80px);
+  margin-top: clamp(40px, 5vw, 72px);
+}
+
+.foot__glow {
+  position: absolute;
+  top: -40%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(1000px, 120vw);
+  aspect-ratio: 2 / 1;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(214, 18, 126, 0.3) 0%,
+    rgba(214, 18, 126, 0) 62%
+  );
+  pointer-events: none;
+}
+
+.foot > .wrap {
+  position: relative;
+}
+
+.foot__top {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 2.1fr);
+  gap: clamp(28px, 4vw, 64px);
+  padding-bottom: 44px;
+}
+
+.foot__logo {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 50%;
+  padding: 4px;
+}
+.foot__tagline {
+  margin-top: 18px;
+  font-size: 0.9rem;
+  line-height: 1.62;
+  max-width: 34ch;
+}
+
+.foot__socials {
+  display: flex;
+  gap: 8px;
+  margin-top: 22px;
+}
+.foot__social {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  transition: all var(--t-fast) var(--ease-out);
+}
+.foot__social:hover {
+  background: var(--kt-pink);
+  border-color: var(--kt-pink);
+  transform: translateY(-3px);
+}
+
+.foot__cols {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 28px;
+}
+.foot__title {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+  margin-bottom: 16px;
+}
+.foot__col li + li {
+  margin-top: 11px;
+}
+.foot__col a {
+  font-size: 0.885rem;
+  transition: color var(--t-fast) linear;
+}
+.foot__col a:hover {
+  color: var(--kt-pink-bright);
+}
+
+.foot__contact li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.865rem;
+  line-height: 1.5;
+}
+.foot__contact svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--kt-pink-bright);
+}
+
+/* Placeholder details are dimmed and dotted so they are easy to spot */
+[data-placeholder] {
+  position: relative;
+}
+[data-placeholder] span {
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.22);
+}
+
+.foot__notes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  padding: 28px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.foot__note strong {
+  display: block;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 7px;
+}
+.foot__note span {
+  font-size: 0.845rem;
+  line-height: 1.6;
+}
+
+.foot__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 22px 0 calc(26px + env(safe-area-inset-bottom));
+  font-size: 0.82rem;
+}
+.foot__legal {
+  display: flex;
+  gap: 22px;
+}
+.foot__legal a:hover {
+  color: #fff;
+}
