@@ -4,7 +4,7 @@
     PLACEHOLDER ONLY — this is NOT the Kandy's Treats logo.
     Replace this file with the official logo, keeping the same filename:
 
-        assets/logo/kandys-treats-logo.svg
+        assets/logo/logo.png
 
     A PNG works too: save it as kandys-treats-logo.png and update the two
     references in js/components/navbar.js and js/components/footer.js.

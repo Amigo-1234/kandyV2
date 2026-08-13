@@ -10,7 +10,7 @@ Overwrite these files, keeping the filenames:
 
 | File | Used for | Rendered at |
 | --- | --- | --- |
-| `kandys-treats-logo.svg` | Header, mobile sheet, footer | 44–72 px |
+| `logo.png` | Header, mobile sheet, footer | 44–72 px |
 | `kandys-treats-mark.svg` | Browser favicon | 16–64 px |
 
 **Using a PNG instead?** Save it as `kandys-treats-logo.png`, then change the

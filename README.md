@@ -119,7 +119,7 @@ its own content, `<div data-footer>`, and a `data-page` attribute that tells
 
 ### 1. The logo — currently a marked placeholder
 
-`assets/logo/kandys-treats-logo.svg` and `kandys-treats-mark.svg` are visibly
+`assets/logo/logo.png` and `kandys-treats-mark.svg` are visibly
 labelled placeholders, not a fake logo. Overwrite them with the real artwork,
 keeping the filenames. See `assets/logo/README.md` for details — the logo is
 referenced in exactly two places (`js/components/navbar.js` and

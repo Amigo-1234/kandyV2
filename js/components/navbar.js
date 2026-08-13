@@ -16,7 +16,7 @@
   function logo(cls) {
     return (
       '<a class="logo ' + (cls || "") + '" href="' + KT.url("index.html") + '" aria-label="Kandy\'s Treats — home">' +
-      '<img src="' + KT.url("assets/logo/kandys-treats-logo.svg") + '" alt="Kandy\'s Treats" width="52" height="52">' +
+      '<img src="' + KT.url("assets/logo/logo.png") + '" alt="Kandy\'s Treats" width="52" height="52">' +
       "</a>"
     );
   }

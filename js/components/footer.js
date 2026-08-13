@@ -67,7 +67,7 @@
         '<div class="wrap">' +
           '<div class="foot__top">' +
             '<div class="foot__brand">' +
-              '<img class="foot__logo" src="' + KT.url("assets/logo/kandys-treats-logo.svg") +
+              '<img class="foot__logo" src="' + KT.url("assets/logo/logo.png") +
                 '" alt="Kandy\'s Treats" width="72" height="72">' +
               '<p class="foot__tagline">Nigerian kitchen and bakery, delivered hot across Lagos. Cooked to order, never held under a lamp.</p>' +
               '<div class="foot__socials">' +
