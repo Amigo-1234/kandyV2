@@ -84,7 +84,10 @@
     var tabsHost = KT.qs("[data-order-tabs]");
     var listHost = KT.qs("[data-order-list]");
 
-    if (KT.pages.accountNav) KT.mount("[data-account-nav]", KT.pages.accountNav("orders"));
+    function paintNav() {
+      if (KT.pages.accountNav) KT.mount("[data-account-nav]", KT.pages.accountNav("orders"));
+    }
+    paintNav();
 
     tabsHost.innerHTML = TABS.map(function (t) {
       return '<button class="chip' + (t[0] === "all" ? " is-active" : "") +
@@ -92,6 +95,10 @@
     }).join("");
 
     function paint() {
+      if (KT.authResolving()) {
+        listHost.innerHTML = KT.loadingLabel("Loading your orders…") + KT.skeleton.orders(3);
+        return;
+      }
       if (!KT.auth || !KT.auth.isSignedIn()) {
         listHost.innerHTML =
           '<div class="empty"><div class="empty__art">' + KT.icon("receipt", 38) + "</div>" +
@@ -116,6 +123,7 @@
     }
 
     async function load() {
+      paintNav();
       if (!KT.services || !KT.auth.isSignedIn()) return paint();
       try {
         orders = await KT.services.orders.list({ limit: 30 });
@@ -317,6 +325,16 @@
       KT.images.bindAll(document);
     }
 
+    /* Session still restoring — show the shape of the page, not an empty
+       "sign in" screen we are about to replace. */
+    function loadingState() {
+      KT.mount(host, KT.loadingLabel("Loading your order…") +
+        '<div class="orderdetail__grid">' +
+          "<div>" + KT.skeleton.panel(4) + KT.skeleton.panel(3) + "</div>" +
+          "<aside>" + KT.skeleton.panel(5) + "</aside>" +
+        "</div>");
+    }
+
     function signedOut() {
       KT.mount(host, '<div class="panel"><div class="empty">' +
         '<div class="empty__art">' + KT.icon("lock", 38) + "</div>" +
@@ -343,6 +361,7 @@
     }
 
     async function load() {
+      if (KT.authResolving()) return loadingState();
       if (!KT.services || !KT.auth.isSignedIn()) return signedOut();
       if (!orderId) return signedOut();
 
@@ -374,18 +393,23 @@
     document.addEventListener("click", async function (e) {
       var pay = e.target.closest("[data-pay]");
       if (pay) {
-        pay.disabled = true;
-        pay.textContent = "Opening " + pay.getAttribute("data-pay") + "…";
+        var payDone = KT.busy(pay, "Opening " + pay.getAttribute("data-pay") + "…");
+        if (!payDone) return;
         try {
+          /* On success the browser leaves for the gateway, so the button
+             stays busy on purpose — there is nothing left to click. */
           await KT.services.payments.start(order.id, pay.getAttribute("data-pay"));
         } catch (error) {
-          pay.disabled = false;
+          payDone();
           render();
           KT.toast(KT.services.errorMessage(error), "error", { duration: 6000 });
         }
       }
 
-      if (e.target.closest("[data-pay-wallet]")) {
+      var payWallet = e.target.closest("[data-pay-wallet]");
+      if (payWallet) {
+        var walletDone = KT.busy(payWallet, "Paying…");
+        if (!walletDone) return;
         try {
           await KT.services.wallet.payOrder(order.id);
           KT.toast("Paid from your wallet.", "success");
@@ -393,6 +417,8 @@
           render();
         } catch (error) {
           KT.toast(KT.services.errorMessage(error), "error", { duration: 6000 });
+        } finally {
+          walletDone();
         }
       }
 
@@ -421,8 +447,9 @@
       }
     });
 
-    signedOut();
+    if (KT.authResolving()) loadingState(); else signedOut();
     document.addEventListener("kt:auth", load);
     document.addEventListener("kt:services", load);
+    load();
   };
 })(window.KT || (window.KT = {}));

@@ -55,6 +55,9 @@
    * @param {string} variant '' | 'feature' | 'row'
    */
   function card(item, variant) {
+    /* Callers build whole grids from this. One absent item is a gap, not a
+       reason for the rest of the page to stop rendering. */
+    if (!item || !item.id) return "";
     variant = variant || "";
     var href = KT.url("pages/product.html?id=" + item.id);
     var cls = "fcard" + (variant ? " fcard--" + variant : "");

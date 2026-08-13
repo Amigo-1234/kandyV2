@@ -51,6 +51,14 @@
       );
     }
 
+    if (KT.authResolving()) {
+      return '<div class="deliverycard sk-panel" aria-hidden="true">' +
+        KT.skeleton.box("38px", "38px", "50%") +
+        '<span class="sk-lines">' + KT.skeleton.box("60%", "13px", "6px") +
+        KT.skeleton.box("85%", "11px", "6px") + "</span></div>" +
+        KT.loadingLabel("Loading your saved addresses…");
+    }
+
     if (!KT.auth || !KT.auth.user()) {
       return (
         '<div class="deliverycard">' +
@@ -101,6 +109,7 @@
     var empty = sum.count === 0;
     var needsAddress = sum.fulfilment === "delivery" && !selectedAddressId;
     var signedIn = !!(KT.auth && KT.auth.user());
+    var authPending = KT.authResolving();
 
     host.innerHTML =
       '<div class="cartpanel">' +
@@ -131,9 +140,11 @@
         '<p class="field__hint" data-promo-msg></p>' +
         KT.components.cartSummary(sum) +
         '<button class="btn btn--primary btn--lg btn--block" type="button" data-checkout' +
-          (empty || sum.hasSoldOut ? " disabled" : "") + ">" +
-          (signedIn ? "Continue to payment" : "Sign in to check out") +
-          KT.icon("arrowRight", 18) + "</button>" +
+          (empty || sum.hasSoldOut || authPending ? " disabled" : "") + ">" +
+          (authPending
+            ? KT.spinner(17) + "<span>Just a moment…</span>"
+            : (signedIn ? "Continue to payment" : "Sign in to check out") +
+              KT.icon("arrowRight", 18)) + "</button>" +
         (needsAddress && !empty && signedIn
           ? '<p class="field__hint" style="color:var(--chili)">Choose a delivery address first.</p>'
           : "") +
@@ -198,9 +209,8 @@
       return;
     }
 
-    var btn = KT.qs("[data-checkout]");
-    btn.disabled = true;
-    btn.textContent = "Creating your order…";
+    var done = KT.busy(KT.qs("[data-checkout]"), "Creating your order…");
+    if (!done) return;
 
     try {
       var profile = await KT.services.account.profile();
@@ -212,10 +222,10 @@
       });
 
       var order = await KT.services.orders.createCheckout([draft], "gateway");
+      /* Leaving for the order page — the button stays busy on purpose. */
       window.location.href = KT.url("pages/order-detail.html?id=" + encodeURIComponent(order.orderId) + "&pay=1");
     } catch (error) {
-      btn.disabled = false;
-      btn.innerHTML = "Continue to payment" + KT.icon("arrowRight", 18);
+      done();
       KT.toast(KT.services.errorMessage(error), "error", { duration: 5200 });
     }
   }
@@ -232,6 +242,7 @@
       renderSide();
     });
     document.addEventListener("kt:menu", paint);
+    document.addEventListener("kt:services", renderSide);
     loadAddresses();
 
     document.addEventListener("click", function (e) {

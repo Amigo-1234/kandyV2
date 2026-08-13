@@ -185,6 +185,127 @@
   border-radius: var(--r-sm);
 }
 
+/* ---- Skeleton vocabulary ---------------------------------------------- */
+
+/* Shared shape primitives. The .skeleton shimmer above supplies the paint;
+   these supply the layout so every page speaks the same loading language. */
+
+.sk-box {
+  display: block;
+}
+
+.sk-lines {
+  display: grid;
+  gap: 9px;
+  align-content: start;
+}
+
+.sk-panel {
+  pointer-events: none;
+}
+.sk-panel .panel__head {
+  display: block;
+}
+
+.sk-cardgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  gap: 22px;
+}
+.sk-card {
+  display: grid;
+  gap: 12px;
+}
+
+.sk-ordercard,
+.sk-nav {
+  pointer-events: none;
+}
+.sk-ordercard .ordercard__body {
+  align-items: center;
+}
+
+/* Skeletons are decorative: never announce their shapes, and hold still for
+   customers who asked for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    background: var(--surface-3);
+  }
+}
+
+/* ---- Spinner ----------------------------------------------------------- */
+
+.spinner {
+  display: inline-block;
+  flex: none;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  opacity: 0.85;
+  animation: kt-spin 620ms linear infinite;
+  vertical-align: -2px;
+}
+
+@keyframes kt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* A busy button keeps its footprint so the layout never jumps mid-request. */
+[data-kt-busy="1"] {
+  cursor: progress;
+}
+[data-kt-busy="1"] .spinner + span {
+  margin-left: 8px;
+}
+
+/* ---- Global progress bar ----------------------------------------------- */
+
+.ktprogress {
+  position: fixed;
+  inset: 0 auto auto 0;
+  z-index: 9999;
+  width: 100%;
+  height: 2px;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--kt-pink), var(--kt-pink-bright));
+  opacity: 0;
+  pointer-events: none;
+}
+.ktprogress.is-active {
+  opacity: 1;
+  animation: kt-progress 2.4s var(--ease-out) forwards;
+}
+.ktprogress.is-finishing {
+  opacity: 1;
+  transform: scaleX(1);
+  transition: transform 180ms var(--ease-out), opacity 300ms 120ms linear;
+  opacity: 0;
+}
+
+/* Creeps towards 90% and waits there — it never claims to be finished. */
+@keyframes kt-progress {
+  0% {
+    transform: scaleX(0);
+  }
+  55% {
+    transform: scaleX(0.62);
+  }
+  100% {
+    transform: scaleX(0.9);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ktprogress.is-active {
+    animation: none;
+    transform: scaleX(0.9);
+  }
+}
+
 /* ---- Reduced motion --------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {

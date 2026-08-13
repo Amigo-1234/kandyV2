@@ -80,6 +80,7 @@
     var host = KT.qs("[data-trending]");
     if (!host) return;
     var picks = KT.menu.featured(7);
+    if (!picks.length) return;
     host.innerHTML =
       KT.components.foodCard(picks[0], "feature") +
       KT.components.foodCards(picks.slice(1, 5));

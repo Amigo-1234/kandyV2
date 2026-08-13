@@ -32,14 +32,20 @@
   }
 
   function sideNav(active) {
+    /* The orders and order-detail pages reuse this nav without running this
+       module's load(), so state.profile is null there. Falling back to the
+       Firebase user keeps the header truthful without a second request. */
     var p = state.profile;
-    var name = (p && p.displayName) || (p && p.email) || "Your account";
+    var u = (KT.auth && KT.auth.user && KT.auth.user()) || null;
+    var name = (p && p.displayName) || (p && p.email) ||
+      (u && (u.displayName || u.email)) || "Your account";
+    var email = (p && p.email) || (u && u.email) || "";
     return (
       '<div class="account__nav">' +
         '<div class="account__who">' +
           '<span class="avatar">' + initials(name) + "</span>" +
           "<div><strong>" + name + "</strong><span>" +
-            (p && p.email ? p.email : "Not signed in") + "</span></div>" +
+            (email || "Not signed in") + "</span></div>" +
         "</div>" +
         '<nav class="account__links" aria-label="Account">' +
           LINKS.map(function (l) {
@@ -66,6 +72,15 @@
         '<p style="margin-top:14px"><a href="' + KT.url("pages/signup.html") +
           '" style="font-weight:700;color:var(--kt-pink)">Create an account</a></p>' +
       "</div></div>");
+  }
+
+  /* Shown while Firebase is still restoring the session for a returning
+     customer. Without it the page paints signedOut() first and corrects
+     itself a second later, which reads as a bug. */
+  function loadingState() {
+    KT.mount("[data-account-nav]", KT.skeleton.accountNav());
+    KT.mount("[data-account-main]",
+      KT.loadingLabel("Loading your account…") + KT.skeleton.accountMain());
   }
 
   /* ---- Sections -------------------------------------------------------- */
@@ -382,7 +397,20 @@
     );
   }
 
+  /** "Hello, Idris" once we know who it is — never a name we invented. */
+  function greet() {
+    var host = KT.qs("[data-account-greeting]");
+    if (!host) return;
+    var p = state.profile;
+    var u = (KT.auth && KT.auth.user && KT.auth.user()) || null;
+    var full = (p && p.displayName) || (u && u.displayName) || "";
+    var first = String(full).trim().split(" ")[0];
+    host.textContent = first ? "Hello, " + first : "Your account";
+  }
+
   function render() {
+    greet();
+    if (KT.authResolving()) return loadingState();
     if (!KT.auth || !KT.auth.isSignedIn()) return signedOut();
     KT.mount("[data-account-nav]", sideNav("account"));
     KT.mount("[data-account-main]",
@@ -421,8 +449,11 @@
   async function saveAddress(form) {
     var data = Object.fromEntries(new FormData(form).entries());
     data.isDefault = !!data.isDefault;
-    var btn = KT.qs("[type=submit]", form);
-    btn.disabled = true; btn.textContent = "Saving…";
+    /* KT.busy returns null when the button is already in flight, which is
+       how a double-submit is refused. */
+    var done = KT.busy(KT.qs("[type=submit]", form), "Saving…");
+    if (!done) return;
+
     try {
       await KT.services.addresses.save(data);
       state.editing = null; state.editingAddress = null;
@@ -430,8 +461,9 @@
       render();
       KT.toast("Address saved.", "success");
     } catch (error) {
-      btn.disabled = false; btn.textContent = "Save address";
       KT.toast(KT.services ? KT.services.errorMessage(error) : error.message, "error", { duration: 5000 });
+    } finally {
+      done();
     }
   }
 
@@ -489,6 +521,7 @@
     render();
     document.addEventListener("kt:auth", load);
     document.addEventListener("kt:services", load);
+    load();
     if (location.hash === "#addresses") state.editing = null;
 
     document.addEventListener("click", async function (e) {

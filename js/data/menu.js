@@ -224,11 +224,22 @@
     /** Admin-curated quick picks when live, cheapest-entry favourites offline. */
     featured: function (n) {
       var picks = menu.tagged("quick-pick");
+
+      /* These are snapshot slugs. Firestore's documents carry auto-ids, so
+         this list only ever resolves against the bundled menu. */
       if (!picks.length) {
         picks = ["jollof-rice", "chicken-and-chips", "beef-shawarma-1-sausage", "meat-pie",
           "parfait-big", "peppered-gizzard", "big-turkey", "catfish-pepper-soup-head"]
           .map(menu.byId).filter(Boolean);
       }
+
+      /* Live menu with nothing curated yet: show what is actually on sale.
+         Returning [] here used to crash every caller that assumed a first
+         item, which took the whole home page paint down with it. */
+      if (!picks.length) {
+        picks = menu.items.filter(function (i) { return menu.available(i); });
+      }
+
       return picks.slice(0, n || 6);
     },
 
