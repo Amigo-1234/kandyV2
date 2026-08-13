@@ -1,0 +1,319 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function currentUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && currentUser().data.role in ["admin", "staff", "super-admin", "superAdmin", "owner"];
+    }
+
+    function ownsExisting() {
+      return signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    function ownsIncoming() {
+      return signedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    function ownerCreate() {
+      return ownsIncoming() || isAdmin();
+    }
+
+    function ownerRead() {
+      return ownsExisting() || isAdmin();
+    }
+
+    function ownerUpdate() {
+      return (ownsExisting() && ownsIncoming()) || isAdmin();
+    }
+
+    function ownerDelete() {
+      return ownsExisting() || isAdmin();
+    }
+
+    function keepsRole() {
+      return request.resource.data.role == resource.data.role
+        || (!("role" in resource.data) && request.resource.data.role == "customer");
+    }
+
+    function keepsUid(userId) {
+      return request.resource.data.uid == resource.data.uid
+        || (!("uid" in resource.data) && request.resource.data.uid == userId);
+    }
+
+    function userProfileKeysOnly() {
+      return request.resource.data.keys().hasOnly([
+        "uid",
+        "role",
+        "email",
+        "displayName",
+        "phone",
+        "photoURL",
+        "emailVerified",
+        "createdAt",
+        "updatedAt"
+      ]);
+    }
+
+    function userProfileChangedKeysOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        "uid",
+        "role",
+        "email",
+        "displayName",
+        "phone",
+        "photoURL",
+        "emailVerified",
+        "createdAt",
+        "updatedAt"
+      ]);
+    }
+
+    function emailMatchesAuth() {
+      return !("email" in request.resource.data)
+        || request.resource.data.email == request.auth.token.email;
+    }
+
+    function verificationMatchesAuth() {
+      return !("emailVerified" in request.resource.data)
+        || request.resource.data.emailVerified == request.auth.token.email_verified;
+    }
+
+    function addressKeysOnly() {
+      return request.resource.data.keys().hasOnly([
+        "userId",
+        "label",
+        "recipientName",
+        "phone",
+        "address",
+        "notes",
+        "isDefault",
+        "createdAt",
+        "updatedAt"
+      ]);
+    }
+
+    function publicCheckoutOrderKeysOnly() {
+      return request.resource.data.keys().hasOnly([
+        "id",
+        "userId",
+        "addressId",
+        "addressSnapshot",
+        "customer",
+        "fulfilment",
+        "subOrders",
+        "items",
+        "notes",
+        "subtotal",
+        "deliveryFee",
+        "takeawayFee",
+        "discount",
+        "vat",
+        "processingFee",
+        "total",
+        "netAmount",
+        "paymentProvider",
+        "paymentRef",
+        "paymentStatus",
+        "paid",
+        "status",
+        "statusHistory",
+        "estimatedDeliveryMinutes",
+        "source",
+        "manualVerificationRequired",
+        "createdAt",
+        "createdAtMs",
+        "updatedAt"
+      ]);
+    }
+
+    function publicCheckoutPendingCreate(orderId) {
+      return ownsIncoming()
+        && publicCheckoutOrderKeysOnly()
+        && orderId.matches("^KD-PENDING-[0-9]+-[0-9]+$")
+        && request.resource.data.id == orderId
+        && request.resource.data.paid == false
+        && request.resource.data.paymentProvider == "public_key"
+        && request.resource.data.paymentRef == null
+        && request.resource.data.paymentStatus == "pending_public_checkout"
+        && request.resource.data.status == "New"
+        && request.resource.data.source == "public_key_checkout"
+        && request.resource.data.manualVerificationRequired == true
+        && request.resource.data.customer is map
+        && request.resource.data.items is list
+        && request.resource.data.subOrders is list
+        && request.resource.data.statusHistory is list
+        && request.resource.data.fulfilment in ["delivery", "pickup", "mixed"]
+        && request.resource.data.subtotal is number
+        && request.resource.data.deliveryFee is number
+        && request.resource.data.takeawayFee is number
+        && request.resource.data.discount is number
+        && request.resource.data.vat is number
+        && request.resource.data.processingFee is number
+        && request.resource.data.total is number
+        && request.resource.data.netAmount is number
+        && request.resource.data.createdAtMs is number
+        && request.resource.data.total > 0
+        && request.resource.data.netAmount > 0
+        && request.resource.data.vat == 0
+        && request.resource.data.processingFee == 0;
+    }
+
+    match /users/{userId} {
+      allow create: if isOwner(userId)
+        && userProfileKeysOnly()
+        && request.resource.data.uid == userId
+        && request.resource.data.role == "customer"
+        && emailMatchesAuth()
+        && verificationMatchesAuth();
+      allow read: if isOwner(userId) || isAdmin();
+      allow update: if isOwner(userId)
+        && userProfileChangedKeysOnly()
+        && keepsUid(userId)
+        && keepsRole()
+        && emailMatchesAuth()
+        && verificationMatchesAuth();
+      allow delete: if isAdmin();
+    }
+
+    match /wallets/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId)
+        && request.resource.data.keys().hasOnly([
+          "userId",
+          "currency",
+          "balance",
+          "availableBalance",
+          "lockedBalance",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ])
+        && request.resource.data.userId == userId
+        && request.resource.data.balance == 0
+        && request.resource.data.availableBalance == 0
+        && request.resource.data.lockedBalance == 0;
+      allow update, delete: if isAdmin();
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if ownerRead();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow create: if isAdmin() || publicCheckoutPendingCreate(orderId);
+      allow update, delete: if isAdmin();
+      allow read: if ownerRead();
+    }
+
+    match /orderItems/{itemId} {
+      allow create, update, delete: if isAdmin();
+      allow read: if ownerRead();
+    }
+
+    match /addresses/{addressId} {
+      allow create: if ownerCreate()
+        && addressKeysOnly()
+        && request.resource.data.address is string;
+      allow read: if ownerRead();
+      allow update: if ownerUpdate()
+        && addressKeysOnly()
+        && request.resource.data.address is string;
+      allow delete: if ownerDelete();
+    }
+
+    match /favourites/{favouriteId} {
+      allow create: if ownerCreate();
+      allow read: if ownerRead();
+      allow update: if ownerUpdate();
+      allow delete: if ownerDelete();
+    }
+
+    match /reviews/{reviewId} {
+      allow create: if ownerCreate();
+      allow read: if true;
+      allow update: if ownerUpdate();
+      allow delete: if ownerDelete();
+    }
+
+    match /notifications/{notificationId} {
+      allow create: if ownerCreate();
+      allow read: if ownerRead();
+      allow update: if isAdmin()
+        || (
+          ownsExisting()
+          && ownsIncoming()
+          && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+            "read",
+            "readAt",
+            "updatedAt"
+          ])
+        );
+      allow delete: if ownerDelete();
+    }
+
+    match /supportTickets/{ticketId} {
+      allow create: if ownerCreate();
+      allow read: if ownerRead();
+      allow update: if ownerUpdate();
+      allow delete: if ownerDelete();
+    }
+
+    match /contactMessages/{messageId} {
+      allow create: if request.resource.data.keys().hasOnly([
+        "name",
+        "phone",
+        "message",
+        "status",
+        "source",
+        "createdAt"
+      ])
+        && request.resource.data.name is string
+        && request.resource.data.phone is string
+        && request.resource.data.message is string
+        && request.resource.data.status == "new";
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /menus/{menuId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /quickPicks/{quickPickId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /announcements/{announcementId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /adminTokens/{tokenId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /payment_logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

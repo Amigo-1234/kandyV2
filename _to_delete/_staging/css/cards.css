@@ -1,0 +1,403 @@
+/* ==========================================================================
+   Food cards
+   The add control lives on the photo and morphs into a stepper in place.
+   ========================================================================== */
+
+.fcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  transition: transform var(--t-mid) var(--ease-out),
+    box-shadow var(--t-mid) var(--ease-out), border-color var(--t-mid) linear;
+}
+.fcard:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--sh-2);
+  border-color: transparent;
+}
+.fcard.in-cart {
+  border-color: var(--kt-pink-200);
+}
+
+/* ---- Media ---------------------------------------------------------- */
+
+.fcard__media {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--surface-3);
+}
+.fcard__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 700ms var(--ease-out);
+}
+.fcard:hover .fcard__img {
+  transform: scale(1.06);
+}
+.fcard__img.is-placeholder {
+  object-fit: cover;
+}
+
+/* Gradient only where text sits, never as decoration */
+.fcard__shade {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 52%;
+  background: linear-gradient(
+    to top,
+    rgba(28, 16, 23, 0.72),
+    rgba(28, 16, 23, 0.28) 45%,
+    rgba(28, 16, 23, 0) 100%
+  );
+}
+
+.fcard__tags {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-width: calc(100% - 24px);
+}
+/* Tags keep their own colours over the photo — a blanket white background
+   here would erase the deal tag's white text. A shadow does the lifting. */
+.fcard__tags .tag {
+  box-shadow: 0 2px 8px rgba(28, 16, 23, 0.18);
+}
+.fcard__tags .tag:not(.tag--deal) {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(6px);
+}
+
+.fcard__price {
+  position: absolute;
+  left: 14px;
+  bottom: 13px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.12rem;
+  letter-spacing: -0.02em;
+  color: #fff;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.3);
+  font-variant-numeric: tabular-nums;
+}
+.fcard__price .price--strike {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.78rem;
+}
+
+/* Quick-look — appears on hover, keyboard reachable at all times */
+.fcard__peek {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(8px);
+  color: var(--ink);
+  font-size: 0.76rem;
+  font-weight: 700;
+  box-shadow: var(--sh-1);
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity var(--t-fast) linear, transform var(--t-mid) var(--ease-out),
+    color var(--t-fast) linear;
+}
+.fcard:hover .fcard__peek,
+.fcard__peek:focus-visible {
+  opacity: 1;
+  transform: none;
+}
+.fcard__peek:hover {
+  color: var(--kt-pink);
+}
+@media (hover: none) {
+  .fcard__peek {
+    display: none;
+  }
+}
+
+/* ---- Add control ---------------------------------------------------- */
+
+.fcard__top {
+  position: relative;
+}
+
+.fcard__action {
+  position: absolute;
+  right: 12px;
+  bottom: -22px; /* straddles the photo/body seam */
+  z-index: 2;
+}
+.fcard__add {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--kt-pink);
+  color: #fff;
+  box-shadow: var(--sh-pink);
+  transition: transform var(--t-fast) var(--ease-spring),
+    background-color var(--t-fast) linear, box-shadow var(--t-mid) var(--ease-out);
+}
+.fcard__add:hover {
+  background: var(--kt-pink-hover);
+  transform: scale(1.09) rotate(90deg);
+  box-shadow: var(--sh-pink-lg);
+}
+.fcard__add:active {
+  transform: scale(0.9);
+}
+
+.fcard__stepper {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 44px;
+  padding: 4px;
+  border-radius: var(--r-pill);
+  background: var(--kt-pink);
+  box-shadow: var(--sh-pink);
+  animation: kt-stepper-in 320ms var(--ease-spring);
+}
+.fcard__stepper button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+  transition: background-color var(--t-fast) linear, transform var(--t-fast) var(--ease-spring);
+}
+.fcard__stepper button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+.fcard__stepper button:active {
+  transform: scale(0.86);
+}
+.fcard__stepper span {
+  min-width: 24px;
+  text-align: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Body ----------------------------------------------------------- */
+
+.fcard__body {
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.fcard__name {
+  font-family: var(--font-display);
+  font-size: 1.06rem;
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  line-height: 1.22;
+  padding-right: 40px;
+}
+.fcard__name a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.fcard__blurb {
+  font-size: 0.855rem;
+  line-height: 1.5;
+  color: var(--ink-3);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fcard__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
+  font-size: 0.79rem;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+.fcard__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.fcard__meta em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--ink-4);
+}
+.fcard__dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--ink-4);
+}
+
+/* ---- Feature variant (lead slot of the trending grid) ---------------- */
+
+.fcard--feature .fcard__media {
+  aspect-ratio: 3 / 4;
+}
+.fcard--feature .fcard__name {
+  font-size: 1.42rem;
+}
+.fcard--feature .fcard__blurb {
+  font-size: 0.92rem;
+  -webkit-line-clamp: 3;
+}
+.fcard--feature .fcard__price {
+  font-size: 1.42rem;
+}
+.fcard--feature .fcard__action {
+  bottom: -27px;
+  right: 16px;
+}
+.fcard--feature .fcard__add {
+  width: 54px;
+  height: 54px;
+}
+.fcard--feature .fcard__stepper {
+  height: 54px;
+}
+.fcard--feature .fcard__stepper button {
+  width: 44px;
+  height: 44px;
+}
+
+/* ---- Row variant (dense lists, mobile menu) -------------------------- */
+
+.fcard--row {
+  flex-direction: row;
+  align-items: stretch;
+  border-radius: var(--r-md);
+}
+.fcard--row:hover {
+  transform: none;
+}
+.fcard--row .fcard__media {
+  flex: none;
+  width: 116px;
+  aspect-ratio: auto;
+  border-radius: 0;
+}
+.fcard--row .fcard__shade {
+  display: none;
+}
+.fcard--row .fcard__body {
+  padding: 13px 14px;
+  gap: 4px;
+}
+.fcard--row .fcard__name {
+  font-size: 0.98rem;
+  padding-right: 0;
+}
+.fcard--row .fcard__blurb {
+  -webkit-line-clamp: 2;
+  font-size: 0.8rem;
+}
+.fcard--row .fcard__meta {
+  padding-top: 6px;
+}
+.fcard--row .fcard__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+.fcard--row .fcard__price {
+  position: static;
+  color: var(--ink);
+  text-shadow: none;
+  font-size: 1.02rem;
+}
+.fcard--row .fcard__price .price--strike {
+  color: var(--ink-4);
+}
+.fcard--row .fcard__action {
+  position: static;
+}
+.fcard--row .fcard__add {
+  width: 38px;
+  height: 38px;
+}
+.fcard--row .fcard__stepper {
+  height: 38px;
+  padding: 3px;
+}
+.fcard--row .fcard__stepper button {
+  width: 32px;
+  height: 32px;
+}
+
+/* ---- Grids ----------------------------------------------------------- */
+
+.cardgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(248px, 1fr));
+  gap: 20px;
+}
+
+/* Trending: one tall feature card + a 2×2 of standard cards */
+.trend__grid {
+  display: grid;
+  grid-template-columns: 1.24fr 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 20px;
+}
+.trend__grid > .fcard--feature {
+  grid-row: span 2;
+}
+
+.trend__railhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin: clamp(40px, 5vw, 64px) 0 20px;
+}
+.trend__rail > .fcard {
+  width: 264px;
+}
+
+/* The photo that flies into the cart button on add */
+.fly-ghost {
+  position: fixed;
+  z-index: 200;
+  pointer-events: none;
+  background-size: cover;
+  background-position: center;
+  border-radius: var(--r-md);
+  box-shadow: var(--sh-2);
+  transition: transform 620ms cubic-bezier(0.5, -0.1, 0.4, 1),
+    opacity 620ms ease-in, border-radius 620ms linear;
+}

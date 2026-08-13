@@ -1,0 +1,206 @@
+/* ==========================================================================
+   Motion
+   Everything here is small, short and purposeful. No bouncing, no 3D.
+   The whole file switches itself off under prefers-reduced-motion.
+   ========================================================================== */
+
+/* ---- Scroll entrance ------------------------------------------------- */
+
+.will-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+}
+.is-revealed {
+  opacity: 1;
+  transform: none;
+  transition: opacity 620ms var(--ease-out), transform 620ms var(--ease-out);
+}
+
+/* ---- Keyframes -------------------------------------------------------- */
+
+@keyframes kt-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -10px;
+  }
+}
+
+@keyframes kt-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes kt-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(15, 164, 127, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 9px rgba(15, 164, 127, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(15, 164, 127, 0);
+  }
+}
+
+@keyframes kt-bump {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.22); }
+  60% { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+
+@keyframes kt-stepper-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes kt-plate-in {
+  from {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes kt-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes kt-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* ---- Toasts ----------------------------------------------------------- */
+
+.toasts {
+  position: fixed;
+  z-index: 220;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 10px;
+  width: min(420px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 12px 12px 14px;
+  border-radius: var(--r-pill);
+  background: var(--kt-plum);
+  color: #fff;
+  box-shadow: var(--sh-3);
+  font-size: 0.885rem;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(14px) scale(0.96);
+  transition: opacity 260ms var(--ease-out), transform 260ms var(--ease-out);
+  pointer-events: auto;
+}
+.toast.is-in {
+  opacity: 1;
+  transform: none;
+}
+.toast__icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  flex: none;
+}
+.toast--success .toast__icon {
+  background: var(--mint);
+}
+.toast--error .toast__icon {
+  background: var(--chili);
+}
+.toast__msg {
+  flex: 1;
+  min-width: 0;
+}
+.toast__action {
+  flex: none;
+  padding: 6px 13px;
+  border-radius: var(--r-pill);
+  background: var(--kt-pink);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: background-color var(--t-fast) linear;
+}
+.toast__action:hover {
+  background: var(--kt-pink-bright);
+}
+.toast__close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.6);
+}
+.toast__close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ---- Skeleton --------------------------------------------------------- */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-3) 0%,
+    #fff 40%,
+    var(--surface-3) 80%
+  );
+  background-size: 200% 100%;
+  animation: kt-shimmer 1.4s linear infinite;
+  border-radius: var(--r-sm);
+}
+
+/* ---- Reduced motion --------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .will-reveal {
+    opacity: 1;
+    transform: none;
+  }
+}

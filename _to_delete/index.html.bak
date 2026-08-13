@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kandy's Treats — Nigerian kitchen &amp; bakery, delivered across Lagos</title>
+<meta name="description" content="Party jollof, small chops, meat pies and cakes from Kandy's Treats. Cooked to order and delivered hot across Lagos in 35–55 minutes.">
+<meta name="theme-color" content="#d6127e">
+
+<link rel="icon" href="assets/logo/kandys-treats-mark.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/global.css">
+<link rel="stylesheet" href="css/navbar.css">
+<link rel="stylesheet" href="css/hero.css">
+<link rel="stylesheet" href="css/categories.css">
+<link rel="stylesheet" href="css/cards.css">
+<link rel="stylesheet" href="css/promo.css">
+<link rel="stylesheet" href="css/discovery.css">
+<link rel="stylesheet" href="css/cart.css">
+<link rel="stylesheet" href="css/product.css">
+<link rel="stylesheet" href="css/footer.css">
+<link rel="stylesheet" href="css/animations.css">
+<link rel="stylesheet" href="css/responsive.css">
+</head>
+
+<body data-page="home">
+<a class="skip-link" href="#main">Skip to content</a>
+
+<div data-navbar></div>
+
+<main id="main">
+
+  <!-- ===================================================================
+       HERO — food-first, search-first. Not a SaaS headline in empty space.
+       =================================================================== -->
+  <section class="hero">
+    <span class="hero__wash" aria-hidden="true"></span>
+    <span class="hero__dots" aria-hidden="true"></span>
+
+    <div class="wrap hero__inner">
+      <div class="hero__text">
+        <p class="eyebrow">Lagos · 35–55 min · cooked to order</p>
+
+        <h1 class="display-xl hero__title">
+          Craving <span class="hero__rotate" data-rotate>jollof</span>?<br>
+          The pot is <span class="swash">already on.</span>
+        </h1>
+
+        <p class="lede hero__lede">
+          A Nigerian kitchen and bakery running out of Lekki. Everything is cooked
+          when you order it — nothing sits under a heat lamp waiting for a rider.
+        </p>
+
+        <form class="herosearch" data-hero-search role="search">
+          <span class="herosearch__icon" data-icon="search" data-icon-size="20" aria-hidden="true"></span>
+          <label class="sr-only" for="heroQ">Search the menu</label>
+          <input class="herosearch__input" id="heroQ" type="search"
+                 placeholder="Search jollof, meat pie, chapman…" autocomplete="off">
+          <button class="btn btn--primary herosearch__go" type="submit">Find food</button>
+        </form>
+
+        <div class="hero__quick">
+          <span class="hero__quicklabel">Popular right now</span>
+          <a class="chip" href="pages/product.html?id=party-jollof">Party jollof</a>
+          <a class="chip" href="pages/product.html?id=small-chops">Small chops</a>
+          <a class="chip" href="pages/product.html?id=meat-pie">Meat pie</a>
+          <a class="chip" href="pages/product.html?id=chapman">Chapman</a>
+        </div>
+
+        <ul class="hero__facts">
+          <li><span class="hero__facticon" data-icon="bike"></span>Free delivery over ₦20,000</li>
+          <li><span class="hero__facticon" data-icon="clock"></span>Open daily, 8 AM – 10 PM</li>
+          <li><span class="hero__facticon" data-icon="gift"></span>Party trays with 24 hrs notice</li>
+        </ul>
+      </div>
+
+      <div class="hero__art" aria-hidden="true">
+        <span class="hero__halo"></span>
+        <span class="hero__orbit"></span>
+
+        <div class="hero__plate" data-parallax="0.35">
+          <img data-food data-hero-plate alt="" src="" width="620" height="620">
+        </div>
+
+        <a class="herocard herocard--a" data-hero-card data-parallax="1"></a>
+        <a class="herocard herocard--b" data-hero-card data-parallax="1.5"></a>
+
+        <div class="herochip herochip--eta" data-parallax="0.8">
+          <strong>25 min</strong><span>average kitchen time</span>
+        </div>
+        <div class="herochip herochip--live" data-parallax="1.2">
+          <span class="herochip__pulse"></span>Kitchen is open
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       CATEGORIES
+       =================================================================== -->
+  <section class="section section--tight cats" id="categories">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="section-head__text">
+          <p class="eyebrow">Start here</p>
+          <h2 class="display-lg">What are we eating today?</h2>
+        </div>
+        <a class="btn btn--ghost cats__all" href="pages/menu.html">See the full menu</a>
+      </div>
+
+      <div class="cats__grid" data-categories data-reveal-group></div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       TRENDING
+       =================================================================== -->
+  <section class="section trend" id="trending">
+    <div class="wrap">
+      <div class="section-head">
+        <div class="section-head__text">
+          <p class="eyebrow">Ordered most this week</p>
+          <h2 class="display-lg">The plates people keep coming back for</h2>
+          <p class="lede">Ratings and counts below are placeholder data for the prototype — they will read from real orders once ordering is live.</p>
+        </div>
+        <a class="btn btn--ghost trend__all" href="pages/menu.html">Browse everything</a>
+      </div>
+
+      <div class="trend__grid" data-trending data-reveal-group></div>
+
+      <div class="trend__railhead">
+        <h3 class="display-sm">New on the menu</h3>
+        <div class="rail-nav">
+          <button class="rail-nav__btn" type="button" data-rail-prev="newRail" data-icon="arrowLeft" aria-label="Scroll left"></button>
+          <button class="rail-nav__btn" type="button" data-rail-next="newRail" data-icon="arrowRight" aria-label="Scroll right"></button>
+        </div>
+      </div>
+      <div class="rail trend__rail" id="newRail" data-rail data-trending-rail></div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       PROMO BAND
+       =================================================================== -->
+  <section class="section promo-wrap" id="catering">
+    <div class="wrap">
+      <div class="promo" data-promo data-reveal></div>
+    </div>
+  </section>
+
+  <!-- ===================================================================
+       DISCOVERY
+       =================================================================== -->
+  <section class="section disco" id="story">
+    <div class="wrap">
+      <div class="disco__grid">
+
+        <div class="disco__panel">
+          <p class="eyebrow">Have a look around</p>
+          <h2 class="display-lg">Pick a corner of the menu</h2>
+          <p class="lede">Six sections, one kitchen. Tap through and add straight from here — the full menu has search and filters when you want to go deeper.</p>
+
+          <div class="disco__tabs" data-discover-tabs></div>
+          <ul class="disco__list" data-discover-list></ul>
+
+          <a class="btn btn--primary btn--lg disco__cta" href="pages/menu.html">
+            Open the full menu
+          </a>
+        </div>
+
+        <aside class="disco__side">
+          <div class="howto" data-reveal>
+            <p class="eyebrow">How it works</p>
+            <ol class="howto__steps">
+              <li>
+                <span class="howto__num">1</span>
+                <div><strong>Pick your food</strong><p>Browse by category or search. Add extras and set your pepper level.</p></div>
+              </li>
+              <li>
+                <span class="howto__num">2</span>
+                <div><strong>We cook it fresh</strong><p>Your order goes to the kitchen the moment it lands. Nothing pre-made.</p></div>
+              </li>
+              <li>
+                <span class="howto__num">3</span>
+                <div><strong>Rider brings it hot</strong><p>Insulated bags, live rider assignment, 35–55 minutes across Lagos.</p></div>
+              </li>
+            </ol>
+          </div>
+
+          <div class="areas" id="delivery" data-reveal>
+            <h3 class="display-sm">Where we deliver</h3>
+            <ul class="areas__list">
+              <li>Lekki Phase 1 &amp; 2</li><li>Victoria Island</li><li>Ikoyi</li>
+              <li>Ajah</li><li>Yaba</li><li>Ikeja GRA</li><li>Surulere</li><li>Maryland</li>
+            </ul>
+            <p class="areas__note">Outside these areas? Send us a note at checkout and we will try to make it work.</p>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div data-footer></div>
+
+<script src="js/core/kt.js"></script>
+<script src="js/core/store.js"></script>
+<script src="js/core/reveal.js"></script>
+<script src="js/data/images.js"></script>
+<script src="js/data/menu.js"></script>
+<script src="js/data/orders.js"></script>
+<script src="js/components/toast.js"></script>
+<script src="js/components/navbar.js"></script>
+<script src="js/components/footer.js"></script>
+<script src="js/components/food-card.js"></script>
+<script src="js/components/cart-drawer.js"></script>
+<script src="js/components/product-modal.js"></script>
+<script src="js/pages/home.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,199 @@
+/* ==========================================================================
+   Discovery section — tabbed menu preview + how-it-works + delivery areas
+   ========================================================================== */
+
+.disco {
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+
+.disco__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.75fr);
+  gap: clamp(28px, 4vw, 56px);
+  align-items: start;
+}
+
+/* min-width:0 stops the nowrap row descriptions from forcing the grid
+   column wider than the viewport on small screens */
+.disco__panel,
+.disco__side {
+  min-width: 0;
+}
+
+.disco__panel .lede {
+  margin-top: 12px;
+}
+
+.disco__tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 26px 0 20px;
+}
+
+.disco__list {
+  display: grid;
+  /* an implicit `auto` track would size to the rows' max-content and push the
+     page wider than the viewport — clamp it */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  transition: opacity 140ms linear, transform 140ms var(--ease-out);
+}
+.disco__list.is-swapping {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.drow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  transition: background-color var(--t-fast) linear, border-color var(--t-fast) linear;
+}
+.drow:hover {
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+.drow__media {
+  width: 62px;
+  height: 62px;
+  flex: none;
+}
+.drow__text {
+  flex: 1;
+  min-width: 0;
+}
+.drow__text h4 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.drow__text p {
+  font-size: 0.82rem;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.drow__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+}
+.drow__add {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--kt-pink-50);
+  color: var(--kt-pink);
+  transition: all var(--t-fast) var(--ease-spring);
+}
+.drow__add:hover {
+  background: var(--kt-pink);
+  color: #fff;
+  transform: rotate(90deg);
+}
+
+.disco__cta {
+  margin-top: 26px;
+}
+
+/* ---- Side rail -------------------------------------------------------- */
+
+.disco__side {
+  display: grid;
+  gap: 18px;
+  position: sticky;
+  top: calc(var(--nav-h) + 20px);
+}
+
+.howto {
+  padding: 26px;
+  border-radius: var(--r-lg);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+.howto__steps {
+  display: grid;
+  gap: 20px;
+  margin-top: 20px;
+  counter-reset: step;
+}
+.howto__steps li {
+  position: relative;
+  display: flex;
+  gap: 14px;
+}
+.howto__steps li:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 18px;
+  top: 40px;
+  bottom: -20px;
+  width: 1.5px;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--kt-pink-200) 0 4px,
+    transparent 4px 9px
+  );
+}
+.howto__num {
+  display: grid;
+  place-items: center;
+  width: 37px;
+  height: 37px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--kt-pink);
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  box-shadow: var(--sh-pink);
+}
+.howto__steps strong {
+  display: block;
+  font-size: 0.95rem;
+  letter-spacing: -0.015em;
+}
+.howto__steps p {
+  font-size: 0.83rem;
+  color: var(--ink-3);
+  line-height: 1.5;
+  margin-top: 3px;
+}
+
+.areas {
+  padding: 26px;
+  border-radius: var(--r-lg);
+  background: var(--kt-pink-50);
+  border: 1px solid var(--kt-pink-100);
+}
+.areas__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 16px;
+}
+.areas__list li {
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  background: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.areas__note {
+  margin-top: 16px;
+  font-size: 0.79rem;
+  color: var(--ink-3);
+  line-height: 1.55;
+}

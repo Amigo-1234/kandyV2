@@ -1,0 +1,55 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "functions/**",
+      "docs/**",
+      "types/**",
+      "scripts/**",
+      "package*.json",
+      "jsconfig.json",
+      "firestore.rules",
+      "firestore.indexes.json",
+      "storage.rules",
+      "*.local",
+      "*.code-workspace",
+      "README.md"
+    ],
+    "cleanUrls": true,
+    "headers": [
+      {
+        "source": "**/*.@(js|css|png|jpg|jpeg|webp|svg|ico|json|woff2)",
+        "headers": [{ "key": "Cache-Control", "value": "public,max-age=3600" }]
+      },
+      {
+        "source": "**/*.html",
+        "headers": [{ "key": "Cache-Control", "value": "public,max-age=300" }]
+      }
+    ]
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run lint"]
+    }
+  ]
+}
