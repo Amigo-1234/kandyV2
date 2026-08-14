@@ -32,13 +32,31 @@ export const accountService = {
     if (!uid) throw new Error("Please sign in first.");
     const KT = window.KT;
 
-    await fb.updateDoc(fb.doc(db, COLLECTIONS.users, uid), {
+    const user = authService.user();
+    const ref = fb.doc(db, COLLECTIONS.users, uid);
+    const fields = {
       displayName: KT.rules.cleanString(displayName, 120),
       phone: KT.rules.normalizePhone(phone),
       updatedAt: fb.serverTimestamp()
-    });
+    };
 
-    const user = authService.user();
+    /* updateDoc throws not-found on a missing document, which is the state of
+       every account created before provisioning worked. Create it instead —
+       the rules require uid and role on that path. */
+    const existing = await fb.getDoc(ref);
+    if (existing.exists()) {
+      await fb.updateDoc(ref, fields);
+    } else {
+      const seed = { ...fields, uid, role: "customer", createdAt: fb.serverTimestamp() };
+      let claims = {};
+      try {
+        claims = user ? (await user.getIdTokenResult()).claims || {} : {};
+      } catch { /* both fields are optional under the rules */ }
+      if (claims.email) seed.email = claims.email;
+      if (typeof claims.email_verified === "boolean") seed.emailVerified = claims.email_verified;
+      await fb.setDoc(ref, seed);
+    }
+
     if (user && displayName) {
       await fb.updateProfile(user, { displayName }).catch(() => {});
     }

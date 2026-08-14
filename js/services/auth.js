@@ -10,7 +10,7 @@
    V1, and the guest basket merges into the account basket on sign-in.
    ========================================================================== */
 
-import { auth, fb, callable, errorMessage } from "./firebase.js";
+import { auth, db, fb, callable, errorMessage, callableNeverRan, COLLECTIONS } from "./firebase.js";
 
 const ensureCustomerAccount = callable("ensureCustomerAccount");
 const googleProvider = new fb.GoogleAuthProvider();
@@ -26,7 +26,75 @@ function broadcast() {
   }));
 }
 
-/** Create or refresh users/{uid} + wallets/{uid} through the callable. */
+/**
+ * Create or refresh users/{uid} + wallets/{uid} directly, under the customer's
+ * own credentials.
+ *
+ * This is the no-Cloud-Functions path, and it is safe because firestore.rules
+ * enforce every constraint the Cloud Function used to:
+ *
+ *   users/{uid}    owner only; keys limited to the whitelist below; uid must
+ *                  equal the caller; role pinned to "customer" on create and
+ *                  frozen on update; email and emailVerified must equal the
+ *                  auth token's own claims.
+ *   wallets/{uid}  owner only, and creatable ONLY with a zero balance. Credits
+ *                  stay admin-only, so this cannot mint money.
+ *
+ * The values for `email` and `emailVerified` are read back off the ID token
+ * rather than off the user object, because the rules compare against the token
+ * claims. Straight after email verification the two disagree until the token
+ * refreshes, and sending the user-object value would be rejected.
+ */
+async function provisionDirect(user, extra = {}) {
+  const uid = user.uid;
+  const now = fb.serverTimestamp();
+
+  let claims = {};
+  try {
+    claims = (await user.getIdTokenResult()).claims || {};
+  } catch { /* fall through — both fields are optional under the rules */ }
+
+  const profile = {
+    uid,
+    displayName: extra.displayName || user.displayName || "",
+    phone: window.KT.rules.normalizePhone(extra.phone || user.phoneNumber || ""),
+    photoURL: user.photoURL || "",
+    updatedAt: now
+  };
+  /* Omit rather than guess: the rules allow these keys to be absent, but
+     reject them outright if they disagree with the token. */
+  if (claims.email) profile.email = claims.email;
+  if (typeof claims.email_verified === "boolean") profile.emailVerified = claims.email_verified;
+
+  const userRef = fb.doc(db, COLLECTIONS.users, uid);
+  const existing = await fb.getDoc(userRef);
+
+  if (existing.exists()) {
+    /* No `role` key: keepsRole() requires it to be unchanged. */
+    await fb.updateDoc(userRef, profile);
+  } else {
+    await fb.setDoc(userRef, { ...profile, role: "customer", createdAt: now });
+  }
+
+  /* The zero-balance wallet the account page reads. Created once, never by
+     update — the rules only permit a create, and only at zero. */
+  const walletRef = fb.doc(db, COLLECTIONS.wallets, uid);
+  const wallet = await fb.getDoc(walletRef);
+  if (!wallet.exists()) {
+    await fb.setDoc(walletRef, {
+      userId: uid,
+      currency: "NGN",
+      balance: 0,
+      availableBalance: 0,
+      lockedBalance: 0,
+      status: "active",
+      createdAt: now,
+      updatedAt: now
+    });
+  }
+}
+
+/** Create or refresh users/{uid} + wallets/{uid}. */
 async function provision(user, extra = {}) {
   if (!user) return;
   try {
@@ -38,8 +106,19 @@ async function provision(user, extra = {}) {
         photoURL: user.photoURL || ""
       }
     });
+    return;
   } catch (error) {
-    /* Provisioning is retried on the next sign-in; never block the customer. */
+    if (!callableNeverRan(error)) {
+      console.warn("[Kandy's] account provisioning refused:", errorMessage(error));
+      return;
+    }
+  }
+
+  /* No function answered — provision directly instead. */
+  try {
+    await provisionDirect(user, extra);
+  } catch (error) {
+    /* Retried on the next sign-in; never block the customer. */
     console.warn("[Kandy's] account provisioning deferred:", errorMessage(error));
   }
 }

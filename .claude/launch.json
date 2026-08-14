@@ -4,7 +4,10 @@
     {
       "name": "kandys-static",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["/private/tmp/claude-501/-Users-min-Documents-New-kandy/b3545f6c-d443-4236-9076-e43a571c783e/scratchpad/serve.js"],
+      "runtimeArgs": [
+        "scripts/dev-server.js",
+        "5501"
+      ],
       "port": 5501
     }
   ]

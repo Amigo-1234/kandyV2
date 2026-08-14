@@ -45,7 +45,9 @@
           return (
             '<button class="chip' + (state.category === c.id ? " is-active" : "") +
             '" type="button" data-cat="' + c.id + '">' +
-            '<img data-food alt="" src="' + KT.images.src(c.image) + '">' +
+            KT.images.picture(
+              '<img data-food alt="" loading="lazy" decoding="async" src="' +
+                KT.images.src(c.image) + '">', c.image, "44px") +
             c.name + "</button>"
           );
         })

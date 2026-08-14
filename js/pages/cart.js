@@ -226,8 +226,42 @@
       window.location.href = KT.url("pages/order-detail.html?id=" + encodeURIComponent(order.orderId) + "&pay=1");
     } catch (error) {
       done();
+      if (error && error.code === "kt/ordering-unavailable") {
+        orderingUnavailable(error.message);
+        return;
+      }
       KT.toast(KT.services.errorMessage(error), "error", { duration: 5200 });
     }
+  }
+
+  /**
+   * Online ordering needs createCheckoutOrder, a Cloud Function that is not
+   * deployed. Say so plainly and leave the explanation on screen next to the
+   * button rather than in a toast that scrolls away — the basket is not lost,
+   * and the customer needs a way to actually order.
+   */
+  function orderingUnavailable(message) {
+    KT.toast(message, "info", { duration: 7000 });
+
+    var btn = KT.qs("[data-checkout]");
+    if (!btn || KT.qs("[data-ordering-note]")) return;
+
+    var b = KT.config.business || {};
+    var contact = "";
+    if (b.whatsapp) {
+      contact = ' <a href="https://wa.me/' + b.whatsapp.replace(/[^0-9]/g, "") +
+        '" target="_blank" rel="noopener noreferrer">Message us on WhatsApp</a>.';
+    } else if (b.phone) {
+      contact = ' <a href="tel:' + b.phone.replace(/[^+0-9]/g, "") + '">Call ' +
+        b.phone + "</a>.";
+    }
+
+    var note = KT.el("div.phasenote", {
+      "data-ordering-note": true,
+      html: KT.icon("clock", 16) + "<span>" + message + contact + "</span>"
+    });
+    note.style.marginTop = "12px";
+    btn.parentNode.insertBefore(note, btn.nextSibling);
   }
 
   /* ---- Wiring ---------------------------------------------------------- */

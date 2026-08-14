@@ -63,8 +63,9 @@
         var n = KT.menu.byCategory(c.id).length;
         return (
           '<a class="cattile" href="' + KT.url("pages/menu.html?category=" + c.id) + '">' +
-            '<span class="cattile__ring ring"><img data-food alt="" src="' +
-              KT.images.src(c.image) + '"></span>' +
+            '<span class="cattile__ring ring">' + KT.images.picture(
+              '<img data-food alt="" loading="lazy" decoding="async" src="' +
+                KT.images.src(c.image) + '">', c.image, "96px") + "</span>" +
             '<span class="cattile__name">' + c.name + "</span>" +
             '<span class="cattile__blurb">' + c.blurb + "</span>" +
             '<span class="cattile__count">' + n + " items" + KT.icon("arrowRight", 14) + "</span>" +
@@ -106,7 +107,9 @@
 
     host.innerHTML =
       '<div class="promo__media" data-parallax="0.5">' +
-        '<img data-food alt="" src="' + KT.images.src(hero) + '">' +
+        KT.images.picture(
+          '<img data-food alt="" loading="lazy" decoding="async" src="' +
+            KT.images.src(hero) + '">', hero, "(max-width: 900px) 96vw, 620px") +
       "</div>" +
       '<div class="promo__body">' +
         '<p class="eyebrow eyebrow--light">Use code ' + coupon.code + '</p>' +
@@ -160,7 +163,10 @@
           return (
             '<li class="drow">' +
               '<a class="drow__media ring" href="' + KT.url("pages/product.html?id=" + item.id) + '">' +
-                '<img data-food alt="" src="' + KT.images.src(item.image) + '"></a>' +
+                KT.images.picture(
+                  '<img data-food alt="" loading="lazy" decoding="async" src="' +
+                    KT.images.src(item.image) + '">',
+                  item.image, "(max-width: 640px) 40vw, 200px") + "</a>" +
               '<div class="drow__text">' +
                 '<h4><a href="' + KT.url("pages/product.html?id=" + item.id) + '">' + item.name + "</a></h4>" +
                 "<p>" + item.blurb + "</p>" +

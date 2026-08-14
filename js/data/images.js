@@ -66,6 +66,50 @@
       return KT.base + PLACEHOLDER;
     },
 
+    /**
+     * The local image key behind a value, or null when there is no local file
+     * to offer variants of — a remote Storage URL or an item with no photo.
+     * @param {string|object|null} keyOrItem
+     */
+    keyOf: function (keyOrItem) {
+      if (keyOrItem && typeof keyOrItem === "object") {
+        if (keyOrItem.imageUrl) return null;   /* remote, no variants on disk */
+        return images.keyOf(keyOrItem.image);
+      }
+      var key = EDITORIAL[keyOrItem] || keyOrItem;
+      return key && localSet[key] ? key : null;
+    },
+
+    /**
+     * A WebP srcset for the widths that actually exist, or "" when there are
+     * none. Pair it with <source type="image/webp"> so browsers without WebP
+     * fall through to the original JPEG in <img src>.
+     * @param {string|object|null} keyOrItem
+     */
+    srcset: function (keyOrItem) {
+      var key = images.keyOf(keyOrItem);
+      if (!key) return "";
+      var widths = (KT.imageVariants || {})[key];
+      if (!widths || !widths.length) return "";
+      return widths.map(function (w) {
+        return KT.base + LOCAL_BASE + key + "-" + w + ".webp " + w + "w";
+      }).join(", ");
+    },
+
+    /**
+     * Wrap an <img> tag in a <picture> that prefers WebP. Returns the <img>
+     * untouched when no variants exist, so callers never branch.
+     * @param {string} imgHTML  a complete <img ...> tag
+     * @param {string|object|null} keyOrItem
+     * @param {string} sizes    the CSS `sizes` attribute for this slot
+     */
+    picture: function (imgHTML, keyOrItem, sizes) {
+      var set = images.srcset(keyOrItem);
+      if (!set) return imgHTML;
+      return '<picture><source type="image/webp" srcset="' + set + '"' +
+        (sizes ? ' sizes="' + sizes + '"' : "") + ">" + imgHTML + "</picture>";
+    },
+
     /** True when we are showing the branded stand-in rather than a photo. */
     isPlaceholder: function (keyOrItem) {
       return images.src(keyOrItem).indexOf(PLACEHOLDER) > -1;

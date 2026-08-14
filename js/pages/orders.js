@@ -35,7 +35,9 @@
     return '<div class="orderthumbs">' +
       shown.map(function (l) {
         var item = KT.menu.byId(l.menuId || l.id);
-        return '<span class="ring"><img data-food alt="" src="' + KT.images.src(item || {}) + '"></span>';
+        return '<span class="ring">' + KT.images.picture(
+                  '<img data-food alt="" loading="lazy" decoding="async" src="' +
+                    KT.images.src(item || {}) + '">', item || {}, "64px") + '</span>';
       }).join("") +
       (extra > 0 ? '<span class="orderthumbs__more">+' + extra + "</span>" : "") +
       "</div>";
@@ -282,7 +284,9 @@
                 (order.items || []).map(function (l) {
                   var item = KT.menu.byId(l.menuId || l.id);
                   return '<div class="orderitem">' +
-                    '<span class="ring"><img data-food alt="" src="' + KT.images.src(item || {}) + '"></span>' +
+                    '<span class="ring">' + KT.images.picture(
+                  '<img data-food alt="" loading="lazy" decoding="async" src="' +
+                    KT.images.src(item || {}) + '">', item || {}, "64px") + '</span>' +
                     '<div class="orderitem__text"><strong>' + (l.name || "Item") + "</strong>" +
                     "<span>" + KT.naira(l.price) + " each</span></div>" +
                     '<span class="orderitem__qty">×' + l.qty + "</span>" +

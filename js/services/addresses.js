@@ -12,40 +12,12 @@
    firestore.rules already restricts to `addressKeysOnly()` + `ownsIncoming()`.
    ========================================================================== */
 
-import { db, fb, callable, COLLECTIONS } from "./firebase.js";
+import { db, fb, callable, COLLECTIONS, callableNeverRan } from "./firebase.js";
 import { authService } from "./auth.js";
 
 const saveCustomerAddress = callable("saveCustomerAddress");
 const deleteCustomerAddress = callable("deleteCustomerAddress");
 const setDefaultCustomerAddress = callable("setDefaultCustomerAddress");
-
-/* Callable failures that mean "the function never ran", as opposed to "the
-   function ran and refused". Only the first kind is safe to retry directly
-   against Firestore — firestore.rules re-checks ownership there anyway, so
-   the fallback cannot widen access. A permission-denied or unauthenticated
-   is a real answer and must surface, not silently take the other path.
-
-   The previous list was not-found + internal only, which meant a blocked
-   origin or a dropped connection (unavailable / failed-precondition, or a
-   CORS rejection with no code at all) skipped the fallback entirely — the
-   one situation it exists for. */
-const TRANSPORT_FAILURES = [
-  "not-found",           /* function not deployed to this project */
-  "internal",            /* cold-start crash, emulator not running */
-  "unavailable",         /* offline, DNS, blocked origin */
-  "deadline-exceeded",
-  "failed-precondition",
-  "cancelled",
-  "resource-exhausted",
-  "aborted"
-];
-
-function neverRan(error) {
-  const code = String((error && error.code) || "").toLowerCase();
-  /* A CORS or network rejection arrives as an opaque error with no code. */
-  if (!code) return true;
-  return TRANSPORT_FAILURES.some((c) => code.includes(c));
-}
 
 function clean(payload) {
   const KT = window.KT;
@@ -89,7 +61,7 @@ export const addressService = {
       const result = await saveCustomerAddress({ addressId: payload.id || null, address: body });
       return { id: (result && result.addressId) || payload.id };
     } catch (error) {
-      if (!neverRan(error)) throw error;
+      if (!callableNeverRan(error)) throw error;
 
       try {
         const now = fb.serverTimestamp();
@@ -114,7 +86,7 @@ export const addressService = {
     try {
       await deleteCustomerAddress({ addressId });
     } catch (error) {
-      if (!neverRan(error)) throw error;
+      if (!callableNeverRan(error)) throw error;
       await fb.deleteDoc(fb.doc(db, COLLECTIONS.addresses, addressId));
     }
   },
@@ -123,7 +95,7 @@ export const addressService = {
     try {
       await setDefaultCustomerAddress({ addressId });
     } catch (error) {
-      if (!neverRan(error)) throw error;
+      if (!callableNeverRan(error)) throw error;
       const uid = authService.uid();
       const all = await addressService.list();
       await Promise.all(all.map((a) => fb.updateDoc(

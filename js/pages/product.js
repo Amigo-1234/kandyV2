@@ -22,7 +22,9 @@
       return (
         '<button class="pdp__thumb' + (i === 0 ? " is-active" : "") +
         '" type="button" data-shot="' + i + '" aria-label="View photo ' + (i + 1) + '">' +
-        '<img data-food alt="" src="' + KT.images.src(shot) + '"></button>'
+        KT.images.picture(
+          '<img data-food alt="" loading="lazy" decoding="async" src="' +
+            KT.images.src(shot) + '">', shot, "86px") + "</button>"
       );
     }).join("");
   }
@@ -50,8 +52,10 @@
       '<div class="pdp__grid">' +
         '<div class="pdp__media">' +
           '<div class="pdp__hero">' +
-            '<img data-food data-pdp-hero alt="' + item.name + '" src="' +
-              KT.images.src(item.image) + '">' +
+            KT.images.picture(
+              '<img data-food data-pdp-hero decoding="async" alt="' + item.name +
+                '" src="' + KT.images.src(item.image) + '">',
+              item.image, "(max-width: 900px) 94vw, 560px") +
             '<span class="pdp__herotags">' + KT.components.tags(item, 3) + "</span>" +
           "</div>" +
           '<div class="pdp__gallery">' + galleryHTML() + "</div>" +
@@ -219,9 +223,42 @@
     });
   }
 
+  /* A stale or mistyped link must not quietly become a different dish at a
+     different price. Say the item is gone and offer the menu instead. */
+  function notFound() {
+    var host = KT.qs("[data-pdp]") || KT.qs("main") || document.body;
+    document.title = "Dish not found — Kandy's Treats";
+    KT.mount(host,
+      '<div class="panel"><div class="empty">' +
+        '<div class="empty__art">' + KT.icon("search", 38) + "</div>" +
+        "<h3>We could not find that dish</h3>" +
+        "<p>It may have come off the menu, or the link may be out of date.</p>" +
+        '<a class="btn btn--primary" href="' + KT.url("pages/menu.html") +
+          '">Browse the full menu</a>' +
+      "</div></div>");
+  }
+
   KT.pages.product = function () {
     var id = KT.param("id");
-    item = KT.menu.byId(id) || KT.menu.featured(1)[0];
+    item = KT.menu.byId(id);
+
+    if (!item) {
+      /* The live menu may not have arrived yet, so wait for it before
+         concluding the dish is really gone. */
+      if (!KT.menu.live) {
+        document.addEventListener("kt:menu", function once() {
+          document.removeEventListener("kt:menu", once);
+          if (KT.menu.byId(id)) KT.pages.product();
+          else notFound();
+        });
+        KT.mount(KT.qs("[data-pdp]") || KT.qs("main") || document.body,
+          KT.loadingLabel("Loading this dish…") + KT.skeleton.panel(5));
+        return;
+      }
+      notFound();
+      return;
+    }
+
     selection = {};
     qty = 1;
     document.title = item.name + " — Kandy's Treats";

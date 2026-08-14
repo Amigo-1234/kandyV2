@@ -96,7 +96,8 @@
               KT.icon("close", 22) + "</button>" +
           "</div>" +
           '<div class="sheet__body">' +
-            '<a class="sheet__loc" href="#">' + KT.icon("pin", 18) +
+            '<a class="sheet__loc" href="' + KT.url("pages/account.html#addresses") + '">' +
+              KT.icon("pin", 18) +
               "<span><small>Delivering to</small><strong data-sheet-address>Add your delivery address</strong></span>" +
               KT.icon("chevronRight", 16) + "</a>" +
             '<nav class="sheet__nav" aria-label="Mobile">' +

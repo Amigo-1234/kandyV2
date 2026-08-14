@@ -20,7 +20,8 @@ function normalise(id, data) {
   const KT = window.KT;
   const section = data.section || data.category || "";
   const category = KT.menu.categoryForSection(section);
-  const snapshot = KT.menu.byId(id);
+  /* Matched by name, not id: V1's documents have random addDoc() ids. */
+  const snapshot = KT.menu.snapshotFor(id, data.name);
 
   return {
     id,

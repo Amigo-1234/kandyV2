@@ -60,6 +60,36 @@
       note: "We deliver across Lagos State. Type your address in full so the rider can find you."
     },
 
+    /* ---- Business details shown to customers -------------------------
+       THE ONLY PLACE these live. Every value below is a placeholder until
+       Kandy's supplies the real one. Anything left empty is HIDDEN in the UI
+       rather than rendered as a dead link or a fake number — an empty string
+       is the honest state, not a bug.                                     */
+    business: {
+      phone: "",           /* e.g. "+2348012345678" — also used for the tel: link */
+      whatsapp: "",        /* digits only, international format, e.g. "2348012345678" */
+      email: "",           /* e.g. "hello@kandystreats.com.ng" */
+      address: "",         /* full street address */
+      hours: "Mon–Sun, 8:00 AM – 10:00 PM"
+    },
+
+    /* Social profiles. Leave a URL empty and that icon is not rendered at
+       all, so the footer never ships a link to "#". */
+    socials: [
+      { id: "instagram", name: "Instagram", url: "" },
+      { id: "facebook",  name: "Facebook",  url: "" },
+      { id: "tiktok",    name: "TikTok",    url: "" },
+      { id: "whatsapp",  name: "WhatsApp",  url: "" },
+      { id: "x",         name: "X",         url: "" }
+    ],
+
+    /* Legal pages. Same rule as socials: no URL, no link rendered. */
+    legal: [
+      { name: "Terms", url: "" },
+      { name: "Privacy", url: "" },
+      { name: "Refunds", url: "" }
+    ],
+
     /* ---- Local storage keys (V1-compatible, scoped per account) ------- */
     storage: {
       cart: "kandys_cart",

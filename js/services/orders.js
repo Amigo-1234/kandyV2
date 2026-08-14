@@ -8,7 +8,7 @@
    reads back what the server created.
    ========================================================================== */
 
-import { db, fb, callable, COLLECTIONS } from "./firebase.js";
+import { db, fb, callable, COLLECTIONS, callableNeverRan } from "./firebase.js";
 import { authService } from "./auth.js";
 
 const createCheckoutOrder = callable("createCheckoutOrder");
@@ -59,7 +59,25 @@ export const orderService = {
    * @param {'gateway'|'wallet'} paymentMode
    */
   async createCheckout(drafts, paymentMode = "gateway") {
-    const result = await createCheckoutOrder({ drafts, paymentMode });
+    let result;
+    try {
+      result = await createCheckoutOrder({ drafts, paymentMode });
+    } catch (error) {
+      /* DEPLOYMENT REQUIRED. Unlike addresses or favourites, this one has no
+         safe direct-Firestore equivalent: createCheckoutOrder re-prices every
+         line against menus/{id} server-side, and firestore.rules cannot do
+         that check. Letting the browser write its own totals would mean
+         trusting the customer's arithmetic, so we refuse and say why. */
+      if (callableNeverRan(error)) {
+        const blocked = new Error(
+          "Online ordering is not switched on yet. Your basket is saved — " +
+          "please call or message Kandy's to place this order."
+        );
+        blocked.code = "kt/ordering-unavailable";
+        throw blocked;
+      }
+      throw error;
+    }
     /* The basket is only cleared once the server has an order on record. */
     window.KT.cart.clear();
     return result;

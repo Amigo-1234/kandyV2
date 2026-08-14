@@ -815,3 +815,11 @@ p {
   font-size: 0.82rem;
   font-weight: 600;
 }
+
+/* <picture> exists only to offer a WebP source; it must not become a layout
+   box of its own, or images sized against their parent (cards, the product
+   hero) would size against the wrapper instead. */
+picture {
+  display: contents;
+}
+

@@ -187,14 +187,85 @@
   /* Which categories get upsells offered. Shawarma and drinks stand alone. */
   var UPSELL_FOR = { foods: ["proteins", "sides", "drinks"], soups: ["sides", "drinks"], specials: ["drinks"], proteins: ["sides"] };
 
+  /* The bundled snapshot, kept under its own name because hydrate() replaces
+     menu.items with live Firestore documents. V1 seeded `menus` with addDoc(),
+     so those documents carry random ids and no photo — the only reliable join
+     back to the photography and copy we ship is the item's NAME. */
+  var SNAPSHOT = ITEMS.slice();
+
+  function nameKey(value) {
+    return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  }
+
+  /* Words that carry no dish identity, so they never count towards a match. */
+  var NOISE = ["per", "scoop", "small", "big", "large", "extra", "xtra", "with",
+               "and", "the", "plate", "pack", "size", "normal", "bottle", "can"];
+
+  function words(value) {
+    return String(value || "")
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter(function (w) { return w.length > 2 && NOISE.indexOf(w) === -1; });
+  }
+
+  var snapshotByName = {};
+  SNAPSHOT.forEach(function (i) { snapshotByName[nameKey(i.name)] = i; });
+
   var menu = {
     categories: CATEGORIES,
     items: ITEMS,
+    snapshot: SNAPSHOT,
     /** true once js/services/menu.js has replaced this with live Firestore data */
     live: false,
 
     byId: function (id) {
       return menu.items.filter(function (i) { return i.id === id; })[0];
+    },
+
+    /**
+     * The bundled item behind a live Firestore document: by id when the ids
+     * happen to line up, otherwise by normalised name, otherwise by the
+     * longest name that is a prefix of the other. Returns null when we simply
+     * do not ship anything for that dish.
+     * @param {string} id
+     * @param {string} name
+     */
+    snapshotFor: function (id, name) {
+      var hit = SNAPSHOT.filter(function (i) { return i.id === id; })[0];
+      if (hit) return hit;
+
+      var key = nameKey(name);
+      if (!key) return null;
+      if (snapshotByName[key]) return snapshotByName[key];
+
+      /* "Jollof Rice" from Firestore vs "Jollof Rice (per scoop)" here. */
+      var partial = SNAPSHOT.filter(function (i) {
+        var k = nameKey(i.name);
+        return k.indexOf(key) === 0 || key.indexOf(k) === 0;
+      }).sort(function (a, b) { return nameKey(b.name).length - nameKey(a.name).length; });
+      if (partial[0]) return partial[0];
+
+      /* Last resort, deliberately strict: every content word of OUR name must
+         appear in THEIRS, and the longest such match wins. That lets "Beef"
+         reach "Peppered Beef" and "Spaghetti (per scoop)" reach the misspelt
+         "Sti-fried Spaghetti (per scoop)", while still preferring
+         "Chicken Shawarma" over bare "Chicken". A wrong photograph is worse
+         than the placeholder, so anything less certain than this stays unmatched. */
+      var theirs = words(name);
+      if (!theirs.length) return null;
+
+      var best = null;
+      var bestScore = 0;
+      SNAPSHOT.forEach(function (i) {
+        var ours = words(i.name);
+        if (!ours.length) return;
+        var covered = ours.every(function (w) { return theirs.indexOf(w) > -1; });
+        if (covered && ours.length > bestScore) {
+          best = i;
+          bestScore = ours.length;
+        }
+      });
+      return best;
     },
 
     byCategory: function (catId) {

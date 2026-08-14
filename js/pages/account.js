@@ -382,7 +382,9 @@
             var first = KT.menu.byId((o.items[0] || {}).menuId || (o.items[0] || {}).id);
             return (
               '<a class="orderitem" href="' + KT.url("pages/order-detail.html?id=" + encodeURIComponent(o.id)) + '">' +
-                '<span class="ring"><img data-food alt="" src="' + KT.images.src(first || {}) + '"></span>' +
+                '<span class="ring">' + KT.images.picture(
+                  '<img data-food alt="" loading="lazy" decoding="async" src="' +
+                    KT.images.src(first || {}) + '">', first || {}, "64px") + '</span>' +
                 '<div class="orderitem__text"><strong>' + o.id + "</strong>" +
                   "<span>" + (o.createdAt ? o.createdAt.toLocaleString("en-NG", {
                     day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "") +

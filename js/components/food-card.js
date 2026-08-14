@@ -46,6 +46,15 @@
       .join("");
   }
 
+  /* What slot this card's photo actually occupies, per variant. Wrong values
+     here cost bandwidth silently, so they track the CSS: the default grid is
+     minmax(232px, 1fr), the row thumbnail is a fixed 116px. */
+  var SIZES = {
+    "": "(max-width: 640px) 46vw, 280px",
+    feature: "(max-width: 640px) 92vw, 420px",
+    row: "116px"
+  };
+
   function priceBlock(item) {
     return '<span class="fcard__price"><span>' + KT.naira(item.price) + "</span></span>";
   }
@@ -64,8 +73,12 @@
 
     var media =
       '<a class="fcard__media" href="' + href + '" tabindex="-1" aria-hidden="true">' +
-        '<img data-food class="fcard__img" loading="lazy" alt="" src="' +
-          KT.images.src(item) + '">' +
+        KT.images.picture(
+          '<img data-food class="fcard__img" loading="lazy" decoding="async" alt="" src="' +
+            KT.images.src(item) + '">',
+          item,
+          SIZES[variant] || SIZES[""]
+        ) +
         '<span class="fcard__shade"></span>' +
         (variant !== "row" ? '<span class="fcard__tags">' + tags(item) + "</span>" : "") +
         (variant !== "row" ? priceBlock(item) : "") +

@@ -13,7 +13,9 @@
     return (
       '<li class="cline' + (compact ? " cline--compact" : "") + '" data-line="' + l.menuId + '">' +
         '<a class="cline__media ring" href="' + KT.url("pages/product.html?id=" + l.item.id) + '">' +
-          '<img data-food alt="" src="' + KT.images.src(l.item.image) + '">' +
+          KT.images.picture(
+            '<img data-food alt="" loading="lazy" decoding="async" src="' +
+              KT.images.src(l.item.image) + '">', l.item.image, "64px") +
         "</a>" +
         '<div class="cline__body">' +
           '<div class="cline__top">' +

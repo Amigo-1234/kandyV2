@@ -39,6 +39,33 @@ export function callable(name) {
   return async (payload) => (await fn(payload || {})).data;
 }
 
+/* Callable failures that mean "the function never ran", as opposed to "the
+   function ran and refused". Only the first kind is safe to retry as a direct
+   Firestore write: firestore.rules re-check ownership there, so the fallback
+   cannot widen access. A permission-denied or unauthenticated is a real answer
+   and must surface instead of silently taking the other path.
+
+   This project has NO Cloud Functions deployed — Cloud Billing (Blaze) is not
+   enabled on kandystreat-840b1 — so in practice every callable lands here. */
+const TRANSPORT_FAILURES = [
+  "not-found",           /* no function deployed under that name */
+  "internal",            /* cold-start crash, emulator not running */
+  "unavailable",         /* offline, DNS, blocked origin */
+  "deadline-exceeded",
+  "failed-precondition",
+  "cancelled",
+  "resource-exhausted",
+  "aborted"
+];
+
+/** @param {any} error @returns {boolean} */
+export function callableNeverRan(error) {
+  const code = String((error && error.code) || "").toLowerCase();
+  /* A CORS or network rejection arrives as an opaque error with no code. */
+  if (!code) return true;
+  return TRANSPORT_FAILURES.some((c) => code.includes(c));
+}
+
 /**
  * Turn a Firebase error into something a customer can act on.
  * Cloud Function HttpsErrors already carry a written message — prefer it.

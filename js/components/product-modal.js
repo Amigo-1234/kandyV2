@@ -109,7 +109,10 @@
     var item = current;
     el.body.innerHTML =
       '<div class="modal__media">' +
-        '<img data-food alt="" src="' + KT.images.src(item.image) + '">' +
+        KT.images.picture(
+          '<img data-food alt="" decoding="async" src="' +
+            KT.images.src(item.image) + '">',
+          item.image, "(max-width: 720px) 92vw, 420px") +
         '<span class="modal__tags">' + KT.components.tags(item, 3) + "</span>" +
       "</div>" +
       '<div class="modal__content">' +
