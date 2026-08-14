@@ -25,6 +25,18 @@
     },
     functionsRegion: "us-central1",
 
+    /* ---- Supabase (public identifiers — safe in client code) ---------
+       The anon key is a PUBLISHABLE key, exactly like the Firebase apiKey
+       above: it identifies the project and nothing more. Every table is
+       guarded by Row Level Security, so this key alone grants no access to
+       another customer's data. The service_role key is NOT here and must
+       never appear in client code or in this repository. */
+    supabase: {
+      url: "https://opnddlqzdetysqozafko.supabase.co",
+      anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wbmRkbHF6ZGV0eXNxb3phZmtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2NTkxMTYsImV4cCI6MjEwMjIzNTExNn0.yYnYqD8Ah6OcS8xg9dqRpMf1gCf9RV2V-zT50Y8Y7n4"
+    },
+    supabaseSdkVersion: "2.45.4",
+
     /* Firebase JS SDK version — matches the one V1 runs in production. */
     sdkVersion: "10.12.5",
 

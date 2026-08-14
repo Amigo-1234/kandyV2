@@ -1,108 +1,170 @@
 /* ==========================================================================
-   Kandy's Treats — Customer profile
-   `users/{uid}` is owner-readable and owner-writable, but firestore.rules
-   pins the key set and stops anyone editing their own `role`.
+   Kandy's Treats — Customer profile (Supabase)
+   --------------------------------------------------------------------------
+   public.profiles is owner-readable and owner-writable under RLS. Since
+   migration 0009 the `authenticated` role holds column-level UPDATE on only
+   display_name, phone, photo_url and updated_at, so a browser physically
+   cannot write `role`, `id`, `created_at` or `legacy_firebase_uid` — the
+   database rejects it before RLS or any trigger is consulted.
+
+   The row always exists: handle_new_user() creates it in the same transaction
+   as the auth account. The "create it if missing" dance the Firebase version
+   needed is therefore gone.
+
+   Favourites are on Supabase as of Phase 5A. They bridge to the catalogue,
+   which is still served from Firestore, via menu_items.legacy_firestore_id —
+   so the UI keeps handing us the ids it already knows.
+
+   PHASE 5B: notifications still live in Firestore and are not migrated yet.
+   They return empty rather than querying Firestore with a Supabase UUID,
+   which would only produce permission errors.
    ========================================================================== */
 
-import { db, fb, COLLECTIONS } from "./firebase.js";
+import { supabase, TABLES, errorMessage } from "./supabase.js";
 import { authService } from "./auth.js";
+
+const PHASE_5 = "[Kandy's] not migrated yet (Phase 5B):";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The UI still speaks Firestore menu ids. favourites.menu_item_id is a uuid
+ * foreign key, so translate. Accepts a Supabase uuid unchanged, which makes
+ * this forward-compatible with the catalogue migration.
+ */
+async function resolveMenuItemId(menuId) {
+  const id = String(menuId || "");
+  if (!id) return null;
+  if (UUID_RE.test(id)) return id;
+
+  const { data, error } = await supabase
+    .from(TABLES.menuItems)
+    .select("id")
+    .eq("legacy_firestore_id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? data.id : null;
+}
 
 export const accountService = {
   async profile() {
-    const uid = authService.uid();
-    if (!uid) return null;
-    const snap = await fb.getDoc(fb.doc(db, COLLECTIONS.users, uid));
     const user = authService.user();
-    const data = snap.exists() ? snap.data() : {};
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from(TABLES.profiles)
+      .select("id, display_name, phone, photo_url, role, created_at, legacy_firebase_uid")
+      .eq("id", user.uid)
+      .maybeSingle();
+
+    if (error) throw error;
+    const row = data || {};
+
+    /* Same shape the Firebase implementation returned, so the account page,
+       the side nav and the checkout customer snapshot all keep working. */
     return {
-      uid,
-      displayName: data.displayName || (user && user.displayName) || "",
-      email: data.email || (user && user.email) || "",
-      phone: data.phone || "",
-      photoURL: data.photoURL || (user && user.photoURL) || "",
-      emailVerified: !!(user && user.emailVerified),
-      role: data.role || "customer",
-      createdAt: data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : null
+      uid: user.uid,
+      displayName: row.display_name || user.displayName || "",
+      email: user.email || "",
+      phone: row.phone || "",
+      photoURL: row.photo_url || user.photoURL || "",
+      emailVerified: !!user.emailVerified,
+      role: row.role || "customer",
+      createdAt: row.created_at ? new Date(row.created_at) : null
     };
   },
 
-  /** Only the fields firestore.rules whitelists — never `role`. */
+  /** Only the columns the customer is granted. `role` is not one of them. */
   async updateProfile({ displayName, phone }) {
-    const uid = authService.uid();
-    if (!uid) throw new Error("Please sign in first.");
+    const user = authService.user();
+    if (!user) throw new Error("Please sign in first.");
     const KT = window.KT;
 
-    const user = authService.user();
-    const ref = fb.doc(db, COLLECTIONS.users, uid);
     const fields = {
-      displayName: KT.rules.cleanString(displayName, 120),
+      display_name: KT.rules.cleanString(displayName, 120),
       phone: KT.rules.normalizePhone(phone),
-      updatedAt: fb.serverTimestamp()
+      updated_at: new Date().toISOString()
     };
 
-    /* updateDoc throws not-found on a missing document, which is the state of
-       every account created before provisioning worked. Create it instead —
-       the rules require uid and role on that path. */
-    const existing = await fb.getDoc(ref);
-    if (existing.exists()) {
-      await fb.updateDoc(ref, fields);
-    } else {
-      const seed = { ...fields, uid, role: "customer", createdAt: fb.serverTimestamp() };
-      let claims = {};
-      try {
-        claims = user ? (await user.getIdTokenResult()).claims || {} : {};
-      } catch { /* both fields are optional under the rules */ }
-      if (claims.email) seed.email = claims.email;
-      if (typeof claims.email_verified === "boolean") seed.emailVerified = claims.email_verified;
-      await fb.setDoc(ref, seed);
-    }
+    const { error } = await supabase
+      .from(TABLES.profiles)
+      .update(fields)
+      .eq("id", user.uid);
+    if (error) throw error;
 
-    if (user && displayName) {
-      await fb.updateProfile(user, { displayName }).catch(() => {});
-    }
+    /* Keep the auth metadata in step so user() reflects the new name without
+       a reload — the account nav reads it before the profile row loads. */
+    await supabase.auth.updateUser({
+      data: { display_name: fields.display_name, phone: fields.phone }
+    }).catch(() => { /* display-only; the profile row is authoritative */ });
   },
 
-  async notifications({ limit = 15 } = {}) {
-    const uid = authService.uid();
-    if (!uid) return [];
-    const snap = await fb.getDocs(fb.query(
-      fb.collection(db, COLLECTIONS.notifications),
-      fb.where("userId", "==", uid),
-      fb.orderBy("createdAt", "desc"),
-      fb.limit(limit)
-    ));
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  },
+  /* ---- Favourites (Supabase) ----------------------------------------- */
 
-  async markNotificationRead(id) {
-    const uid = authService.uid();
-    if (!uid) return;
-    await fb.updateDoc(fb.doc(db, COLLECTIONS.notifications, id), {
-      userId: uid, read: true, readAt: fb.serverTimestamp(), updatedAt: fb.serverTimestamp()
-    });
-  },
-
-  /** favourites/{uid_menuId} — the id shape V1 uses. */
+  /**
+   * Returns the menu ids the customer has favourited, in the id space the UI
+   * is currently using. The catalogue is still Firestore-backed, so we hand
+   * back legacy_firestore_id; once the menu moves to Supabase this same join
+   * keeps working because the column is retained.
+   */
   async favourites() {
     const uid = authService.uid();
     if (!uid) return [];
-    const snap = await fb.getDocs(fb.query(
-      fb.collection(db, COLLECTIONS.favourites),
-      fb.where("userId", "==", uid)
-    ));
-    return snap.docs.map((d) => d.data().menuId).filter(Boolean);
+
+    const { data, error } = await supabase
+      .from(TABLES.favourites)
+      .select("menu_item_id, menu_items!inner(id, legacy_firestore_id)")
+      .eq("user_id", uid);
+
+    if (error) throw error;
+    return (data || [])
+      .map((r) => (r.menu_items && (r.menu_items.legacy_firestore_id || r.menu_items.id)))
+      .filter(Boolean);
   },
 
+  /** @returns {Promise<boolean>} true when the dish is now a favourite. */
   async toggleFavourite(menuId) {
     const uid = authService.uid();
     if (!uid) throw new Error("Please sign in to save favourites.");
-    const ref = fb.doc(db, COLLECTIONS.favourites, `${uid}_${menuId}`);
-    const snap = await fb.getDoc(ref);
-    if (snap.exists()) {
-      await fb.deleteDoc(ref);
+
+    const itemId = await resolveMenuItemId(menuId);
+    if (!itemId) throw new Error("That dish is no longer on the menu.");
+
+    const { data: existing, error: findError } = await supabase
+      .from(TABLES.favourites)
+      .select("menu_item_id")
+      .eq("user_id", uid)
+      .eq("menu_item_id", itemId)
+      .maybeSingle();
+    if (findError) throw findError;
+
+    if (existing) {
+      const { error } = await supabase
+        .from(TABLES.favourites)
+        .delete()
+        .eq("user_id", uid)
+        .eq("menu_item_id", itemId);
+      if (error) throw error;
       return false;
     }
-    await fb.setDoc(ref, { userId: uid, menuId, createdAt: fb.serverTimestamp() });
+
+    const { error } = await supabase
+      .from(TABLES.favourites)
+      .insert({ user_id: uid, menu_item_id: itemId });
+    if (error) throw error;
     return true;
+  },
+
+  /* ---- Deferred to Phase 5B ------------------------------------------ */
+
+  async notifications() {
+    console.info(PHASE_5, "notifications");
+    return [];
+  },
+
+  async markNotificationRead() {
+    console.info(PHASE_5, "markNotificationRead");
   }
 };
+
+export { errorMessage };
