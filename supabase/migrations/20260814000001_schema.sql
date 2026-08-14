@@ -18,24 +18,11 @@ create extension if not exists pgcrypto;
 
 -- ---------------------------------------------------------------------------
 -- Helpers
+--
+-- is_admin() is NOT here: it reads public.profiles, and a `language sql`
+-- function is validated the moment it is created, so it must be defined after
+-- that table exists. It lives directly beneath the profiles table below.
 -- ---------------------------------------------------------------------------
-
--- SECURITY DEFINER on purpose: this is called from RLS policies on `profiles`
--- itself, so it must bypass RLS or the policy would recurse into itself.
-create or replace function public.is_admin()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1
-      from public.profiles
-     where id = auth.uid()
-       and role in ('staff', 'admin', 'owner')
-  );
-$$;
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -61,6 +48,23 @@ create table if not exists public.profiles (
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
+
+-- SECURITY DEFINER on purpose: this is called from RLS policies on `profiles`
+-- itself, so it must bypass RLS or the policy would recurse into itself.
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+      from public.profiles
+     where id = auth.uid()
+       and role in ('staff', 'admin', 'owner')
+  );
+$$;
 
 create trigger profiles_set_updated_at
   before update on public.profiles
