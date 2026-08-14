@@ -276,7 +276,15 @@
       renderSide();
     });
     document.addEventListener("kt:menu", paint);
-    document.addEventListener("kt:services", renderSide);
+    /* renderSide() alone repainted the picker without ever fetching the
+       addresses, so if kt:auth had already fired before this module
+       registered its listener, selectedAddressId stayed empty and checkout
+       refused with "Choose a delivery address first" despite a saved default.
+       loadAddresses() calls renderSide() itself once the list arrives. */
+    document.addEventListener("kt:services", function () {
+      loadAddresses();
+      renderSide();
+    });
     loadAddresses();
 
     document.addEventListener("click", function (e) {

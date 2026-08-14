@@ -27,14 +27,6 @@ const soon = (what) => () => {
   throw new Error(`${what} is being moved to the new system — back shortly.`);
 };
 
-export const orderServiceDeferred = {
-  async list() { note("Order history"); return []; },
-  async get() { note("Order detail"); return null; },
-  createCheckout: soon("Checkout"),
-  reorder() { return { added: 0, skipped: 0 }; },
-  watch() { return () => {}; }
-};
-
 export const paymentServiceDeferred = {
   /* account.js filters over this, so it must stay an array. */
   PROVIDERS: [],

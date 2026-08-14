@@ -6,10 +6,10 @@
    already exist by the time this runs.
 
    MIGRATION STATE (Phase 4 — auth + profile)
-     Supabase : auth, profile, addresses, favourites
-     Firebase : menu, announcements, reviews (all PUBLIC reads, which need no
-                session and therefore keep working unchanged)
-     Deferred : orders, wallet, notifications, reviews, support.
+     Supabase : auth, profile, addresses, favourites, catalogue, orders,
+                reviews, announcements, contact, support
+     Firebase : NONE. No live service imports the Firebase SDK.
+     Deferred : wallet, notifications, reviews, support, payments.
                 These are owner-scoped in Firestore and would be queried with a
                 Supabase UUID that Firebase Auth has never seen, so they are
                 not wired up here. All of them are empty in both backends.
@@ -28,10 +28,6 @@ async function boot() {
   const { authService } = await import("./auth.js");
   const { accountService } = await import("./account.js");
 
-  /* Firebase remains only for the public catalogue reads during the
-     transition. It creates no auth listener, so there is exactly one
-     dispatcher for kt:auth. */
-  const { errorMessage: fbError } = await import("./firebase.js");
   const { menuService } = await import("./menu.js");
   const { contentService } = await import("./content.js");
   const { reviewService } = await import("./reviews.js");
@@ -40,19 +36,11 @@ async function boot() {
      renders empty states instead of spraying permission-denied errors from
      Firestore queries made with a Supabase UUID. See deferred.js. */
   const { addressService } = await import("./addresses.js");
-  const {
-    orderServiceDeferred, paymentServiceDeferred, walletServiceDeferred
-  } = await import("./deferred.js");
+  const { orderService } = await import("./orders.js");
+  const { paymentServiceDeferred, walletServiceDeferred } = await import("./deferred.js");
 
-  /* Two backends are live at once during the migration, so route each error
-     to the handler that understands it. Firebase codes look like
-     "permission-denied" or "auth/wrong-password"; Postgres codes are SQLSTATE
-     ("42501") or PostgREST ("PGRST116"). */
-  function errorMessage(error) {
-    const code = String((error && error.code) || "");
-    const looksFirebase = /^[a-z]+\/[a-z-]+$/.test(code) || /^[a-z]+-[a-z-]+$/.test(code);
-    return looksFirebase ? fbError(error) : supaError(error);
-  }
+  /* Every live service is Supabase now, so one error handler covers them. */
+  const errorMessage = supaError;
 
   KT.auth = authService;
   KT.services = {
@@ -62,14 +50,15 @@ async function boot() {
     content: contentService,
     reviews: reviewService,
     addresses: addressService,
-    orders: orderServiceDeferred,
+    orders: orderService,
     payments: paymentServiceDeferred,
     wallet: walletServiceDeferred,
     errorMessage,
     backend: {
       auth: "supabase", profile: "supabase",
       addresses: "supabase", favourites: "supabase",
-      catalogue: "firebase"
+      catalogue: "supabase", orders: "supabase",
+      reviews: "supabase", content: "supabase"
     }
   };
 

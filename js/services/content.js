@@ -1,23 +1,20 @@
 /* ==========================================================================
-   Kandy's Treats — Announcements, contact and support
+   Kandy's Treats — Announcements, contact and support (Supabase)
    --------------------------------------------------------------------------
-   Three small V1 collections that had no home in V2 until now:
+     public.announcements    admin-published, public read. Drives the promo
+                             strip so the kitchen can change it without a
+                             deploy. The migration put V1's `text` into `body`.
+     public.contact_messages public intake — `anon` holds INSERT, so this
+                             works for a signed-out visitor exactly as before.
+     public.support_tickets  owner-scoped under RLS, with order_ref carrying
+                             the human order code for display.
 
-     announcements/{id}   { text, active, createdAt }  — admin-published,
-                          public read. Drives the promo strip so the kitchen
-                          can change it without a deploy.
-     contactMessages/{id} public intake from anyone, signed in or not.
-     supportTickets/{id}  owner-scoped, attached to an order when relevant.
-
-   IMPORTANT — contactMessages field shape:
-   V1's own `contact.js` writes `{name, phone, message, createdAt, replied}`,
-   but `firestore.rules` requires EXACTLY
-   `["name","phone","message","status","source","createdAt"]` with
-   `status == "new"`. V1's contact form is therefore rejected by its own
-   rules. This module writes the shape the rules actually accept.
+   The Firestore contactMessages shape problem is gone with the collection:
+   V1's own rules rejected V1's own contact form. Here the columns ARE the
+   contract, and RLS pins status/source rather than a key whitelist.
    ========================================================================== */
 
-import { db, fb, COLLECTIONS } from "./firebase.js";
+import { supabase, TABLES, errorMessage } from "./supabase.js";
 import { authService } from "./auth.js";
 
 export const contentService = {
@@ -27,17 +24,24 @@ export const contentService = {
    */
   async announcements() {
     try {
-      const snap = await fb.getDocs(fb.query(
-        fb.collection(db, COLLECTIONS.announcements),
-        fb.orderBy("createdAt", "desc"),
-        fb.limit(5)
-      ));
-      return snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .filter((a) => a.active !== false && String(a.text || "").trim())
-        .map((a) => ({ id: a.id, text: String(a.text).trim() }));
+      const nowISO = new Date().toISOString();
+      const { data, error } = await supabase
+        .from(TABLES.announcements)
+        .select("id, title, body, active, starts_at, ends_at, sort_order, created_at")
+        .eq("active", true)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: false })
+        .limit(5);
+      if (error) throw error;
+
+      return (data || [])
+        /* Honour a scheduling window when the kitchen sets one. */
+        .filter((a) => (!a.starts_at || a.starts_at <= nowISO) &&
+                       (!a.ends_at || a.ends_at >= nowISO))
+        .map((a) => ({ id: a.id, text: String(a.body || a.title || "").trim() }))
+        .filter((a) => a.text);
     } catch {
-      /* Missing index or offline — the strip keeps its built-in copy. */
+      /* Offline — the strip keeps its built-in copy. */
       return [];
     }
   },
@@ -50,8 +54,7 @@ export const contentService = {
       phone: KT.rules.normalizePhone(phone),
       message: KT.rules.cleanString(message, 1000),
       status: "new",
-      source: "v2-storefront",
-      createdAt: fb.serverTimestamp()
+      source: "v2-storefront"
     };
 
     if (!payload.name) throw new Error("Tell us your name.");
@@ -60,7 +63,8 @@ export const contentService = {
     }
     if (payload.message.length < 5) throw new Error("Add a little more detail.");
 
-    await fb.addDoc(fb.collection(db, COLLECTIONS.contactMessages), payload);
+    const { error } = await supabase.from(TABLES.contactMessages).insert(payload);
+    if (error) throw error;
     return true;
   },
 
@@ -70,41 +74,46 @@ export const contentService = {
     if (!uid) throw new Error("Please sign in to contact support.");
     const KT = window.KT;
 
-    const ref = await fb.addDoc(fb.collection(db, COLLECTIONS.supportTickets), {
-      userId: uid,
-      subject: KT.rules.cleanString(subject, 140) || "Support request",
-      message: KT.rules.cleanString(message, 2000),
-      orderId: KT.rules.cleanString(orderId || "", 60) || null,
-      status: "open",
-      createdAt: fb.serverTimestamp(),
-      updatedAt: fb.serverTimestamp()
-    });
-    return { id: ref.id };
+    const { data, error } = await supabase
+      .from(TABLES.supportTickets)
+      .insert({
+        user_id: uid,
+        subject: KT.rules.cleanString(subject, 140) || "Support request",
+        message: KT.rules.cleanString(message, 2000),
+        order_ref: KT.rules.cleanString(orderId || "", 60) || null,
+        status: "open"
+      })
+      .select("id")
+      .single();
+
+    if (error) throw error;
+    return { id: data.id };
   },
 
   async supportTickets({ limit = 10 } = {}) {
     const uid = authService.uid();
     if (!uid) return [];
     try {
-      const snap = await fb.getDocs(fb.query(
-        fb.collection(db, COLLECTIONS.supportTickets),
-        fb.where("userId", "==", uid),
-        fb.orderBy("createdAt", "desc"),
-        fb.limit(limit)
-      ));
-      return snap.docs.map((d) => {
-        const data = d.data();
-        return {
-          id: d.id,
-          subject: data.subject,
-          message: data.message,
-          status: data.status || "open",
-          orderId: data.orderId || null,
-          createdAt: data.createdAt && data.createdAt.toDate ? data.createdAt.toDate() : null
-        };
-      });
+      const { data, error } = await supabase
+        .from(TABLES.supportTickets)
+        .select("id, subject, message, status, order_ref, created_at")
+        .eq("user_id", uid)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+
+      return (data || []).map((t) => ({
+        id: t.id,
+        subject: t.subject,
+        message: t.message,
+        status: t.status || "open",
+        orderId: t.order_ref || null,
+        createdAt: t.created_at ? new Date(t.created_at) : null
+      }));
     } catch {
       return [];
     }
   }
 };
+
+export { errorMessage };

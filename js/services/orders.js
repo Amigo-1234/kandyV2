@@ -1,114 +1,190 @@
 /* ==========================================================================
-   Kandy's Treats — Orders
+   Kandy's Treats — Orders (Supabase)
    --------------------------------------------------------------------------
-   Clients never write to `orders` or `orderItems` — firestore.rules forbids
-   it. `createCheckoutOrder` re-prices every line from `menus/{id}`, verifies
-   the saved address belongs to the caller, recalculates fees and coupons, and
-   writes the order with the Admin SDK. This module only sends the draft and
-   reads back what the server created.
+   The browser never prices an order. create_checkout_order() is a SECURITY
+   DEFINER Postgres function that re-reads every price from menu_items,
+   re-derives fees and coupons, verifies the address belongs to the caller and
+   writes the order in one transaction. This module only sends menu ids and
+   quantities, then reads back what the server created.
+
+   RLS denies INSERT/UPDATE/DELETE on orders, order_items and
+   order_status_history to customers outright, so that RPC is the only way an
+   order can come into existence — there is no client-side path to fall back
+   to, by design.
+
+   `id` is deliberately the human-readable code (KD-260814-0001) rather than
+   the uuid, because that is what the UI prints and puts in URLs.
    ========================================================================== */
 
-import { db, fb, callable, COLLECTIONS, callableNeverRan } from "./firebase.js";
+import { supabase, TABLES, errorMessage } from "./supabase.js";
 import { authService } from "./auth.js";
 
-const createCheckoutOrder = callable("createCheckoutOrder");
+const ORDER_SELECT = `
+  id, code, user_id, status, payment_status, payment_provider, payment_ref, paid,
+  fulfilment, address_id, address_snapshot, customer, notes,
+  subtotal, delivery_fee, takeaway_fee, discount, vat, processing_fee, total,
+  coupon_code, estimated_minutes, created_at,
+  order_items ( menu_item_id, name, unit_price, qty, line_total ),
+  order_status_history ( status, note, created_at )
+`;
 
-/** Firestore order doc → the shape the order UI renders. */
-function normalise(id, data) {
+/** orders row (+ children) → the shape every order page already reads. */
+function normalise(row) {
   const KT = window.KT;
-  const created = data.createdAt && data.createdAt.toDate
-    ? data.createdAt.toDate()
-    : (data.createdAtMs ? new Date(data.createdAtMs) : null);
+  const items = (row.order_items || []).map((l) => ({
+    menuId: l.menu_item_id,
+    id: l.menu_item_id,
+    name: l.name,
+    price: Number(l.unit_price) || 0,
+    qty: Number(l.qty) || 0,
+    lineTotal: Number(l.line_total) || 0
+  }));
 
-  const items = Array.isArray(data.items) && data.items.length
-    ? data.items
-    : (Array.isArray(data.subOrders) ? data.subOrders.flatMap((s) => s.items || []) : []);
+  const history = (row.order_status_history || [])
+    .slice()
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    .map((h) => ({ status: h.status, note: h.note, at: new Date(h.created_at) }));
 
   return {
-    id: data.id || id,
-    userId: data.userId,
-    status: data.status || "New",
-    statusLabel: (KT.rules.STATUS_META[data.status] || {}).label || data.status || "New",
-    statusHistory: Array.isArray(data.statusHistory) ? data.statusHistory : [],
-    fulfilment: data.fulfilment || "delivery",
-    paid: data.paid === true,
-    paymentStatus: data.paymentStatus || "pending",
-    paymentProvider: data.paymentProvider || null,
-    paymentRef: data.paymentRef || null,
+    id: row.code,
+    uuid: row.id,
+    userId: row.user_id,
+    status: row.status || "New",
+    statusLabel: (KT.rules.STATUS_META[row.status] || {}).label || row.status || "New",
+    statusHistory: history,
+    fulfilment: row.fulfilment || "delivery",
+    paid: row.paid === true,
+    paymentStatus: row.payment_status || "pending",
+    paymentProvider: row.payment_provider || null,
+    paymentRef: row.payment_ref || null,
     items,
-    subOrders: Array.isArray(data.subOrders) ? data.subOrders : [],
-    customer: data.customer || {},
-    addressSnapshot: data.addressSnapshot || null,
-    notes: data.notes || "",
-    subtotal: Number(data.subtotal) || 0,
-    deliveryFee: Number(data.deliveryFee) || 0,
-    takeawayFee: Number(data.takeawayFee) || 0,
-    discount: Number(data.discount) || 0,
-    processingFee: Number(data.processingFee || data.vat) || 0,
-    total: Number(data.total) || 0,
-    estimatedDeliveryMinutes: Number(data.estimatedDeliveryMinutes) || 0,
-    createdAt: created,
-    itemCount: items.reduce((n, i) => n + (Number(i.qty) || 0), 0)
+    subOrders: [],
+    customer: row.customer || {},
+    addressSnapshot: row.address_snapshot || null,
+    notes: row.notes || "",
+    subtotal: Number(row.subtotal) || 0,
+    deliveryFee: Number(row.delivery_fee) || 0,
+    takeawayFee: Number(row.takeaway_fee) || 0,
+    discount: Number(row.discount) || 0,
+    processingFee: Number(row.processing_fee || row.vat) || 0,
+    total: Number(row.total) || 0,
+    couponCode: row.coupon_code || null,
+    estimatedDeliveryMinutes: Number(row.estimated_minutes) || 0,
+    createdAt: row.created_at ? new Date(row.created_at) : null,
+    itemCount: items.reduce((n, i) => n + i.qty, 0)
   };
+}
+
+/* Double-submit guard. An identical basket resubmitted inside this window
+   reuses the same idempotency key, so the RPC hands back the FIRST order
+   instead of creating a second one. A genuine repeat order later gets a fresh
+   key and is allowed through. */
+const REPLAY_WINDOW = 120 * 1000;
+let pending = null;
+
+function draftFingerprint(draft, uid) {
+  const lines = (draft.items || [])
+    .map((i) => `${i.menuId || i.id}x${i.qty}`)
+    .sort()
+    .join("|");
+  return [uid, draft.fulfilment, draft.addressId || "",
+          (draft.coupon && draft.coupon.code) || "", lines].join("::");
+}
+
+function idempotencyKeyFor(draft, uid) {
+  const print = draftFingerprint(draft, uid);
+  if (pending && pending.print === print && Date.now() - pending.at < REPLAY_WINDOW) {
+    return pending.key;
+  }
+  const key = (crypto.randomUUID ? crypto.randomUUID()
+                                 : String(Date.now()) + Math.random().toString(16).slice(2));
+  pending = { print, key, at: Date.now() };
+  return key;
 }
 
 export const orderService = {
   /**
    * Send the basket to the server for pricing and creation.
-   * @param {Array} drafts   one draft per sub-order (V1 supports up to 10)
-   * @param {'gateway'|'wallet'} paymentMode
+   * Only ids and quantities travel — never a price.
+   * @param {Array} drafts one draft (the sub-order shape V1 used is collapsed)
    */
-  async createCheckout(drafts, paymentMode = "gateway") {
-    let result;
-    try {
-      result = await createCheckoutOrder({ drafts, paymentMode });
-    } catch (error) {
-      /* DEPLOYMENT REQUIRED. Unlike addresses or favourites, this one has no
-         safe direct-Firestore equivalent: createCheckoutOrder re-prices every
-         line against menus/{id} server-side, and firestore.rules cannot do
-         that check. Letting the browser write its own totals would mean
-         trusting the customer's arithmetic, so we refuse and say why. */
-      if (callableNeverRan(error)) {
-        const blocked = new Error(
-          "Online ordering is not switched on yet. Your basket is saved — " +
-          "please call or message Kandy's to place this order."
-        );
-        blocked.code = "kt/ordering-unavailable";
-        throw blocked;
-      }
-      throw error;
-    }
-    /* The basket is only cleared once the server has an order on record. */
+  async createCheckout(drafts) {
+    const uid = authService.uid();
+    if (!uid) throw new Error("Please sign in to place your order.");
+
+    const draft = Array.isArray(drafts) ? drafts[0] : drafts;
+    if (!draft) throw new Error("Your basket is empty.");
+
+    const { data, error } = await supabase.rpc("create_checkout_order", {
+      p_items: (draft.items || []).map((i) => ({
+        menu_id: i.menuId || i.id,
+        qty: Number(i.qty) || 0
+      })),
+      p_fulfilment: draft.fulfilment || "delivery",
+      p_address_id: draft.addressId || null,
+      p_coupon_code: (draft.coupon && draft.coupon.code) || null,
+      p_notes: draft.notes || "",
+      p_customer: draft.customer || {},
+      p_idempotency_key: idempotencyKeyFor(draft, uid)
+    });
+
+    if (error) throw error;
+
+    /* Only clear the basket once the server has an order on record. */
     window.KT.cart.clear();
-    return result;
+    pending = null;
+    return { orderId: data.code, uuid: data.orderId, total: data.total,
+             duplicate: !!data.duplicate };
   },
 
   async list({ limit = 25 } = {}) {
     const uid = authService.uid();
     if (!uid) return [];
 
-    const snap = await fb.getDocs(fb.query(
-      fb.collection(db, COLLECTIONS.orders),
-      fb.where("userId", "==", uid),
-      fb.orderBy("createdAtMs", "desc"),
-      fb.limit(limit)
-    ));
-    return snap.docs.map((d) => normalise(d.id, d.data()));
+    const { data, error } = await supabase
+      .from(TABLES.orders)
+      .select(ORDER_SELECT)
+      .eq("user_id", uid)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data || []).map(normalise);
   },
 
+  /** Accepts the human code (what the UI carries) or the uuid. */
   async get(orderId) {
-    const snap = await fb.getDoc(fb.doc(db, COLLECTIONS.orders, orderId));
-    if (!snap.exists()) return null;
-    return normalise(snap.id, snap.data());
+    const uid = authService.uid();
+    if (!uid || !orderId) return null;
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId);
+    const { data, error } = await supabase
+      .from(TABLES.orders)
+      .select(ORDER_SELECT)
+      .eq(isUuid ? "id" : "code", orderId)
+      .eq("user_id", uid)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? normalise(data) : null;
   },
 
-  /** Live status updates while an order is in progress. */
+  /** Live status updates while an order is in progress (Supabase Realtime). */
   watch(orderId, onChange) {
-    return fb.onSnapshot(
-      fb.doc(db, COLLECTIONS.orders, orderId),
-      (snap) => { if (snap.exists()) onChange(normalise(snap.id, snap.data())); },
-      () => {}
-    );
+    const uid = authService.uid();
+    if (!uid || !orderId) return () => {};
+
+    const channel = supabase
+      .channel(`kt-order-${orderId}`)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: TABLES.orders, filter: `user_id=eq.${uid}` },
+        async () => {
+          try {
+            const fresh = await orderService.get(orderId);
+            if (fresh) onChange(fresh);
+          } catch { /* keep whatever we have */ }
+        })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   },
 
   /** Put a past order's items back in the basket, skipping anything gone. */
@@ -123,3 +199,5 @@ export const orderService = {
     return { added, skipped };
   }
 };
+
+export { errorMessage };

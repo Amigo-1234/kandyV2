@@ -1,44 +1,54 @@
 /* ==========================================================================
-   Kandy's Treats — Menu service
+   Kandy's Treats — Menu service (Supabase)
    --------------------------------------------------------------------------
-   Loads `menus/{id}` (public read per firestore.rules) and the admin-curated
-   `quickPicks`, then hands them to KT.menu.hydrate().
+   Loads public.menu_items (public SELECT under RLS) plus the quick-pick flags,
+   then hands them to KT.menu.hydrate().
 
    The local snapshot in js/data/menu.js paints instantly; this replaces it as
-   soon as Firestore answers. Until it does, KT.menu.live stays false and
-   checkout refuses to run — the server prices against these documents, so
-   ordering from a stale snapshot is never allowed.
+   soon as Supabase answers. Until it does, KT.menu.live stays false and
+   checkout refuses to run — create_checkout_order() prices against these rows,
+   so ordering from a stale snapshot is never allowed.
+
+   Prices here are for DISPLAY ONLY. The server re-reads every price during
+   checkout, so a stale or tampered value in this cache is a display bug, never
+   a pricing exploit.
    ========================================================================== */
 
-import { db, fb, COLLECTIONS } from "./firebase.js";
+import { supabase, TABLES } from "./supabase.js";
 
 const CACHE_KEY = window.KT.config.storage.menuCache;
 const CACHE_TTL = 10 * 60 * 1000;
 
-/** Firestore menu doc → the shape the UI components expect. */
-function normalise(id, data) {
+/** menu_items row → the shape the UI components already expect. */
+function normalise(row) {
   const KT = window.KT;
-  const section = data.section || data.category || "";
-  const category = KT.menu.categoryForSection(section);
-  /* Matched by name, not id: V1's documents have random addDoc() ids. */
-  const snapshot = KT.menu.snapshotFor(id, data.name);
+  const section = row.section || "";
+  /* The section mapping is authoritative, NOT category_id. menu_items carries
+     a real 8th category ("chicken-chips", 10 dishes) that V1's Firestore also
+     had, but the approved category rail in js/data/menu.js only renders seven.
+     categoryForSection() folds any unrecognised section into "specials",
+     exactly as the Firebase implementation did — so those dishes stay
+     browsable instead of disappearing from every filter. Giving them their own
+     rail is a UI decision, not a migration one. */
+  const category = KT.menu.categoryForSection(section) || row.category_id;
+  /* Falls back to the bundled copy/photo for this dish when the row has none. */
+  const snapshot = KT.menu.snapshotFor(row.legacy_firestore_id || row.id, row.name);
 
   return {
-    id,
-    name: KT.rules.cleanString(data.name, 120),
-    price: Math.max(0, Math.round(Number(data.price) || 0)),
+    id: row.id,
+    legacyId: row.legacy_firestore_id || null,
+    name: KT.rules.cleanString(row.name, 120),
+    price: Math.max(0, Math.round(Number(row.price) || 0)),
     category,
     section,
-    status: String(data.status || "available").toLowerCase(),
-    /* Prefer an admin-uploaded Storage URL; otherwise reuse the photo and
-       copy we already ship for this slug. */
-    imageUrl: data.imageUrl || (typeof data.image === "string" && data.image.startsWith("http") ? data.image : ""),
-    image: (snapshot && snapshot.image) || null,
-    gallery: Array.isArray(data.gallery) ? data.gallery : [],
-    blurb: data.blurb || (snapshot && snapshot.blurb) || "",
-    description: data.description || (snapshot && snapshot.description) || "",
-    rating: Number(data.rating) || 0,
-    tags: Array.isArray(data.tags) ? data.tags.slice() : []
+    status: String(row.status || "available").toLowerCase(),
+    imageUrl: row.image_url || "",
+    image: row.image_key || (snapshot && snapshot.image) || null,
+    gallery: [],
+    blurb: row.blurb || (snapshot && snapshot.blurb) || "",
+    description: row.description || (snapshot && snapshot.description) || "",
+    rating: Number(row.rating) || 0,
+    tags: Array.isArray(row.tags) ? row.tags.slice() : []
   };
 }
 
@@ -65,6 +75,23 @@ function announce(source) {
   }));
 }
 
+const SELECT = "id, legacy_firestore_id, slug, name, blurb, description, price, " +
+               "category_id, section, status, image_key, image_url, rating, tags, is_quick_pick";
+
+async function fetchMenu() {
+  const { data, error } = await supabase
+    .from(TABLES.menuItems)
+    .select(SELECT)
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+  if (error) throw error;
+
+  const rows = data || [];
+  const items = rows.map(normalise).filter((i) => i.name && i.price > 0);
+  const quickPicks = rows.filter((r) => r.is_quick_pick).map((r) => r.id);
+  return { items, quickPicks };
+}
+
 export const menuService = {
   /** Load the live menu. Falls back to cache, then to the bundled snapshot. */
   async load() {
@@ -75,24 +102,12 @@ export const menuService = {
     }
 
     try {
-      const [menuSnap, pickSnap] = await Promise.all([
-        fb.getDocs(fb.collection(db, COLLECTIONS.menus)),
-        fb.getDocs(fb.collection(db, COLLECTIONS.quickPicks)).catch(() => ({ docs: [] }))
-      ]);
-
-      const items = menuSnap.docs
-        .map((d) => normalise(d.id, d.data()))
-        .filter((i) => i.name && i.price > 0);
-
+      const { items, quickPicks } = await fetchMenu();
       if (!items.length) throw new Error("empty menu");
-
-      const quickPicks = pickSnap.docs
-        .map((d) => d.data().menuId || d.id)
-        .filter(Boolean);
 
       window.KT.menu.hydrate(items, quickPicks);
       writeCache(items, quickPicks);
-      announce("firestore");
+      announce("supabase");
       return items;
     } catch (error) {
       if (!cached) {
@@ -105,19 +120,32 @@ export const menuService = {
 
   /** Live updates while the customer browses (sold-out flips, price changes). */
   watch() {
-    return fb.onSnapshot(
-      fb.collection(db, COLLECTIONS.menus),
-      (snap) => {
-        const items = snap.docs
-          .map((d) => normalise(d.id, d.data()))
-          .filter((i) => i.name && i.price > 0);
-        if (!items.length) return;
-        const picks = window.KT.menu.tagged("quick-pick").map((i) => i.id);
-        window.KT.menu.hydrate(items, picks);
-        writeCache(items, picks);
-        announce("live");
-      },
-      () => { /* permission or network drop — keep whatever we have */ }
-    );
+    const channel = supabase
+      .channel("kt-menu")
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: TABLES.menuItems },
+        async () => {
+          try {
+            const { items, quickPicks } = await fetchMenu();
+            if (!items.length) return;
+            window.KT.menu.hydrate(items, quickPicks);
+            writeCache(items, quickPicks);
+            announce("live");
+          } catch { /* network drop — keep whatever we have */ }
+        })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  },
+
+  /** Categories, for the storefront rails. Public read. */
+  async categories() {
+    const { data, error } = await supabase
+      .from(TABLES.categories)
+      .select("id, name, section, blurb, image_key, sort_order")
+      .eq("active", true)
+      .order("sort_order", { ascending: true });
+    if (error) throw error;
+    return data || [];
   }
 };
