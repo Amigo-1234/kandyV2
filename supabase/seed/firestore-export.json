@@ -1,0 +1,878 @@
+{
+ "menus": [
+  {
+   "id": "0bDjrsAbQzy1YIeacnJ3",
+   "name": "Big Turkey",
+   "price": 6000,
+   "section": "Proteins",
+   "status": "available",
+   "image": "/images/menu/bigturkey.jpg"
+  },
+  {
+   "id": "0flEGFB3YwWM1C3BnyN6",
+   "name": "Extra Ketchup",
+   "price": 200,
+   "section": "Chicken & Chips",
+   "status": "available",
+   "image": "https://detoxinista.com/wp-content/uploads/2019/02/ketchup-recipe.jpg"
+  },
+  {
+   "id": "0foFZ6HMnrqO9bRVac0N",
+   "name": "Titus Fish",
+   "price": 1200,
+   "section": "Proteins",
+   "status": "available",
+   "image": "https://lh3.googleusercontent.com/p/AF1QipME9pDOr0IapiNgS2Q_keMpfyTCPnuuxCgY6fJ3=s680-w680-h510-rw"
+  },
+  {
+   "id": "2jQ3HNDeeL7sUeemiXU0",
+   "name": "Catfish Pepper Soup (Middle)",
+   "price": 3500,
+   "section": "Soups",
+   "status": "available",
+   "image": "/images/menu/catfishsoup.jpg"
+  },
+  {
+   "id": "3LAvX80nCgLhOuX3t3UH",
+   "name": "Bullet",
+   "price": 2500,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRxVSr1fSd_DvlkUn4VOXEVowDdOqWYvtorXg&s"
+  },
+  {
+   "id": "3avWew0mcg28SUquYu1n",
+   "name": "Fearless / Predator",
+   "price": 700,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS92lfgiJMw-PKmqZoxFiJNVLKQqjE54MemNQ&s"
+  },
+  {
+   "id": "53W9xS2PCNniMfVxVcbJ",
+   "name": "Peppered Beef",
+   "price": 800,
+   "section": "Proteins",
+   "status": "available",
+   "image": "https://www.myactivekitchen.com/wp-content/uploads/2019/05/nigerian-beef-stew_image_10.jpg"
+  },
+  {
+   "id": "5I4mIf1wjIO5eIKUiE83",
+   "name": "Fanta / Coke / Pepsi / 7up / Team/Sprite",
+   "price": 500,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://thumbs.dreamstime.com/b/bottles-assorted-global-soft-drinks-poznan-poland-may-drink-market-dominated-brands-few-multinational-companies-founded-93282714.jpg"
+  },
+  {
+   "id": "5WzXUUcdpkYyG8zmTtcn",
+   "name": "Burger (Double beef) King",
+   "price": 6000,
+   "section": "Specials",
+   "status": "available",
+   "image": "https://media.istockphoto.com/id/2148672887/photo/beef-patty-burger-with-vegetables-and-lettuce-on-white-background-file-contains-clipping-path.jpg?s=612x612&w=0&k=20&c=9HnGNZAv4PEvexEE6J4KIBNJFP_jK_qJ69fHt_sV7jU="
+  },
+  {
+   "id": "7FCrQ1rRAPQsAaL3xiHe",
+   "name": "Beef Shawarma (2 Sausage)",
+   "price": 3100,
+   "section": "Shawarma",
+   "status": "available",
+   "image": "/images/menu/Shawarma.jpg"
+  },
+  {
+   "id": "7SygjscO0FfcGOEcAgJu",
+   "name": "Normal box & xtra large chicken (chicken & chips)",
+   "price": 6000,
+   "section": "Chicken & Chips",
+   "status": "available",
+   "image": "https://img-global.cpcdn.com/recipes/6e5a602e17f8dbd9/1200x630cq80/photo.jpg"
+  },
+  {
+   "id": "8Aa5sIEUwnnu7rKKHRkY",
+   "name": "Can Chivita/Exotic",
+   "price": 900,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR3aQfJRy-XJ8_4haNjtQuPK21YsUa6pvb3WA&s"
+  },
+  {
+   "id": "8KKxwcc31md3BRTONdW1",
+   "name": "Chicken Shawarma (2 Sausage)",
+   "price": 3300,
+   "section": "Shawarma",
+   "status": "available",
+   "image": "/images/menu/Shawarma.jpg"
+  },
+  {
+   "id": "9PFzicEYHJrGORzXwISq",
+   "name": "Fayrouz",
+   "price": 750,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRfhE4HZisovwM8j0bVV_6SRywi24QW2VzZtA&s"
+  },
+  {
+   "id": "Ab4BNlgRVS33H1bpZriK",
+   "name": "Sosa Big",
+   "price": 1500,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcStKv_DD0CDX2TvI7zvCZuVSps_L5uXj4FJtg&s"
+  },
+  {
+   "id": "AdTojq38fKJiJBZahbM9",
+   "name": "Egg",
+   "price": 350,
+   "section": "Proteins",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTM-2dEgKgAvaXVs2nQhjKNpVPVoicy92WdFg&s"
+  },
+  {
+   "id": "AlD2337IuU9tII0ht4gF",
+   "name": "Bottled Water",
+   "price": 250,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://bmjgroup.com/wp-content/uploads/2024/09/GettyImages-922670878.jpg"
+  },
+  {
+   "id": "B6JpovOtEMpJ1Hdzljzh",
+   "name": "xtra large chicken & xtra chips (chicken & chips)",
+   "price": 7000,
+   "section": "Chicken & Chips",
+   "status": "available",
+   "image": "https://img-global.cpcdn.com/recipes/6e5a602e17f8dbd9/1200x630cq80/photo.jpg"
+  },
+  {
+   "id": "BB2kclRw7LCUzVvq6hDx",
+   "name": "White Rice (per scoop)",
+   "price": 700,
+   "section": "Foods",
+   "status": "available",
+   "image": "https://i.pinimg.com/736x/11/e8/62/11e862fc619d6c442b7400cc13cbdcc8.jpg"
+  },
+  {
+   "id": "CVacBU6LiS1fwVBOPfy9",
+   "name": "Plantain (Per Cup)",
+   "price": 500,
+   "section": "Sides",
+   "status": "available",
+   "image": "/images/menu/plantain.jpg"
+  },
+  {
+   "id": "CZBSwNppwjQLtJ0azoLd",
+   "name": "Semo with egusi/Efo-riro",
+   "price": 1500,
+   "section": "Foods",
+   "status": "available",
+   "image": "https://cravii.ng/cravii/api/uploads/68db985f1f854_1000078144.jpg"
+  },
+  {
+   "id": "DL5sLYLDpVbs9ub27ykk",
+   "name": "Tiger Nut drink",
+   "price": 1500,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTmnOMuVn_sKVYM2MQ6nGfvvS76_ebi_Sd7yw&s"
+  },
+  {
+   "id": "DRhHIFGsUZE5rP1k2rnQ",
+   "name": "Poundo with efo riro",
+   "price": 2000,
+   "section": "Foods",
+   "status": "available",
+   "image": "https://www.fmnfoods.com/wp-content/uploads/2020/06/SEMOVEGPEPPER-600.jpg"
+  },
+  {
+   "id": "FTLJEn2NqbRhtqSjWrqa",
+   "name": "Ewa Agoyin (small plate)",
+   "price": 2500,
+   "section": "Foods",
+   "status": "available",
+   "image": "https://i.pinimg.com/736x/b3/52/f5/b352f55a196b654ae7473c346775e39c.jpg"
+  },
+  {
+   "id": "GUqgk54YRC7Cd6ck191x",
+   "name": "Small Bigi Cola",
+   "price": 350,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://primegrocers.ng/wp-content/uploads/2025/08/bigi-cola.webp"
+  },
+  {
+   "id": "H2I1M4oqzgy06gZ9pnvJ",
+   "name": "Sti-fried Spaghetti (per scoop)",
+   "price": 500,
+   "section": "Foods",
+   "status": "available",
+   "image": "https://i.pinimg.com/1200x/63/60/8f/63608fde512aa27890529a0b7412f84e.jpg"
+  },
+  {
+   "id": "HrZW0mGdv6JbL2PLzvj2",
+   "name": "Big Peppred Goat Meat",
+   "price": 5000,
+   "section": "Proteins",
+   "status": "available",
+   "image": "https://momj3kitchen.com/wp-content/uploads/2022/02/Add-a-heading-51-min.png"
+  },
+  {
+   "id": "Ijx7I7YEIzmsF4kOB2CK",
+   "name": "Chivita Active / Exotic",
+   "price": 2000,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThTLNFkiw9oVZadma6YCgpLFXucjDnPZuA4g&s"
+  },
+  {
+   "id": "JMKxY3AbFwpKTvPsovOD",
+   "name": "Nutri Choco",
+   "price": 1000,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS8RRtDoKrpe4gr992S9qQEm1ZxyVwZ7asqyQ&s"
+  },
+  {
+   "id": "K4Csf7DoPDqC6VI4Sjpw",
+   "name": "Salad (Single Cream)",
+   "price": 700,
+   "section": "Sides",
+   "status": "available",
+   "image": "/images/menu/salad.jpeg"
+  },
+  {
+   "id": "KGlrzEgO9tp600d4F0Rf",
+   "name": "Fried Beef",
+   "price": 700,
+   "section": "Proteins",
+   "status": "available",
+   "image": "https://lh3.googleusercontent.com/p/AF1QipNeMVBQJ39Y9vlH_WHFBWThZo_oLrSGfhR0Kj0x=s1360-w1360-h1020-rw"
+  },
+  {
+   "id": "KffKctfQ196FlIebBd42",
+   "name": "Big Bread",
+   "price": 1700,
+   "section": "Sides",
+   "status": "available",
+   "image": "https://static.wixstatic.com/media/d129c9_d13be28a4a114b638609d141c300f415~mv2.png/v1/crop/x_0,y_42,w_930,h_333/fill/w_680,h_244,fp_0.50_0.50,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/CgUopp9W4AAe9aS.png"
+  },
+  {
+   "id": "Ku1ZKzIS5BLvdzdyvk8k",
+   "name": "Dudu yoghurt",
+   "price": 800,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSec9WZe4JxkMOf3fXJ2gytPvTwrKTYu9QYGA&s"
+  },
+  {
+   "id": "L9mTVuykuzfDFWDv1ZhA",
+   "name": "Beef Shawarma (1 Sausage)",
+   "price": 2800,
+   "section": "Shawarma",
+   "status": "available",
+   "image": "https://lh3.googleusercontent.com/p/AF1QipOgxjltNFNbdVSk6sRf82xUrQJxNvKDkiHEFJSi=s1360-w1360-h1020-rw"
+  },
+  {
+   "id": "LKoVChwDBwV3NivCvG07",
+   "name": "Meat Pie",
+   "price": 1000,
+   "section": "Specials",
+   "status": "available",
+   "image": "https://lh3.googleusercontent.com/_OIDAg3Z745c3gCBSyDIjK7Ga2u86V0zC1v7CSUgHCR_P_eYzYUNGFj64maNDld9rC8r4O-7LBDJAsH6=s265-w265-h265"
+  },
+  {
+   "id": "LzUDBWw8rJVKKdmOxAum",
+   "name": "Jollof Rice (per scoop)",
+   "price": 700,
+   "section": "Foods",
+   "status": "available",
+   "image": "https://i.pinimg.com/1200x/44/79/83/447983765e357b39237b7679fd152ec1.jpg"
+  },
+  {
+   "id": "NCc5MCLh7UXjpcvwQuFR",
+   "name": "Chicken Pie",
+   "price": 1200,
+   "section": "Specials",
+   "status": "available",
+   "image": "https://lh3.googleusercontent.com/p/AF1QipMoqqeJBB4EbMUZ3FcMLJlW6NddR46MgxzXhD3c=s680-w680-h510-rw"
+  },
+  {
+   "id": "Nv7uSiumWuUglJDzUxWl",
+   "name": "Nutri Milk",
+   "price": 700,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://www.supermart.ng/cdn/shop/files/spmrt333_3a1700ef-8333-412a-a40b-e619a272c78f.jpg?v=1712178153"
+  },
+  {
+   "id": "P3efn4gBfEFcHNsyOhnW",
+   "name": "Bigi Tropical/Orange",
+   "price": 350,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://www.ritefoodsltd.com/images/bigi-tropical.jpg"
+  },
+  {
+   "id": "PxVGYPOPzL3CJk6sTpox",
+   "name": "Big Size Chicken",
+   "price": 2500,
+   "section": "Proteins",
+   "status": "available",
+   "image": "https://i.pinimg.com/1200x/26/8f/c6/268fc6e38c7415551a7fe48d4deb694d.jpg"
+  },
+  {
+   "id": "SSeK9zJzXNm88GOq0EhJ",
+   "name": "Small bread",
+   "price": 700,
+   "section": "Sides",
+   "status": "available",
+   "image": "https://static.wixstatic.com/media/d129c9_d13be28a4a114b638609d141c300f415~mv2.png/v1/crop/x_0,y_42,w_930,h_333/fill/w_680,h_244,fp_0.50_0.50,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/CgUopp9W4AAe9aS.png"
+  },
+  {
+   "id": "SfGpiZmfLs0HFvfiwCId",
+   "name": "Medium Chicken",
+   "price": 1500,
+   "section": "Proteins",
+   "status": "available",
+   "image": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjyqfPt3jfPKBcLaoyLIHg4fPAlIuowhRCDf36mQXy2_TfF5gCKGlR9rC7UObHPwE1c5c-ypfMZMVere025nO0F14yjCkEZRDNd0ONY2h2UCqAnkfstn1vbQ8z4TkWup6Z7HzPFtvDYb84/s1600/Fried+Chicken+2.jpg"
+  },
+  {
+   "id": "TIeEJ6Cgsf5yrRUizyxK",
+   "name": "Viju Choco",
+   "price": 1200,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRlcVFjXgU_6oZnOBFENzz_KTnf7vW0_seduQ&s"
+  },
+  {
+   "id": "Uag6Pd7TUImYD0TvDRUX",
+   "name": "Small Chicken",
+   "price": 1200,
+   "section": "Proteins",
+   "status": "available",
+   "image": "https://img.freepik.com/premium-photo/fried-chicken-standing-white-background_752325-133878.jpg"
+  },
+  {
+   "id": "X6MxAZzwLs3AwTgYcZG3",
+   "name": "Kandy’s Parfait (Big)",
+   "price": 5000,
+   "section": "Specials",
+   "status": "available",
+   "image": "/images/menu/parfait.jpg"
+  },
+  {
+   "id": "Y5B2iIcoWGJ5VkaigYox",
+   "name": "Hollandia Yogurt",
+   "price": 2200,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTF-OcZDeUdKBcYbj-oUjSB7qLLbX13dRFkIw&s"
+  },
+  {
+   "id": "Yz6QJtLeAHpp013CZvv7",
+   "name": "Fried Rice (per scoop)",
+   "price": 700,
+   "section": "Foods",
+   "status": "available",
+   "image": "https://i.pinimg.com/736x/45/a9/28/45a928a792e2a84a5815c29bed4f9800.jpg"
+  },
+  {
+   "id": "ZHlQZdiWSRs6OB18Hqf9",
+   "name": "chicken & chips Normal box with extra chicken",
+   "price": 6000,
+   "section": "Chicken & Chips",
+   "status": "available",
+   "image": "https://img-global.cpcdn.com/recipes/6e5a602e17f8dbd9/1200x630cq80/photo.jpg"
+  },
+  {
+   "id": "Ze9Wmr61eeVQw2httcoW",
+   "name": "Smirnoff",
+   "price": 1800,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://www.drinksonline.store/wp-content/uploads/2020/11/4-2-e1725018624126.png"
+  },
+  {
+   "id": "b5SdkkqQDdkz8BnlZSOE",
+   "name": "Ponmo",
+   "price": 500,
+   "section": "Proteins",
+   "status": "available",
+   "image": "https://i.pinimg.com/736x/bd/0c/a6/bd0ca6098ca9fa80ef7fb90db4ee1807.jpg"
+  },
+  {
+   "id": "c3dq7xWL9pIRpBaST9IY",
+   "name": "King Size Chicken",
+   "price": 3000,
+   "section": "Proteins",
+   "status": "available",
+   "image": "https://i.pinimg.com/736x/ec/32/b8/ec32b8b8fffb2e3ba73d4b43ce1c8254.jpg"
+  },
+  {
+   "id": "cMfr02a4HrYB9ClXrjod",
+   "name": "Catfish Pepper Soup (Head)",
+   "price": 4000,
+   "section": "Soups",
+   "status": "available",
+   "image": "/images/menu/catfishsoup.jpg"
+  },
+  {
+   "id": "cyecQvXC39l9P6ZNR8Ic",
+   "name": "Pounded Yam with Egusi (Belleful))",
+   "price": 2000,
+   "section": "Foods",
+   "status": "available",
+   "image": "https://www.fmnfoods.com/wp-content/uploads/2021/03/EGUSI-WITH-BALL-8-1-scaled.jpg"
+  },
+  {
+   "id": "d2jRHBzzQ7Y3FziT25y5",
+   "name": "Burger (Single beef)",
+   "price": 4500,
+   "section": "Specials",
+   "status": "available",
+   "image": "https://media.istockphoto.com/id/2148672887/photo/beef-patty-burger-with-vegetables-and-lettuce-on-white-background-file-contains-clipping-path.jpg?s=612x612&w=0&k=20&c=9HnGNZAv4PEvexEE6J4KIBNJFP_jK_qJ69fHt_sV7jU="
+  },
+  {
+   "id": "eL2gad36kKURo6gDpytx",
+   "name": "Peppered Goat meat",
+   "price": 4500,
+   "section": "Proteins",
+   "status": "available",
+   "image": "https://momj3kitchen.com/wp-content/uploads/2022/02/Add-a-heading-51-min.png"
+  },
+  {
+   "id": "eugGAnqGiu20V3jsAFuO",
+   "name": "Malt",
+   "price": 750,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTbTF-auGXUWDE1HjlYkScPpDw9WyPO6F2bzw&s"
+  },
+  {
+   "id": "fP1duvyJ0OfUM3D85WMr",
+   "name": "Special Shawarma",
+   "price": 3600,
+   "section": "Shawarma",
+   "status": "available",
+   "image": "https://i.pinimg.com/1200x/e9/c1/2d/e9c12d34840da4794a960c0d75156399.jpg"
+  },
+  {
+   "id": "hleIrJUIdgrkhudhZrwq",
+   "name": "Pounded Yam with Efo-riro (Belleful))",
+   "price": 2000,
+   "section": "Foods",
+   "status": "available",
+   "image": "https://www.fmnfoods.com/wp-content/uploads/2020/06/SEMOVEGPEPPER-600.jpg"
+  },
+  {
+   "id": "j8ontS59rIctJLglMwvs",
+   "name": "Kandy’s Parfait (Small)",
+   "price": 3500,
+   "section": "Specials",
+   "status": "available",
+   "image": "/images/menu/parfait.jpg"
+  },
+  {
+   "id": "jnF0LenmLAfaOSLNOnDh",
+   "name": "Extra Sausage",
+   "price": 500,
+   "section": "Shawarma",
+   "status": "available",
+   "image": "https://www.ironoakfarm.net/wp-content/uploads/2023/07/WM-Cooked-Sausage-8001-jpg-720x540.webp"
+  },
+  {
+   "id": "klO72pPnKnDrcoqX7r9R",
+   "name": "Beans for White Rice (per cup)",
+   "price": 600,
+   "section": "Foods",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQRMdIN3JnnCgsp1zEh50EKpOCuCof17UOKUA&s"
+  },
+  {
+   "id": "llN71jeLgp8616A5KXtS",
+   "name": "Peppered Gizzard (stick)",
+   "price": 1200,
+   "section": "Proteins",
+   "status": "available",
+   "image": "/images/menu/gizzard.jpg"
+  },
+  {
+   "id": "mcfLtiqkb7ww7wNTeVuv",
+   "name": "Turkey & Chips (Big)",
+   "price": 8000,
+   "section": "Chicken & Chips",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTt0GOdNSyeLxue11wyzwusliqdHRkWXBTGag&s"
+  },
+  {
+   "id": "n23yN1D9SinzVofajjL4",
+   "name": "chicken & chips with Extra Chips (Big Chicken)",
+   "price": 6000,
+   "section": "Chicken & Chips",
+   "status": "available",
+   "image": "https://img-global.cpcdn.com/recipes/6e5a602e17f8dbd9/1200x630cq80/photo.jpg"
+  },
+  {
+   "id": "n3f8DUXGWuRRL4Xb69Fp",
+   "name": "Schweppes",
+   "price": 500,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://shop.ojaoba.com/cdn/shop/files/Schweppes_Virgin_Mojito_40cl.jpg?v=1764875493"
+  },
+  {
+   "id": "nGTIcW5PmAAfhcverDrj",
+   "name": "Dudu orange/pineapple fruit juice",
+   "price": 800,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSzQ-DFJ1OefVDxKz4yb_qc8icdBgOv2fck0A&s"
+  },
+  {
+   "id": "nZ1XXKCeZ1BN8NoyGrTI",
+   "name": "Big Chicken",
+   "price": 2000,
+   "section": "Proteins",
+   "status": "available",
+   "image": "https://i.pinimg.com/736x/ec/32/b8/ec32b8b8fffb2e3ba73d4b43ce1c8254.jpg"
+  },
+  {
+   "id": "nbZ3SPuxLXv2qx9xguKb",
+   "name": "Chicken Shawarma (1 Sausage)",
+   "price": 3000,
+   "section": "Shawarma",
+   "status": "available",
+   "image": "https://i.pinimg.com/1200x/e9/c1/2d/e9c12d34840da4794a960c0d75156399.jpg"
+  },
+  {
+   "id": "oN3DszrxkeYuuBnhy4Ki",
+   "name": "5 Alive Berry Blast",
+   "price": 1500,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://static.wixstatic.com/media/bc12db_87b3cd46ce50428f90d0d25a5f6245d2~mv2.jpg/v1/fill/w_480,h_720,al_c,lg_1,q_80,enc_avif,quality_auto/bc12db_87b3cd46ce50428f90d0d25a5f6245d2~mv2.jpg"
+  },
+  {
+   "id": "pjVbECUduInMUicTo6fH",
+   "name": "Viju Wheat",
+   "price": 1500,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://konzoom.shop/cdn/shop/files/wheat_drink.jpg?v=1722427688"
+  },
+  {
+   "id": "pycVlAaQ8NzZ8kxUeEsp",
+   "name": "Salad (Double Cream)",
+   "price": 800,
+   "section": "Sides",
+   "status": "available",
+   "image": "/images/menu/salad.jpeg"
+  },
+  {
+   "id": "qnN6YZzdSWNZU90w5JVc",
+   "name": "Can Malt",
+   "price": 800,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://www.supermart.ng/cdn/shop/files/spmrt232.png?v=1689111990"
+  },
+  {
+   "id": "rJ9FXalMmNcMgKoIieCf",
+   "name": "Catfish Pepper Soup (Tail)",
+   "price": 3000,
+   "section": "Soups",
+   "status": "available",
+   "image": "https://loluscuisine.com/wp-content/uploads/2024/11/Catfish-peppersoup.jpg"
+  },
+  {
+   "id": "ro2pcxpeaO7chc1dZTE2",
+   "name": "Viju Milk",
+   "price": 750,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSYl2-iBkjCYggLZoPf4KiZy0rm6OEE0lsCPw&s"
+  },
+  {
+   "id": "sShTmKL6Rlp7nQTfLaOT",
+   "name": "chicken & chips normal box",
+   "price": 4000,
+   "section": "Chicken & Chips",
+   "status": "available",
+   "image": "https://img-global.cpcdn.com/recipes/6e5a602e17f8dbd9/1200x630cq80/photo.jpg"
+  },
+  {
+   "id": "sveqc8k3yakYVaaEAvVE",
+   "name": "Turkey & Chips (Medium)",
+   "price": 6500,
+   "section": "Chicken & Chips",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTt0GOdNSyeLxue11wyzwusliqdHRkWXBTGag&s"
+  },
+  {
+   "id": "u9YpzF3UdYAgNAeUYDPZ",
+   "name": "Heineken",
+   "price": 1500,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://res.cloudinary.com/promenade-prod/image/upload/b_rgb:ffffff,c_pad,d_alcohol:vendor:global:catalog:product:image-placeholder.png,dpr_2.0,f_auto,fl_preserve_transparency,q_auto/v1654572549/alcohol/vendor/100391/catalog/product/6/2/627a032311284_627a0325acd78.jpg"
+  },
+  {
+   "id": "ucvbzzk5gcxYz6ZWgRnp",
+   "name": "chicken & chips normal box (Big chicken)",
+   "price": 5000,
+   "section": "Chicken & Chips",
+   "status": "available",
+   "image": "https://img-global.cpcdn.com/recipes/6e5a602e17f8dbd9/1200x630cq80/photo.jpg"
+  },
+  {
+   "id": "v9vJbpOLbAFC6CIz0074",
+   "name": "chicken & chips normal box with Extra chips(big chicken)",
+   "price": 6000,
+   "section": "Chicken & Chips",
+   "status": "available",
+   "image": "https://img-global.cpcdn.com/recipes/6e5a602e17f8dbd9/1200x630cq80/photo.jpg"
+  },
+  {
+   "id": "vziT0QxN7EpSolsr1fib",
+   "name": "Ewa Agoyin (Big Plate)",
+   "price": 3500,
+   "section": "Foods",
+   "status": "available",
+   "image": "https://i.pinimg.com/736x/b3/52/f5/b352f55a196b654ae7473c346775e39c.jpg"
+  },
+  {
+   "id": "w0cSwKamnN5VZyjF6EE0",
+   "name": "Big Pulpy (Mango)",
+   "price": 1500,
+   "section": "Drinks",
+   "status": "available",
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTVKYCi1mL-Lq-qYHGr_Xp5DT8COU0eGCMYkA&s"
+  },
+  {
+   "id": "w707b8ASCf5jYUydQF9K",
+   "name": "Small Turkey",
+   "price": 4000,
+   "section": "Proteins",
+   "status": "available",
+   "image": "https://lh3.googleusercontent.com/p/AF1QipNE6ySOsa0ERfSjwPu9Tt3A_fEwbDLVZ2V8CUlx=s1360-w1360-h1020-rw"
+  },
+  {
+   "id": "zlqUahhfVgvU26j2RIAH",
+   "name": "Ofada Rice (per scoop)",
+   "price": 700,
+   "section": "Foods",
+   "status": "available",
+   "image": "https://i.pinimg.com/736x/14/e8/6e/14e86eb4cd256afc660091f225014237.jpg"
+  }
+ ],
+ "picks": [
+  {
+   "id": "8uFot5poh4vi3x2a00Ir",
+   "title": "Rice and Beans Combo",
+   "description": "3 rice and plantain and beans with chivita",
+   "active": true,
+   "priority": 1769916079453,
+   "image": "/images/menu/ricee.jpg",
+   "items": [
+    {
+     "menuId": "8Aa5sIEUwnnu7rKKHRkY",
+     "name": "Can Chivita",
+     "price": 900,
+     "qty": 1
+    },
+    {
+     "menuId": "BB2kclRw7LCUzVvq6hDx",
+     "name": "White Rice (per scoop)",
+     "price": 700,
+     "qty": 3
+    },
+    {
+     "menuId": "CVacBU6LiS1fwVBOPfy9",
+     "name": "Plantain",
+     "price": 350,
+     "qty": 2
+    },
+    {
+     "menuId": "FTLJEn2NqbRhtqSjWrqa",
+     "name": "Beans (per scoop)",
+     "price": 600,
+     "qty": 2
+    }
+   ]
+  },
+  {
+   "id": "Ms9AyR2TPoxN4Rj1SgXl",
+   "title": "Ofada Rice",
+   "description": "ofada and turkey with soft drinks",
+   "active": false,
+   "priority": 1769916259544,
+   "image": "/images/menu/ofada.jpg",
+   "items": [
+    {
+     "menuId": "w0cSwKamnN5VZyjF6EE0",
+     "name": "Pulpy",
+     "price": 1500,
+     "qty": 1
+    },
+    {
+     "menuId": "w707b8ASCf5jYUydQF9K",
+     "name": "Small Turkey",
+     "price": 3000,
+     "qty": 1
+    },
+    {
+     "menuId": "zlqUahhfVgvU26j2RIAH",
+     "name": "Ofada Rice (per scoop)",
+     "price": 700,
+     "qty": 2
+    }
+   ]
+  },
+  {
+   "id": "Rn63ozkrCNrzl0sMm1JQ",
+   "title": "The Healthy King",
+   "description": "One Giant Burger and One Tiger Nut",
+   "active": true,
+   "priority": 1770654606344,
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQipf3giwngKJUhTmY_oh1ut2j1mrbslqmttrA174u2yYRCnK63TJET7spMrD9hAy6AQn4BFhbmeZrBM3BJo0tvj_lF0PNjuJjQNLAroFhu&s=10",
+   "items": [
+    {
+     "menuId": "5WzXUUcdpkYyG8zmTtcn",
+     "name": "Burger (Double beef) King",
+     "price": 6000,
+     "qty": 1
+    },
+    {
+     "menuId": "DL5sLYLDpVbs9ub27ykk",
+     "name": "Tiger Nut",
+     "price": 1500,
+     "qty": 1
+    }
+   ]
+  },
+  {
+   "id": "XoB8S82no43SCYSe5mJH",
+   "title": "RoseLuxe Affair",
+   "description": "Jollof rice, Fried rice, beef, fish, hollandia,",
+   "active": true,
+   "priority": 1771058224631,
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ8Zog0R8Jjq9lXG6M5jYnAtHxvalC6l32AMg&s",
+   "items": [
+    {
+     "menuId": "Y5B2iIcoWGJ5VkaigYox",
+     "name": "Hollandia Yogurt",
+     "price": 2200,
+     "qty": 1
+    },
+    {
+     "menuId": "Yz6QJtLeAHpp013CZvv7",
+     "name": "Fried Rice (per scoop)",
+     "price": 500,
+     "qty": 2
+    },
+    {
+     "menuId": "nZ1XXKCeZ1BN8NoyGrTI",
+     "name": "Big Chicken",
+     "price": 2000,
+     "qty": 1
+    },
+    {
+     "menuId": "pycVlAaQ8NzZ8kxUeEsp",
+     "name": "Salad (Double Cream)",
+     "price": 800,
+     "qty": 1
+    },
+    {
+     "menuId": "0foFZ6HMnrqO9bRVac0N",
+     "name": "Titus Fish",
+     "price": 1000,
+     "qty": 1
+    },
+    {
+     "menuId": "53W9xS2PCNniMfVxVcbJ",
+     "name": "Peppered Beef",
+     "price": 800,
+     "qty": 1
+    },
+    {
+     "menuId": "KGlrzEgO9tp600d4F0Rf",
+     "name": "Fried Beef",
+     "price": 700,
+     "qty": 1
+    },
+    {
+     "menuId": "LzUDBWw8rJVKKdmOxAum",
+     "name": "Jollof Rice (per scoop)",
+     "price": 500,
+     "qty": 2
+    }
+   ]
+  },
+  {
+   "id": "jS4teTZgQye6n3GKuZ6z",
+   "title": "Super Sharwama",
+   "description": "1 Special Sharwam with Active",
+   "active": true,
+   "priority": 1769915609610,
+   "image": "https://lh3.googleusercontent.com/p/AF1QipOgxjltNFNbdVSk6sRf82xUrQJxNvKDkiHEFJSi=w640-h640-n-k-no",
+   "items": [
+    {
+     "menuId": "Ijx7I7YEIzmsF4kOB2CK",
+     "name": "Chivita Active / Exotic",
+     "price": 1900,
+     "qty": 1
+    },
+    {
+     "menuId": "L9mTVuykuzfDFWDv1ZhA",
+     "name": "Beef Shawarma (1 Sausage)",
+     "price": 2800,
+     "qty": 1
+    }
+   ]
+  },
+  {
+   "id": "kmd6WejkeTXMPzQxxmPM",
+   "title": "Catfish Enjoyment",
+   "description": "Catfish And Bullet Drink",
+   "active": true,
+   "priority": 1769915788199,
+   "image": "/images/menu/catfishsoup.jpg",
+   "items": [
+    {
+     "menuId": "2jQ3HNDeeL7sUeemiXU0",
+     "name": "Catfish Pepper Soup (Middle/Tail)",
+     "price": 3000,
+     "qty": 1
+    },
+    {
+     "menuId": "3LAvX80nCgLhOuX3t3UH",
+     "name": "Bullet",
+     "price": 2500,
+     "qty": 1
+    }
+   ]
+  }
+ ],
+ "anns": [
+  {
+   "text": "burger now available",
+   "active": false
+  },
+  {
+   "text": "Catfish pepper soup now available",
+   "active": true
+  },
+  {
+   "text": "Food is ready",
+   "active": true
+  },
+  {
+   "text": "We have closed for the night",
+   "active": false
+  },
+  {
+   "text": "Welcome to Kandy's Treats",
+   "active": true
+  }
+ ]
+}
