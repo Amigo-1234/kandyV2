@@ -84,10 +84,25 @@
 
     /* ---- Fees ------------------------------------------------------- */
 
-    /* functions/index.js: calculateProcessingFee */
-    processingFee: function (netAmount, paymentMode) {
-      if (paymentMode !== "gateway") return 0;
-      return Math.round(Number(netAmount || 0) * PROCESSING_FEE_RATE);
+    /**
+     * Card-processing fee — currently DISABLED.
+     *
+     * create_checkout_order() prices every order with processing_fee = 0: at
+     * order time the server cannot know whether the customer will pay by card
+     * or from their wallet, so it charges neither. The basket used to add 2%
+     * anyway, which made it display a total (₦3,978) the customer was never
+     * charged (₦3,900) — the same basket, two numbers.
+     *
+     * The basket must show what the server will actually charge, so this
+     * returns 0 and the "Card processing" line disappears on its own (every
+     * render site is already guarded on a truthy fee).
+     *
+     * PROCESSING_FEE_RATE is kept so re-enabling is a one-line change, but it
+     * must be turned on in create_checkout_order FIRST — the server total is
+     * the authority, and the basket only ever mirrors it.
+     */
+    processingFee: function () {
+      return 0;
     },
 
     /* functions/index.js: calculateTakeawayFee
@@ -184,6 +199,8 @@
       var deliveryFee = rules.deliveryFee(fulfilment, items.length);
       var discount = rules.couponDiscount(input.coupon, subtotal);
       var netAmount = subtotal + takeawayFee + deliveryFee - discount;
+      /* Always 0 today — see rules.processingFee. Kept in the shape so the
+         server remains the single source of truth for what is charged. */
       var processingFee = rules.processingFee(netAmount, paymentMode);
 
       return {
