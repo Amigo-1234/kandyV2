@@ -35,14 +35,20 @@ export async function hmacSha512Hex(secret: string, raw: string): Promise<string
     .join("");
 }
 
-export const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-
 export const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+
+/**
+ * CORS headers belong on EVERY response, not just the preflight. Without them
+ * the browser blocks the reply and supabase-js reports the opaque
+ * "Failed to send a request to the Edge Function", which looks like the
+ * function is down rather than like a header problem.
+ */
+export const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", ...CORS },
+  });
