@@ -125,7 +125,7 @@
                   '" alt="Kandy\'s Treats" width="210" height="109" ' +
                   'loading="lazy" decoding="async">' +
               '</picture>' +
-              '<p class="foot__tagline">Nigerian kitchen serving Lagos State. Rice by the scoop, proteins and sides priced separately, cooked after you order.</p>' +
+              '<p class="foot__tagline">Nigerian kitchen serving Ado-Ekiti/Iworoko. Rice by the scoop, proteins and sides priced separately, cooked after you order.</p>' +
               socialsHTML() +
             "</div>" +
             '<div class="foot__cols">' + cols +

@@ -121,7 +121,7 @@
         '<ul class="promo__list">' +
           ["Works on every section of the menu",
             welcome.code + ": " + welcome.value + "% off over " + KT.naira(welcome.minSubtotal),
-            "Flat " + KT.naira(KT.rules.DELIVERY_FEE) + " delivery across Lagos",
+            "Flat " + KT.naira(KT.rules.DELIVERY_FEE) + " delivery across Ado-Ekiti/Iworoko",
             "Or collect it yourself — pickup is free"]
             .map(function (t2) { return "<li>" + KT.icon("check", 15) + t2 + "</li>"; })
             .join("") +

@@ -37,7 +37,8 @@ async function boot() {
      Firestore queries made with a Supabase UUID. See deferred.js. */
   const { addressService } = await import("./addresses.js");
   const { orderService } = await import("./orders.js");
-  const { paymentServiceDeferred, walletServiceDeferred } = await import("./deferred.js");
+  const { paymentService } = await import("./payments.js");
+  const { walletServiceDeferred } = await import("./deferred.js");
 
   /* Every live service is Supabase now, so one error handler covers them. */
   const errorMessage = supaError;
@@ -51,14 +52,15 @@ async function boot() {
     reviews: reviewService,
     addresses: addressService,
     orders: orderService,
-    payments: paymentServiceDeferred,
+    payments: paymentService,
     wallet: walletServiceDeferred,
     errorMessage,
     backend: {
       auth: "supabase", profile: "supabase",
       addresses: "supabase", favourites: "supabase",
       catalogue: "supabase", orders: "supabase",
-      reviews: "supabase", content: "supabase"
+      reviews: "supabase", content: "supabase",
+      payments: "supabase+paystack", wallet: "deferred"
     }
   };
 

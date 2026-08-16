@@ -1,97 +1,136 @@
 /* ==========================================================================
-   Kandy's Treats — Payments (Paystack & Flutterwave)
+   Kandy's Treats — Payments (Paystack via Supabase Edge Functions)
    --------------------------------------------------------------------------
-   Reuses V1's proven server-side flow rather than inventing a new one:
+   Paystack only. Flutterwave is gone from the active architecture.
 
-     createGatewayPayment  → server initialises the transaction with the SECRET
-                             key and returns a hosted checkout URL
-     (customer pays on the gateway's own page — no card data touches this site)
-     verifyGatewayPayment  → server verifies with the gateway before the order
-                             is ever marked paid
-     recordGatewayPaymentEvent → records cancelled/failed returns
+   The browser's entire role is: "start payment for order KD-…", then read
+   back whether the order became paid. It never sees an amount it can alter,
+   never holds a Paystack credential (we use the hosted checkout redirect, not
+   Inline, so not even the public key is needed here), and cannot settle
+   anything.
 
-   Signed webhooks (paystackWebhook / flutterwaveWebhook) confirm payment even
-   if the customer closes the tab, and are idempotent.
-
-   NO SECRET KEY EVER APPEARS HERE. Public keys are only used for the
-   fallback checkout, which cannot mark an order paid by itself.
+   verify() deliberately does NOT confirm payment. Returning from Paystack
+   proves only that a browser came back to our URL — a customer can reach that
+   URL by hand. It polls the order row instead, which only the webhook can
+   flip. If the webhook has not landed yet the honest answer is "pending", and
+   the order page keeps its live subscription open to catch it.
    ========================================================================== */
 
-import { callable } from "./firebase.js";
-
-const createGatewayPayment = callable("createGatewayPayment");
-const verifyGatewayPayment = callable("verifyGatewayPayment");
-const recordGatewayPaymentEvent = callable("recordGatewayPaymentEvent");
-const getPaymentConfigurationStatus = callable("getPaymentConfigurationStatus");
+import { supabase, TABLES, errorMessage } from "./supabase.js";
+import { authService } from "./auth.js";
 
 export const PROVIDERS = [
-  { id: "paystack", name: "Paystack", blurb: "Card, bank transfer, USSD" },
-  { id: "flutterwave", name: "Flutterwave", blurb: "Card, bank transfer, mobile money" }
+  { id: "paystack", name: "Paystack", blurb: "Card, bank transfer or USSD" }
 ];
+
+/** How long to wait for the webhook after the customer returns. */
+const POLL_ATTEMPTS = 8;
+const POLL_DELAY_MS = 1500;
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function readOrderPaymentState(orderCode) {
+  const { data, error } = await supabase
+    .from(TABLES.orders)
+    .select("code, paid, payment_status, payment_ref, total")
+    .eq("code", orderCode)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
 
 export const paymentService = {
   PROVIDERS,
 
-  /** Which gateways actually have their secrets configured. */
+  /**
+   * Which gateways are usable. The secret lives in Edge Function config, so
+   * the browser cannot inspect it; an unconfigured key surfaces as a readable
+   * error from start() rather than a silently dead button.
+   */
   async status() {
-    try {
-      return await getPaymentConfigurationStatus({});
-    } catch {
-      return { paystack: false, flutterwave: false };
-    }
+    return { paystack: true, flutterwave: false };
   },
 
   /**
-   * Start a payment and hand the customer to the gateway's hosted page.
-   * @param {string} orderId
-   * @param {'paystack'|'flutterwave'} provider
+   * Hand off to Paystack. The Edge Function reads the amount from the order
+   * row — this call carries an order code and nothing else.
    */
-  async start(orderId, provider) {
+  async start(orderCode, provider = "paystack") {
+    if (provider !== "paystack") {
+      throw new Error("That payment method is not available.");
+    }
+    if (!authService.isSignedIn()) {
+      throw new Error("Please sign in to pay.");
+    }
+
     const callbackUrl = new URL(
       window.KT.url("pages/order-detail.html"),
       window.location.origin
     );
-    callbackUrl.searchParams.set("id", orderId);
-    callbackUrl.searchParams.set("verify", provider);
+    callbackUrl.searchParams.set("id", orderCode);
+    callbackUrl.searchParams.set("verify", "paystack");
 
-    const result = await createGatewayPayment({
-      orderId,
-      provider,
-      callbackUrl: callbackUrl.href
+    const { data, error } = await supabase.functions.invoke("paystack-initialize", {
+      body: { orderCode, callbackUrl: callbackUrl.href }
     });
 
-    if (!result || !result.checkoutUrl) {
-      throw new Error("The payment gateway did not return a checkout link.");
+    if (error) {
+      /* Edge Function errors arrive as a Response we must read for the body. */
+      let message = "Could not start the payment.";
+      try {
+        const body = await error.context?.json?.();
+        if (body && body.error) message = body.error;
+      } catch { /* keep the default */ }
+      throw new Error(message);
     }
-    window.location.href = result.checkoutUrl;
-    return result;
+    if (!data || !data.checkoutUrl) throw new Error("Could not start the payment.");
+
+    window.location.href = data.checkoutUrl;
+    return data;
   },
 
   /**
-   * Called when the customer returns from the gateway. The server is the one
-   * that talks to Paystack/Flutterwave — this only reports the outcome.
+   * Called after the redirect back. NOT proof of payment — it polls the order
+   * row, which only the webhook can change.
    */
-  async verify({ orderId, provider, reference, transactionId }) {
-    return verifyGatewayPayment({ orderId, provider, reference, transactionId });
+  async verify({ orderId }) {
+    const code = String(orderId || "");
+    if (!code) throw new Error("Missing order reference.");
+
+    for (let attempt = 0; attempt < POLL_ATTEMPTS; attempt++) {
+      const row = await readOrderPaymentState(code);
+      if (!row) throw new Error("Order not found.");
+      if (row.paid) return { status: "paid", orderId: code, amount: row.total };
+      if (row.payment_status === "failed" || row.payment_status === "cancelled") {
+        return { status: row.payment_status, orderId: code };
+      }
+      if (attempt < POLL_ATTEMPTS - 1) await sleep(POLL_DELAY_MS);
+    }
+
+    /* Not a failure — the webhook may still be in flight. */
+    return { status: "pending", orderId: code };
   },
 
-  async recordFailure({ orderId, provider, reference, status, reason }) {
-    try {
-      await recordGatewayPaymentEvent({ orderId, provider, reference, status, reason });
-    } catch { /* best effort — the webhook is the real safety net */ }
+  /**
+   * The webhook records authentic failures with the gateway's own payload;
+   * a browser claim of failure is not evidence, so nothing is written here.
+   */
+  async recordFailure() {
+    return { recorded: false };
   },
 
-  /** Read the gateway's return parameters out of the current URL. */
+  /** Parse the return leg: ?id=…&verify=paystack&reference=… */
   readReturn() {
     const q = new URLSearchParams(window.location.search);
     const provider = q.get("verify");
     if (!provider) return null;
     return {
-      provider,
       orderId: q.get("id") || "",
-      reference: q.get("reference") || q.get("trxref") || q.get("tx_ref") || "",
-      transactionId: q.get("transaction_id") || "",
-      status: (q.get("status") || "").toLowerCase()
+      provider,
+      reference: q.get("reference") || q.get("trxref") || "",
+      status: q.get("status") || ""
     };
   }
 };
+
+export { errorMessage };

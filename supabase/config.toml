@@ -412,3 +412,11 @@ enabled = true
 # declarative_schema_path = "./database"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# Paystack signs with HMAC, not a Supabase JWT — the signature IS the auth.
+[functions.paystack-webhook]
+verify_jwt = false
+
+# Initialization requires a signed-in customer.
+[functions.paystack-initialize]
+verify_jwt = true

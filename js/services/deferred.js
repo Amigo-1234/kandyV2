@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Kandy's Treats — Services not yet migrated (Phase 5 / payments)
+   Kandy's Treats — Wallet — not yet migrated (top-up is a later phase)
    --------------------------------------------------------------------------
    Auth now issues Supabase UUIDs. The Firestore implementations of these
    services key off a Firebase UID, so calling them would produce nothing but
@@ -25,16 +25,6 @@ function note(what) {
 
 const soon = (what) => () => {
   throw new Error(`${what} is being moved to the new system — back shortly.`);
-};
-
-export const paymentServiceDeferred = {
-  /* account.js filters over this, so it must stay an array. */
-  PROVIDERS: [],
-  async status() { note("Payment configuration"); return { paystack: false, flutterwave: false }; },
-  start: soon("Payment"),
-  verify: soon("Payment verification"),
-  async recordFailure() { /* nothing to record while payments are off */ },
-  readReturn() { return null; }
 };
 
 export const walletServiceDeferred = {

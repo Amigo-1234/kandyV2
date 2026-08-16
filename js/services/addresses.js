@@ -1,7 +1,7 @@
 /* ==========================================================================
    Kandy's Treats — Saved delivery addresses (Supabase)
    --------------------------------------------------------------------------
-   Kandy's serves Lagos State only for this release, so there is no geocoding
+   Kandy's serves Ado-Ekiti/Iworoko only for this release, so there is no geocoding
    and no GPS: the customer types the address themselves and saves it for
    reuse, exactly as V1 does.
 

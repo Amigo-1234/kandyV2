@@ -12,7 +12,7 @@
 (function (KT) {
   "use strict";
 
-  /* functions/index.js: DELIVERY_FEE = 500 — flat, Lagos State only. */
+  /* functions/index.js: DELIVERY_FEE = 500 — flat, Ado-Ekiti/Iworoko only. */
   var DELIVERY_FEE = 500;
 
   /* functions/index.js: PROCESSING_FEE_RATE = 0.02 — gateway payments only.

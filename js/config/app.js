@@ -62,14 +62,14 @@
     currency: "NGN",
     currencySymbol: "₦",
 
-    /* Kandy's operates within Lagos State only for this release.
+    /* Kandy's operates within Ado-Ekiti/Iworoko only for this release.
        Addresses are typed manually — no GPS, no geocoding, no nationwide
        coverage. See docs/INTEGRATION.md. */
     serviceArea: {
-      state: "Lagos",
+      state: "Ekiti",
       country: "Nigeria",
-      label: "Lagos State only",
-      note: "We deliver across Lagos State. Type your address in full so the rider can find you."
+      label: "Ado-Ekiti/Iworoko",
+      note: "We deliver across Ado-Ekiti/Iworoko. Type your address in full so the rider can find you."
     },
 
     /* ---- Business details shown to customers -------------------------
