@@ -76,6 +76,11 @@
           '<div class="nav__right">' +
             '<a class="icon-btn nav__search" href="' + KT.url("pages/menu.html") + '#search" aria-label="Search the menu">' +
               KT.icon("search", 21) + "</a>" +
+            /* Icon and labels are filled in by KT.theme.paintToggles(), which
+               knows the current theme; rendering it empty here keeps the
+               navbar markup theme-agnostic. */
+            '<button class="icon-btn nav__theme" type="button" data-theme-toggle ' +
+              'aria-label="Switch theme" title="Switch theme"></button>' +
             '<button class="cartbtn" type="button" data-open-cart aria-label="Open cart">' +
               KT.icon("cart", 21) +
               '<span class="cartbtn__badge" data-cart-count hidden>0</span>' +

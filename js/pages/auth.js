@@ -61,6 +61,50 @@
     btn.textContent = on ? busyLabel : btn.dataset.label;
   }
 
+  /**
+   * One-shot handoff to the destination page. sessionStorage (not local) so it
+   * dies with the tab, and the destination DELETES it on read — that is what
+   * stops the welcome re-appearing every time the account page is refreshed.
+   */
+  function handoff(kind, name) {
+    try {
+      window.sessionStorage.setItem("kt.welcome",
+        JSON.stringify({ kind: kind, name: name || "" }));
+    } catch (e) { /* private mode — the redirect still works, just silently */ }
+  }
+
+  /**
+   * Leave the crumb before navigating so the account page's first paint shows
+   * a skeleton rather than the signed-out state. kt:auth normally sets this,
+   * but doing it here removes the race entirely.
+   */
+  function goTo(url) {
+    if (KT.session) KT.session.remember();
+    window.location.href = url;
+  }
+
+  /** Replace the form with a success state, reusing existing panel classes. */
+  function successState(formSel, opts) {
+    var form = KT.qs(formSel);
+    if (!form) return;
+    var host = form.parentNode;
+    var panel = KT.el("div.panel", { "data-auth-success": true, html:
+      '<div class="empty">' +
+        '<div class="empty__art">' + KT.icon(opts.icon || "check", 38) + "</div>" +
+        "<h3>" + opts.title + "</h3>" +
+        "<p>" + opts.body + "</p>" +
+        (opts.action
+          ? '<a class="btn btn--primary" href="' + opts.action.href + '">' + opts.action.label + "</a>"
+          : "") +
+      "</div>" });
+    form.replaceWith(panel);
+    /* The social buttons and separator no longer apply once we have succeeded. */
+    var sep = KT.qs(".authsep", host);
+    var soc = KT.qs(".authsocial", host);
+    if (sep) sep.remove();
+    if (soc) soc.remove();
+  }
+
   function fail(error) {
     KT.toast(KT.services ? KT.services.errorMessage(error) : String(error.message || error),
       "error", { duration: 5200 });
@@ -79,7 +123,7 @@
         b.disabled = true;
         try {
           var user = await KT.auth.signInWithGoogle();
-          if (user && KT.auth) window.location.href = KT.auth.nextUrl();
+          if (user && KT.auth) { handoff("login", user.displayName); goTo(KT.auth.nextUrl()); }
         } catch (error) {
           fail(error);
         } finally {
@@ -92,6 +136,8 @@
   /* Already signed in? Skip the form. */
   function redirectIfSignedIn() {
     document.addEventListener("kt:auth", function (e) {
+      /* No handoff here: arriving already-authenticated is not a fresh
+         sign-in, so it must not trigger a welcome message. */
       if (e.detail.signedIn && KT.auth) window.location.href = KT.auth.nextUrl();
     });
   }
@@ -119,8 +165,9 @@
 
       busy(form, true, "Signing you in…");
       try {
-        await KT.auth.signIn(email, password);
-        if (KT.auth) window.location.href = KT.auth.nextUrl();
+        var signedIn = await KT.auth.signIn(email, password);
+        handoff("login", signedIn && signedIn.displayName);
+        if (KT.auth) goTo(KT.auth.nextUrl());
       } catch (error) {
         busy(form, false);
         fail(error);
@@ -207,9 +254,32 @@
 
       busy(form, true, "Creating your account…");
       try {
-        await KT.auth.signUp({ firstName: firstName, lastName: lastName, email: email, phone: phone, password: password });
-        KT.toast("Account created — check your email to verify it.", "success", { duration: 5200 });
-        if (KT.auth) window.location.href = KT.auth.nextUrl();
+        var result = await KT.auth.signUp({ firstName: firstName, lastName: lastName,
+          email: email, phone: phone, password: password });
+
+        if (result && result.needsEmailConfirmation) {
+          /* No session yet. Redirecting would drop a session-less visitor on
+             the account page, so stay here and say what happens next. */
+          successState("[data-signup-form]", {
+            icon: "mail",
+            title: "Confirm your email",
+            body: "We sent a link to <strong>" + email + "</strong>. Open it to " +
+                  "finish creating your Kandy's Treats account.",
+            action: { href: KT.url("pages/login.html"), label: "Back to sign in" }
+          });
+          return;
+        }
+
+        /* Session issued immediately — show the welcome, then hand over. */
+        handoff("signup", firstName);
+        successState("[data-signup-form]", {
+          icon: "sparkle",
+          title: "Welcome to Kandy's Treats 🎉",
+          body: "Your account has been created successfully. Taking you to your account…"
+        });
+        window.setTimeout(function () {
+          if (KT.auth) goTo(KT.auth.nextUrl());
+        }, 1400);
       } catch (error) {
         busy(form, false);
         fail(error);

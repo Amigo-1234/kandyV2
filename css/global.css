@@ -80,6 +80,127 @@
 }
 
 /* ==========================================================================
+   Dark theme
+   --------------------------------------------------------------------------
+   Same design, different ground. Only tokens are redefined here — no layout,
+   spacing, type or component rule is touched, so the light and dark versions
+   are guaranteed to stay structurally identical.
+
+   Three blocks on purpose:
+     :root                              light (above) — always defined
+     prefers-color-scheme + :not(light)  system preference, when unset
+     [data-theme="dark"]                 explicit choice, wins over system
+   Nothing gets its ONLY definition inside a media query, so an explicit
+   choice can always override the system in either direction.
+
+   --surface-rgb exists so translucent surfaces (sticky nav, glass cards)
+   can flip ground colour withoutevery rule needing a dark variant.
+   ========================================================================== */
+
+:root {
+  /* Translucent surfaces are declared per theme as complete colours.
+     rgba(var(--rgb), a) looked tidier but does NOT reliably re-resolve when
+     the variable changes on an element that also transitions
+     background-color — .nav kept its old colour while .tabbar (no transition)
+     updated. Explicit values remove the ambiguity. */
+  --surface-glass: rgba(255, 255, 255, 0.82);
+  --surface-glass-strong: rgba(255, 255, 255, 0.92);
+  --surface-glass-bar: rgba(255, 255, 255, 0.94);
+  --surface-glass-sticky: rgba(255, 255, 255, 0.93);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    /* #d92c85, not a lighter pink: white-on-fill needs >=4.5 for the
+       primary button, and lighter pinks drop that to ~3.5. Pink TEXT on
+       the dark ground still clears the 3:1 UI threshold at 4.28. */
+    --kt-pink: #d92c85;
+    --kt-pink-hover: #f65ba9;
+    --kt-pink-press: #c02275;
+    --kt-pink-bright: #ff6fb4;
+    --kt-pink-200: #5d2242;
+    --kt-pink-100: #3d1730;
+    --kt-pink-50: #2a1020;
+
+    --plum: #f7eaf1;
+    --plum-2: #e7d2de;
+    --plum-3: #d3b6c6;
+
+    --ink: #f6eef2;
+    --ink-2: #cdbcc6;
+    --ink-3: #9d8b96;
+    --ink-4: #74636d;
+
+    --line: #2c2028;
+    --line-2: #3d2d37;
+
+    --surface: #1a1217;
+    --surface-2: #120c10;
+    --surface-3: #221820;
+    --surface-glass: rgba(26, 18, 23, 0.86);
+    --surface-glass-strong: rgba(26, 18, 23, 0.94);
+    --surface-glass-bar: rgba(18, 12, 16, 0.96);
+    --surface-glass-sticky: rgba(18, 12, 16, 0.95);
+
+    --mint-50: #10312a;
+    --chili-50: #3a1a12;
+
+    --sh-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.32);
+    --sh-2: 0 2px 6px rgba(0, 0, 0, 0.46), 0 12px 28px rgba(0, 0, 0, 0.4);
+    --sh-3: 0 4px 12px rgba(0, 0, 0, 0.5), 0 24px 56px rgba(0, 0, 0, 0.55);
+    --sh-pink: 0 6px 18px rgba(240, 67, 155, 0.32);
+    --sh-pink-lg: 0 10px 30px rgba(240, 67, 155, 0.36);
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  /* #d92c85, not a lighter pink: white-on-fill needs >=4.5 for the
+       primary button, and lighter pinks drop that to ~3.5. Pink TEXT on
+       the dark ground still clears the 3:1 UI threshold at 4.28. */
+    --kt-pink: #d92c85;
+  --kt-pink-hover: #f65ba9;
+  --kt-pink-press: #c02275;
+  --kt-pink-bright: #ff6fb4;
+  --kt-pink-200: #5d2242;
+  --kt-pink-100: #3d1730;
+  --kt-pink-50: #2a1020;
+
+  --plum: #f7eaf1;
+  --plum-2: #e7d2de;
+  --plum-3: #d3b6c6;
+
+  --ink: #f6eef2;
+  --ink-2: #cdbcc6;
+  --ink-3: #9d8b96;
+  --ink-4: #74636d;
+
+  --line: #2c2028;
+  --line-2: #3d2d37;
+
+  --surface: #1a1217;
+  --surface-2: #120c10;
+  --surface-3: #221820;
+  --surface-glass: rgba(26, 18, 23, 0.86);
+  --surface-glass-strong: rgba(26, 18, 23, 0.94);
+  --surface-glass-bar: rgba(18, 12, 16, 0.96);
+  --surface-glass-sticky: rgba(18, 12, 16, 0.95);
+
+  --mint-50: #10312a;
+  --chili-50: #3a1a12;
+
+  --sh-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.32);
+  --sh-2: 0 2px 6px rgba(0, 0, 0, 0.46), 0 12px 28px rgba(0, 0, 0, 0.4);
+  --sh-3: 0 4px 12px rgba(0, 0, 0, 0.5), 0 24px 56px rgba(0, 0, 0, 0.55);
+  --sh-pink: 0 6px 18px rgba(240, 67, 155, 0.32);
+  --sh-pink-lg: 0 10px 30px rgba(240, 67, 155, 0.36);
+
+  color-scheme: dark;
+}
+
+
+/* ==========================================================================
    Reset
    ========================================================================== */
 
@@ -823,3 +944,11 @@ picture {
   display: contents;
 }
 
+
+/* Applied for a single frame while the theme swaps — see KT.theme.apply(). */
+:root.is-theme-switching,
+:root.is-theme-switching *,
+:root.is-theme-switching *::before,
+:root.is-theme-switching *::after {
+  transition: none !important;
+}

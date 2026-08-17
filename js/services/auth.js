@@ -113,11 +113,15 @@ export const authService = {
           display_name: displayName,
           phone: window.KT.rules.normalizePhone(phone || "")
         },
-        emailRedirectTo: absolute(window.KT.url("index.html"))
+        emailRedirectTo: absolute(window.KT.url("pages/account.html"))
       }
     });
     if (error) throw error;
-    return shape(data.user);
+    return {
+      user: shape(data.user),
+      /* Supabase withholds the session until the address is confirmed. */
+      needsEmailConfirmation: !data.session
+    };
   },
 
   async signInWithGoogle() {
@@ -161,7 +165,7 @@ export const authService = {
       account: "pages/account.html",
       orders: "pages/orders.html"
     };
-    return window.KT.url(routes[next] || "index.html");
+    return window.KT.url(routes[next] || "pages/account.html");
   }
 };
 

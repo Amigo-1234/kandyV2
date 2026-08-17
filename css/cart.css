@@ -129,7 +129,7 @@
   height: 6px;
   margin-top: 10px;
   border-radius: var(--r-pill);
-  background: #fff;
+  background: var(--surface);
   overflow: hidden;
 }
 .cprog__track span {

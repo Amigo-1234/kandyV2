@@ -539,11 +539,49 @@
 
   /* ---- Wiring ---------------------------------------------------------- */
 
+  /**
+   * Consume the one-shot welcome left by a successful sign-in or sign-up.
+   * Read-and-delete: a refresh of this page must not replay it.
+   */
+  function consumeWelcome() {
+    var raw;
+    try {
+      raw = window.sessionStorage.getItem("kt.welcome");
+      if (raw) window.sessionStorage.removeItem("kt.welcome");
+    } catch (e) { return; }
+    if (!raw) return;
+
+    var payload;
+    try { payload = JSON.parse(raw); } catch (e) { return; }
+    if (!payload || !payload.kind) return;
+
+    var first = String(payload.name || "").split(" ")[0];
+    if (payload.kind === "signup") {
+      KT.toast("Welcome to Kandy's Treats \uD83C\uDF89 Your account is ready.",
+        "success", { duration: 5200 });
+    } else {
+      KT.toast(first ? "Welcome back, " + first + "." : "You are signed in.",
+        "success", { duration: 3600 });
+    }
+  }
+
   KT.pages.account = function () {
     render();
     document.addEventListener("kt:auth", function () { if (booted) requestLoad(); });
     document.addEventListener("kt:services", function () { booted = true; requestLoad(); });
     if (KT.services) { booted = true; requestLoad(); }
+
+    /* consumeWelcome() is read-and-delete, so calling it from several points is
+       idempotent — the first one that finds the flag wins and the rest are
+       no-ops. That deliberately removes any dependence on whether auth resolves
+       before or after this module runs, and on when the toast host mounts. */
+    function tryWelcome() {
+      if (KT.auth && KT.auth.isSignedIn()) consumeWelcome();
+    }
+    document.addEventListener("kt:auth", tryWelcome);
+    document.addEventListener("kt:services", tryWelcome);
+    tryWelcome();
+
     if (location.hash === "#addresses") state.editing = null;
 
     document.addEventListener("click", async function (e) {

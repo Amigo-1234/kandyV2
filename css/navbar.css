@@ -44,7 +44,7 @@
   position: sticky;
   top: 0;
   z-index: 60;
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--surface-glass);
   backdrop-filter: saturate(180%) blur(18px);
   -webkit-backdrop-filter: saturate(180%) blur(18px);
   border-bottom: 1px solid transparent;
@@ -54,7 +54,7 @@
 .nav.is-stuck {
   border-bottom-color: var(--line);
   box-shadow: 0 4px 20px rgba(28, 16, 23, 0.05);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--surface-glass-strong);
 }
 
 .nav__inner {
@@ -123,7 +123,7 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--surface);
   color: var(--kt-pink);
   flex: none;
   box-shadow: var(--sh-1);
@@ -397,7 +397,7 @@
   z-index: 70;
   height: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--surface-glass-bar);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-top: 1px solid var(--line);
@@ -481,4 +481,17 @@
 .stickycart__right {
   padding-right: 10px;
   font-variant-numeric: tabular-nums;
+}
+
+/* Theme toggle — inherits .icon-btn sizing; only the focus ring is spelled out
+   so keyboard users get a visible target in both themes. */
+.nav__theme {
+  color: var(--ink-2);
+}
+.nav__theme:hover {
+  color: var(--kt-pink);
+}
+.nav__theme:focus-visible {
+  outline: 3px solid var(--kt-pink-bright);
+  outline-offset: 2px;
 }

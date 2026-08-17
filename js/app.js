@@ -74,6 +74,7 @@
 
     KT.components.paintCards(document);
     paintIcons(document);
+    if (KT.theme) KT.theme.paintToggles();
     KT.images.bindAll(document);
     KT.motion.reveal();
     KT.motion.parallax();

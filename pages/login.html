@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>/* Theme before first paint: an explicit choice wins over the system preference. Inline and synchronous ON PURPOSE — a deferred script would let the wrong theme paint first. */(function(){try{var t=localStorage.getItem("kt.theme");if(t!=="dark"&&t!=="light"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Sign in — Kandy's Treats</title>
@@ -106,6 +107,7 @@
 <div data-footer></div>
 
 <script src="../js/core/kt.js"></script>
+<script src="../js/core/theme.js"></script>
 <script src="../js/core/loading.js"></script>
 <script src="../js/config/app.js"></script>
 <script src="../js/lib/rules.js"></script>
