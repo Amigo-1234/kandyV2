@@ -98,7 +98,6 @@ All tokens live at the top of `css/global.css`.
 ├── firestore.indexes.json
 ├── storage.rules
 ├── firebase.json / .firebaserc
-├── scripts/seed-menu.js        admin: write the menu with stable slug ids
 ├── types/models.js             JSDoc typedefs for the type check
 ├── docs/INTEGRATION.md         what came from V1, and what is left
 └── assets/

@@ -64,20 +64,14 @@ section and an honest "Cooked to order" style hint, and a rating only appears
 if a real one exists. Filters and sorts were rebuilt on fields that actually
 exist (quick picks, in-stock, price).
 
-### Menu ids — action needed before go-live
+### Menu ids — resolved by the Supabase migration
 
-V1 seeded with `addDoc()`, so every meal has a random Firestore id. V2 uses
-readable slugs (`jollof-rice`) so deep links and the offline snapshot line up.
-Run **`scripts/seed-menu.js`** once, signed in as an admin:
-
-```js
-await import('/scripts/seed-menu.js').then(m => m.seedMenu({ dryRun: true }))
-await import('/scripts/seed-menu.js').then(m => m.seedMenu())
-```
-
-It writes the same menu with `setDoc()` + merge (preserving `status`,
-`imageUrl` and admin edits) and **reports the old auto-id documents without
-deleting them** — review, confirm the new ids work, then remove them.
+This was a Firestore problem: V1 seeded with `addDoc()`, so every meal had a
+random id. It no longer applies. The catalogue now lives in Supabase
+`menu_items`, where each row carries its original Firestore id in
+`legacy_firestore_id`, so old deep links and the bundled snapshot still
+resolve. `scripts/seed-menu.js` was the Firestore seeder and has been deleted
+along with the rest of the Firebase client code.
 
 ## Delivery area — Lagos State only, typed by hand
 

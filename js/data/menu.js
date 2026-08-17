@@ -10,7 +10,7 @@
    first paint is instant and the storefront still renders if Firestore is
    unreachable — in that state ordering is blocked, never guessed.
 
-   Doc ids below match scripts/seed-menu.js, which writes the same slugs with
+   Doc ids below match the Supabase menu_items.legacy_firestore_id mapping,
    setDoc(). Keep them in step: `createCheckoutOrder` looks up menus by id.
 
    Kandy's is a build-your-plate kitchen. Rice is sold per scoop; proteins and
