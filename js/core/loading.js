@@ -55,7 +55,15 @@
    * visitor sees the signed-out state immediately, with no skeleton flash.
    */
   KT.authResolving = function () {
-    return KT.authState === "pending" && KT.session.likely();
+    /* Two distinct "not ready" cases, and both must gate:
+       1. auth genuinely unresolved, and this browser has signed in before;
+       2. auth resolved, but window.KT.auth is not published yet — a page
+          checking `!KT.auth` would wrongly conclude "signed out".
+       (2) is belt-and-braces: services/index.js now holds the first broadcast
+       until publication, so it should be unreachable. It stays because the
+       failure it prevents is invisible and expensive. */
+    if (KT.authState === "pending") return KT.session.likely();
+    return KT.authState === "in" && !KT.auth;
   };
 
   document.addEventListener("kt:auth", /** @param {CustomEvent} e */ function (e) {
@@ -70,6 +78,7 @@
        The crumb is deliberately left alone: we did not learn they signed out. */
     if (!(e.detail && e.detail.ok) && KT.authState === "pending") KT.authState = "out";
   });
+
 
   /* ---- Skeleton vocabulary ---------------------------------------------- */
 
@@ -226,6 +235,58 @@
       return Promise.resolve(promise).finally(function () { KT.progress.done(); });
     }
   };
+
+  /* ---- Page transitions -------------------------------------------------
+
+     This is a multi-page app: the browser keeps painting the OLD document
+     until the new one's first paint, so a click can feel unacknowledged for
+     a few hundred milliseconds. Starting the progress bar on navigation gives
+     immediate feedback without blocking anything, and the destination page
+     carries its own bar onwards. No delay is introduced anywhere. */
+
+  function isPlainLeftClick(e) {
+    return !e.defaultPrevented && e.button === 0 &&
+           !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
+  }
+
+  document.addEventListener("click", function (e) {
+    if (!isPlainLeftClick(e)) return;
+
+    var link = e.target.closest && e.target.closest("a[href]");
+    if (!link) return;
+    if (link.target && link.target !== "_self") return;
+    if (link.hasAttribute("download")) return;
+
+    var href = link.getAttribute("href") || "";
+    if (!href || href.charAt(0) === "#") return;                 /* in-page */
+    if (/^(mailto:|tel:|javascript:)/i.test(href)) return;
+
+    var url;
+    try { url = new URL(link.href, window.location.href); } catch (err) { return; }
+    if (url.origin !== window.location.origin) return;           /* external */
+    /* Same page, different hash only — no navigation to wait for. */
+    if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+
+    KT.progress.start();
+  }, true);
+
+  /* A form submit that navigates deserves the same acknowledgement. */
+  document.addEventListener("submit", function (e) {
+    var form = e.target;
+    if (!form || e.defaultPrevented) return;
+    if (form.hasAttribute("data-no-progress")) return;
+    if (form.method && form.method.toLowerCase() === "dialog") return;
+    KT.progress.start();
+  }, true);
+
+  /* Restoring from bfcache re-shows a fully painted page: clear any bar that
+     was left mid-flight when the customer navigated away. */
+  window.addEventListener("pageshow", function (e) {
+    if (e.persisted) {
+      depth = 0;
+      if (bar) { bar.classList.remove("is-active", "is-finishing"); }
+    }
+  });
 
   /* The service layer is the one boot-time request every page makes. */
   function startBoot() {

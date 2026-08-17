@@ -37,7 +37,17 @@ function shape(u) {
   };
 }
 
+/* Supabase emits INITIAL_SESSION the moment this module is imported — which is
+   BEFORE services/index.js has finished importing the rest and assigned
+   window.KT.auth. A kt:auth escaping in that window made every page evaluate
+   `!KT.auth` as true and paint the signed-out state while the customer was in
+   fact signed in. So the first broadcast is held until index.js confirms the
+   service layer is published. */
+let broadcastReady = false;
+let broadcastPending = false;
+
 function broadcast() {
+  if (!broadcastReady) { broadcastPending = true; return; }
   document.dispatchEvent(new CustomEvent("kt:auth", {
     detail: { user: currentUser, signedIn: !!currentUser }
   }));
@@ -67,6 +77,16 @@ function absolute(path) {
 }
 
 export const authService = {
+  /**
+   * Called by services/index.js once KT.auth and KT.services exist. Flushes any
+   * auth state that settled while we were still booting.
+   */
+  beginBroadcast() {
+    if (broadcastReady) return;
+    broadcastReady = true;
+    if (broadcastPending) { broadcastPending = false; broadcast(); }
+  },
+
   /** Resolves once Supabase has reported the initial session. */
   ready: () => readyPromise,
 

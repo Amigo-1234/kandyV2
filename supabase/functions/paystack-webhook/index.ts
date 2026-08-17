@@ -36,10 +36,14 @@ Deno.serve(async (req) => {
 
   const data = event?.data ?? {};
   const orderCode = String(data?.metadata?.order_code ?? "").trim();
+  const purpose = String(data?.metadata?.purpose ?? "").trim();
   const reference = String(data?.reference ?? "").trim();
 
   /* Acknowledge events we do not settle, so Paystack stops retrying them. */
-  if (!orderCode || !reference) return json({ received: true, ignored: "no order metadata" }, 200);
+  if (!reference) return json({ received: true, ignored: "no reference" }, 200);
+  if (!orderCode && purpose !== "wallet_funding") {
+    return json({ received: true, ignored: "no order or funding metadata" }, 200);
+  }
 
   const gatewayStatus =
     event?.event === "charge.success" && data?.status === "success" ? "success" : (data?.status ?? "failed");
@@ -49,6 +53,26 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
+
+  /* Wallet funding is a completely separate settlement path: different RPC,
+     different table, different reference namespace. An order payment can never
+     credit a wallet and a top-up can never mark an order paid. */
+  if (purpose === "wallet_funding") {
+    const { data: funded, error: fundError } = await admin.rpc("settle_wallet_funding", {
+      p_provider: "paystack",
+      p_reference: reference,
+      p_amount: toNaira(data?.amount ?? 0),
+      p_currency: String(data?.currency ?? "NGN"),
+      p_gateway_status: gatewayStatus,
+      p_source: "webhook",
+      p_raw: event,
+    });
+    if (fundError) {
+      console.error("wallet funding refused", { reference, message: fundError.message });
+      return json({ received: true, credited: false, reason: fundError.message }, 200);
+    }
+    return json({ received: true, ...funded }, 200);
+  }
 
   const { data: result, error } = await admin.rpc("settle_order_payment", {
     p_order_code: orderCode,

@@ -65,8 +65,22 @@ function toRow(body, uid) {
   };
 }
 
+let listInFlight = null;
+
 export const addressService = {
+  /**
+   * Concurrent callers share one request. The navbar and the account page both
+   * ask for addresses during boot; without this they issue two identical
+   * queries within milliseconds of each other. This dedupes only requests that
+   * overlap in time — it is not a cache, so nothing can go stale.
+   */
   async list() {
+    if (listInFlight) return listInFlight;
+    listInFlight = addressService._fetchList().finally(() => { listInFlight = null; });
+    return listInFlight;
+  },
+
+  async _fetchList() {
     const uid = authService.uid();
     if (!uid) return [];
 

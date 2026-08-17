@@ -38,7 +38,7 @@ async function boot() {
   const { addressService } = await import("./addresses.js");
   const { orderService } = await import("./orders.js");
   const { paymentService } = await import("./payments.js");
-  const { walletServiceDeferred } = await import("./deferred.js");
+  const { walletService } = await import("./wallet.js");
 
   /* Every live service is Supabase now, so one error handler covers them. */
   const errorMessage = supaError;
@@ -53,26 +53,34 @@ async function boot() {
     addresses: addressService,
     orders: orderService,
     payments: paymentService,
-    wallet: walletServiceDeferred,
+    wallet: walletService,
     errorMessage,
     backend: {
       auth: "supabase", profile: "supabase",
       addresses: "supabase", favourites: "supabase",
       catalogue: "supabase", orders: "supabase",
       reviews: "supabase", content: "supabase",
-      payments: "supabase+paystack", wallet: "deferred"
+      payments: "supabase+paystack", wallet: "supabase+paystack"
     }
   };
 
-  /* Menu first — it decides whether ordering is allowed at all. */
-  await menuService.load();
-  menuService.watch();
-
-  /* Then settle auth so pages can render the right state once, not twice. */
+  /* Auth settles first and is cheap — it is what decides whether a page shows
+     an account or a sign-in prompt, so nothing should wait behind it. */
   await authService.ready();
+
+  /* Only now may auth events reach page code: KT.auth and KT.services exist. */
+  authService.beginBroadcast();
 
   document.documentElement.classList.add("has-services");
   document.dispatchEvent(new CustomEvent("kt:services", { detail: { ok: true } }));
+
+  /* The catalogue loads independently and announces itself with kt:menu, which
+     home / menu / product / cart already listen for. Awaiting it here used to
+     hold kt:services for seconds, so the account and orders pages sat on a
+     stale or empty state waiting for food data they never needed. */
+  menuService.load()
+    .then(() => menuService.watch())
+    .catch((error) => console.warn("[Kandy's] menu load deferred:", error));
 }
 
 boot().catch((error) => {

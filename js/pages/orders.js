@@ -162,9 +162,20 @@
     });
 
     paint();
-    document.addEventListener("kt:auth", load);
-    document.addEventListener("kt:services", load);
-    load();
+    var booted = false, inFlight = null, rerun = false;
+    function requestLoad() {
+      if (inFlight) { rerun = true; return inFlight; }
+      inFlight = Promise.resolve(load()).catch(function (e) {
+        console.warn("[Kandy's] orders load failed:", e);
+      }).then(function () {
+        inFlight = null;
+        if (rerun) { rerun = false; requestLoad(); }
+      });
+      return inFlight;
+    }
+    document.addEventListener("kt:auth", function () { if (booted) requestLoad(); });
+    document.addEventListener("kt:services", function () { booted = true; requestLoad(); });
+    if (KT.services) { booted = true; requestLoad(); }
   };
 
   /* ---- Detail ---------------------------------------------------------- */
@@ -452,8 +463,19 @@
     });
 
     if (KT.authResolving()) loadingState(); else signedOut();
-    document.addEventListener("kt:auth", load);
-    document.addEventListener("kt:services", load);
-    load();
+    var dBooted = false, dInFlight = null, dRerun = false;
+    function requestDetailLoad() {
+      if (dInFlight) { dRerun = true; return dInFlight; }
+      dInFlight = Promise.resolve(load()).catch(function (e) {
+        console.warn("[Kandy's] order detail load failed:", e);
+      }).then(function () {
+        dInFlight = null;
+        if (dRerun) { dRerun = false; requestDetailLoad(); }
+      });
+      return dInFlight;
+    }
+    document.addEventListener("kt:auth", function () { if (dBooted) requestDetailLoad(); });
+    document.addEventListener("kt:services", function () { dBooted = true; requestDetailLoad(); });
+    if (KT.services) { dBooted = true; requestDetailLoad(); }
   };
 })(window.KT || (window.KT = {}));

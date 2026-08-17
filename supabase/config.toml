@@ -420,3 +420,6 @@ verify_jwt = false
 # Initialization requires a signed-in customer.
 [functions.paystack-initialize]
 verify_jwt = true
+
+[functions.wallet-fund-initialize]
+verify_jwt = true

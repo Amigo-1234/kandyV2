@@ -102,7 +102,7 @@
         "</div>" +
         '<div class="loyalty__bar"><span style="width:' +
           Math.min(100, balance ? Math.max(6, Math.round((balance / 20000) * 100)) : 0) + '%"></span></div>' +
-        '<p class="loyalty__note">Pay from your wallet and skip the 2% card processing fee ' +
+        '<p class="loyalty__note">Pay from your wallet for one-tap checkout ' +
           "on every order.</p>" +
 
         (open
@@ -425,7 +425,7 @@
   /* ---- Data ------------------------------------------------------------ */
 
   async function load() {
-    if (!KT.services || !KT.auth.isSignedIn()) return render();
+    if (!KT.services || !KT.auth || !KT.auth.isSignedIn()) return render();
     var s = KT.services;
     var results = await Promise.allSettled([
       s.account.profile(), s.wallet.get(), s.addresses.list(),
@@ -517,13 +517,33 @@
       }).join("");
   }
 
+  /* kt:auth and kt:services both fire during boot, ~200ms apart, and each used
+     to trigger a full load() — every query ran twice. The initial load belongs
+     to kt:services (which now fires immediately after auth settles); kt:auth
+     only re-loads once booted, i.e. for a genuine sign-in or sign-out.
+     inFlight additionally coalesces overlapping loads. */
+  var booted = false;
+  var inFlight = null;
+  var rerunRequested = false;
+
+  function requestLoad() {
+    if (inFlight) { rerunRequested = true; return inFlight; }
+    inFlight = Promise.resolve(load()).catch(function (error) {
+      console.warn("[Kandy's] load failed:", error);
+    }).then(function () {
+      inFlight = null;
+      if (rerunRequested) { rerunRequested = false; requestLoad(); }
+    });
+    return inFlight;
+  }
+
   /* ---- Wiring ---------------------------------------------------------- */
 
   KT.pages.account = function () {
     render();
-    document.addEventListener("kt:auth", load);
-    document.addEventListener("kt:services", load);
-    load();
+    document.addEventListener("kt:auth", function () { if (booted) requestLoad(); });
+    document.addEventListener("kt:services", function () { booted = true; requestLoad(); });
+    if (KT.services) { booted = true; requestLoad(); }
     if (location.hash === "#addresses") state.editing = null;
 
     document.addEventListener("click", async function (e) {
@@ -554,20 +574,43 @@
       }
       var def = t.closest("[data-default-address]");
       if (def) {
-        await KT.services.addresses.makeDefault(def.getAttribute("data-default-address"));
-        state.addresses = await KT.services.addresses.list();
-        render();
+        var defDone = KT.busy(def, "Saving…");
+        if (!defDone) return;
+        try {
+          await KT.services.addresses.makeDefault(def.getAttribute("data-default-address"));
+          state.addresses = await KT.services.addresses.list();
+          render();
+        } catch (error) {
+          defDone();
+          KT.toast(KT.services.errorMessage(error), "error", { duration: 5000 });
+        }
       }
       var rm = t.closest("[data-remove-address]");
       if (rm) {
-        await KT.services.addresses.remove(rm.getAttribute("data-remove-address"));
-        state.addresses = await KT.services.addresses.list();
-        render();
-        KT.toast("Address removed.", "info");
+        var rmDone = KT.busy(rm, "Removing…");
+        if (!rmDone) return;
+        try {
+          await KT.services.addresses.remove(rm.getAttribute("data-remove-address"));
+          state.addresses = await KT.services.addresses.list();
+          render();
+          KT.toast("Address removed.", "info");
+        } catch (error) {
+          rmDone();
+          KT.toast(KT.services.errorMessage(error), "error", { duration: 5000 });
+        }
       }
-      if (t.closest("[data-resend]")) {
-        await KT.auth.resendVerification();
-        KT.toast("Verification email sent.", "success");
+      var resend = t.closest("[data-resend]");
+      if (resend) {
+        var resendDone = KT.busy(resend, "Sending…");
+        if (!resendDone) return;
+        try {
+          await KT.auth.resendVerification();
+          KT.toast("Verification email sent.", "success");
+        } catch (error) {
+          KT.toast(KT.services.errorMessage(error), "error");
+        } finally {
+          resendDone();
+        }
       }
       var note = t.closest("[data-notification]");
       if (note && !note.dataset.marked) {
@@ -611,15 +654,15 @@
 
       var fundWith = t.closest("[data-fund-with]");
       if (fundWith) {
-        fundWith.disabled = true;
-        fundWith.textContent = "Opening…";
+        var fundDone = KT.busy(fundWith, "Redirecting to Paystack…");
+        if (!fundDone) return;
         try {
           await KT.services.wallet.fund(
             Number(fundWith.getAttribute("data-fund-amount")),
             fundWith.getAttribute("data-fund-with")
           );
         } catch (error) {
-          render();
+          fundDone();
           KT.toast(KT.services.errorMessage(error), "error", { duration: 6000 });
         }
       }
@@ -646,8 +689,8 @@
           KT.toast("Tell us what happened so we can help.", "info");
           return;
         }
-        var btn = KT.qs("[type=submit]", supportForm);
-        btn.disabled = true; btn.textContent = "Sending…";
+        var supportDone = KT.busy(KT.qs("[type=submit]", supportForm), "Sending…");
+        if (!supportDone) return;
         try {
           await KT.services.content.openSupportTicket(data);
           state.editing = null;
@@ -655,8 +698,9 @@
           render();
           KT.toast("Support has your message — we will be in touch.", "success", { duration: 5000 });
         } catch (error) {
-          btn.disabled = false; btn.textContent = "Send to support";
           KT.toast(KT.services.errorMessage(error), "error", { duration: 5500 });
+        } finally {
+          supportDone();
         }
         return;
       }
@@ -668,6 +712,8 @@
       if (profForm && state.editing === "profile") {
         e.preventDefault();
         var data = Object.fromEntries(new FormData(profForm).entries());
+        var profDone = KT.busy(KT.qs("[type=submit]", profForm), "Saving…");
+        if (!profDone) return;
         try {
           await KT.services.account.updateProfile(data);
           state.editing = null;
@@ -676,6 +722,8 @@
           KT.toast("Details updated.", "success");
         } catch (error) {
           KT.toast(KT.services.errorMessage(error), "error");
+        } finally {
+          profDone();
         }
       }
     });

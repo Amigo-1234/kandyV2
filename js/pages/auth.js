@@ -79,7 +79,7 @@
         b.disabled = true;
         try {
           var user = await KT.auth.signInWithGoogle();
-          if (user) window.location.href = KT.auth.nextUrl();
+          if (user && KT.auth) window.location.href = KT.auth.nextUrl();
         } catch (error) {
           fail(error);
         } finally {
@@ -92,7 +92,7 @@
   /* Already signed in? Skip the form. */
   function redirectIfSignedIn() {
     document.addEventListener("kt:auth", function (e) {
-      if (e.detail.signedIn) window.location.href = KT.auth.nextUrl();
+      if (e.detail.signedIn && KT.auth) window.location.href = KT.auth.nextUrl();
     });
   }
 
@@ -120,7 +120,7 @@
       busy(form, true, "Signing you in…");
       try {
         await KT.auth.signIn(email, password);
-        window.location.href = KT.auth.nextUrl();
+        if (KT.auth) window.location.href = KT.auth.nextUrl();
       } catch (error) {
         busy(form, false);
         fail(error);
@@ -209,7 +209,7 @@
       try {
         await KT.auth.signUp({ firstName: firstName, lastName: lastName, email: email, phone: phone, password: password });
         KT.toast("Account created — check your email to verify it.", "success", { duration: 5200 });
-        window.location.href = KT.auth.nextUrl();
+        if (KT.auth) window.location.href = KT.auth.nextUrl();
       } catch (error) {
         busy(form, false);
         fail(error);
