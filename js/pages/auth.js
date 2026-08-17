@@ -69,7 +69,7 @@
   function handoff(kind, name) {
     try {
       window.sessionStorage.setItem("kt.welcome",
-        JSON.stringify({ kind: kind, name: name || "" }));
+        JSON.stringify({ kind: kind, name: name || "", at: Date.now() }));
     } catch (e) { /* private mode — the redirect still works, just silently */ }
   }
 
@@ -78,6 +78,11 @@
    * a skeleton rather than the signed-out state. kt:auth normally sets this,
    * but doing it here removes the race entirely.
    */
+  /** Undo an optimistic handoff when the navigation never actually happened. */
+  function clearHandoff() {
+    try { window.sessionStorage.removeItem("kt.welcome"); } catch (e) { /* no-op */ }
+  }
+
   function goTo(url) {
     if (KT.session) KT.session.remember();
     window.location.href = url;
@@ -121,13 +126,28 @@
       b.addEventListener("click", async function () {
         if (!KT.services) return;
         b.disabled = true;
+        b.setAttribute("aria-busy", "true");
+
+        /* signInWithGoogle() resolves to null BECAUSE the browser navigates
+           away, so there is no "after" in which to record success. Both the
+           welcome handoff and the session crumb have to be written now. The
+           crumb is what stops account.html painting its signed-out state while
+           the callback is still being exchanged.
+           Kind is "oauth", not login/signup: whether this account is new is
+           only knowable once we are back, so the destination decides. */
+        if (KT.session) KT.session.remember();
+        handoff("oauth");
+
         try {
-          var user = await KT.auth.signInWithGoogle();
-          if (user && KT.auth) { handoff("login", user.displayName); goTo(KT.auth.nextUrl()); }
+          await KT.auth.signInWithGoogle();
+          /* Success means we are leaving — keep the button busy. */
         } catch (error) {
-          fail(error);
-        } finally {
+          /* We never left, so roll the optimistic state back. */
+          clearHandoff();
+          if (KT.session && !(KT.auth && KT.auth.isSignedIn())) KT.session.forget();
           b.disabled = false;
+          b.removeAttribute("aria-busy");
+          fail(error);
         }
       });
     });

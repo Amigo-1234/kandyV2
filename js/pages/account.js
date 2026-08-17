@@ -555,8 +555,27 @@
     try { payload = JSON.parse(raw); } catch (e) { return; }
     if (!payload || !payload.kind) return;
 
+    /* An abandoned OAuth attempt leaves the flag behind, so ignore a stale one
+       rather than greeting someone who never completed sign-in. */
+    if (payload.at && (Date.now() - payload.at) > 15 * 60 * 1000) return;
+
+    var kind = payload.kind;
     var first = String(payload.name || "").split(" ")[0];
-    if (payload.kind === "signup") {
+
+    /* Google gives no "is this new?" signal at click time, so decide here: a
+       first-ever sign-in has created_at effectively equal to last_sign_in_at.
+       30s of slack covers the OAuth round trip. */
+    if (kind === "oauth") {
+      var u = (KT.auth && KT.auth.user && KT.auth.user()) || null;
+      var rawUser = u && u.raw;
+      var createdAt = rawUser && rawUser.created_at ? Date.parse(rawUser.created_at) : 0;
+      var lastSignIn = rawUser && rawUser.last_sign_in_at ? Date.parse(rawUser.last_sign_in_at) : 0;
+      kind = (createdAt && lastSignIn && Math.abs(lastSignIn - createdAt) < 30000)
+        ? "signup" : "login";
+      if (!first && u) first = String(u.displayName || "").split(" ")[0];
+    }
+
+    if (kind === "signup") {
       KT.toast("Welcome to Kandy's Treats \uD83C\uDF89 Your account is ready.",
         "success", { duration: 5200 });
     } else {

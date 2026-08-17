@@ -62,8 +62,23 @@
        (2) is belt-and-braces: services/index.js now holds the first broadcast
        until publication, so it should be unreachable. It stays because the
        failure it prevents is invisible and expensive. */
-    if (KT.authState === "pending") return KT.session.likely();
+    if (KT.authState === "pending") return KT.session.likely() || KT.oauthReturning();
     return KT.authState === "in" && !KT.auth;
+  };
+
+  /**
+   * True while a Supabase OAuth callback is still being exchanged for a
+   * session. A first-ever Google sign-in has no session crumb yet, so the crumb
+   * alone would let the signed-out state paint before the exchange finishes —
+   * the callback parameters are proof a session is inbound. supabase-js strips
+   * them once it holds the session, so this self-clears.
+   * PKCE returns ?code=, the implicit flow returns #access_token=.
+   */
+  KT.oauthReturning = function () {
+    try {
+      if (new URLSearchParams(window.location.search).get("code")) return true;
+      return window.location.hash.indexOf("access_token=") > -1;
+    } catch (e) { return false; }
   };
 
   document.addEventListener("kt:auth", /** @param {CustomEvent} e */ function (e) {
