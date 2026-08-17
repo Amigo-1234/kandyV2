@@ -25,8 +25,15 @@
 <script>window.KT_BASE = "../";</script>
 <style>
   /* Password strength meter — local to this page */
-  .pwmeter { margin-top: 8px; }
+  /* Both .pwmeter and .pwmeter__track are <span>s inside a <label>, so they
+     default to display:inline -- and `height` does not apply to a non-replaced
+     inline box. The 5px track height was silently ignored, ::after resolved
+     height:100% against an unconstrained parent, and border-radius:999px
+     painted that as a large rounded shape covering the consent checkboxes
+     below. Making them block-level is the entire fix. */
+  .pwmeter { display: block; margin-top: 8px; }
   .pwmeter__track {
+    display: block;
     height: 5px; border-radius: var(--r-pill); background: var(--line); overflow: hidden;
   }
   .pwmeter__track::after {
@@ -124,7 +131,7 @@
 
         <p class="uinote">
           <span data-icon="lock" data-icon-size="16" aria-hidden="true"></span>
-          <span>Secured by Firebase Authentication. We never see your password.</span>
+          <span>Secured by Supabase Authentication. We never see your password.</span>
         </p>
       </div>
     </div>

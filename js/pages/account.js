@@ -34,7 +34,7 @@
   function sideNav(active) {
     /* The orders and order-detail pages reuse this nav without running this
        module's load(), so state.profile is null there. Falling back to the
-       Firebase user keeps the header truthful without a second request. */
+       session user keeps the header truthful without a second request. */
     var p = state.profile;
     var u = (KT.auth && KT.auth.user && KT.auth.user()) || null;
     var name = (p && p.displayName) || (p && p.email) ||
@@ -74,7 +74,7 @@
       "</div></div>");
   }
 
-  /* Shown while Firebase is still restoring the session for a returning
+  /* Shown while Supabase is still restoring the session for a returning
      customer. Without it the page paints signedOut() first and corrects
      itself a second later, which reads as a bug. */
   function loadingState() {

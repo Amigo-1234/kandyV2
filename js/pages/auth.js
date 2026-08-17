@@ -1,6 +1,6 @@
 /* ==========================================================================
    Kandy's Treats — Sign in & sign up
-   Real Firebase Authentication, following V1's flow. The form markup and
+   Real Supabase Authentication, following V1's flow. The form markup and
    styling are unchanged; only the behaviour behind them is live now.
    ========================================================================== */
 (function (KT) {
@@ -26,7 +26,7 @@
     });
   }
 
-  /** Disable the form until the Firebase module has finished loading. */
+  /** Disable the form until the auth service module has finished loading. */
   function gate(formSel) {
     var form = KT.qs(formSel);
     if (!form) return;
