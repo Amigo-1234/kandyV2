@@ -85,7 +85,7 @@
               KT.icon("cart", 21) +
               '<span class="cartbtn__badge" data-cart-count hidden>0</span>' +
             "</button>" +
-            '<a class="btn btn--primary btn--sm nav__cta" href="' + KT.url("pages/login.html") + '">Sign in</a>' +
+            '<span data-auth-cta>' + authCtaHTML() + "</span>" +
             '<button class="icon-btn nav__burger" type="button" data-open-sheet aria-label="Open menu" aria-expanded="false">' +
               KT.icon("menu", 22) + "</button>" +
           "</div>" +
@@ -131,10 +131,7 @@
               "</div>" +
             "</div>" +
           "</div>" +
-          '<div class="sheet__foot">' +
-            '<a class="btn btn--primary btn--block" href="' + KT.url("pages/login.html") + '">Sign in</a>' +
-            '<a class="btn btn--ghost btn--block" href="' + KT.url("pages/signup.html") + '">Create an account</a>' +
-          "</div>" +
+          '<div class="sheet__foot" data-auth-sheet-cta>' + authSheetHTML() + "</div>" +
         "</div>" +
       "</div>" +
 
@@ -144,6 +141,53 @@
   }
 
   KT.components = KT.components || {};
+
+  /**
+   * The header CTA, driven by the real Supabase session rather than a cached
+   * flag. THREE states, not two — the hydrating state is what stops a
+   * signed-in customer seeing "Sign in" for a moment on every page load. It
+   * keeps the button's footprint (visibility, not display), so resolving
+   * cannot shift the layout.
+   */
+  function authCtaHTML() {
+    if (KT.authResolving && KT.authResolving()) {
+      return '<a class="btn btn--primary btn--sm nav__cta" href="' + KT.url("pages/account.html") +
+        '" style="visibility:hidden" aria-hidden="true" tabindex="-1">My account</a>';
+    }
+    if (KT.auth && KT.auth.isSignedIn()) {
+      return '<a class="btn btn--soft btn--sm nav__cta" href="' + KT.url("pages/account.html") +
+        '">My account</a>';
+    }
+    return '<a class="btn btn--primary btn--sm nav__cta" href="' + KT.url("pages/login.html") +
+      '">Sign in</a>';
+  }
+
+  /** The same three states for the mobile sheet's footer. */
+  function authSheetHTML() {
+    if (KT.authResolving && KT.authResolving()) {
+      return '<a class="btn btn--primary btn--block" href="' + KT.url("pages/account.html") +
+        '" style="visibility:hidden" aria-hidden="true" tabindex="-1">My account</a>';
+    }
+    if (KT.auth && KT.auth.isSignedIn()) {
+      return '<a class="btn btn--primary btn--block" href="' + KT.url("pages/account.html") +
+          '">My account</a>' +
+        '<a class="btn btn--ghost btn--block" href="' + KT.url("pages/orders.html") +
+          '">Order history</a>';
+    }
+    return '<a class="btn btn--primary btn--block" href="' + KT.url("pages/login.html") +
+        '">Sign in</a>' +
+      '<a class="btn btn--ghost btn--block" href="' + KT.url("pages/signup.html") +
+        '">Create an account</a>';
+  }
+
+  /** Repaint both CTAs in place. Cheap, and safe to call repeatedly. */
+  function paintAuthCta() {
+    var cta = KT.qs("[data-auth-cta]");
+    if (cta) cta.innerHTML = authCtaHTML();
+    var sheet = KT.qs("[data-auth-sheet-cta]");
+    if (sheet) sheet.innerHTML = authSheetHTML();
+  }
+  KT.components.paintAuthCta = paintAuthCta;
 
   KT.components.navbar = function (active) {
     var host = KT.qs("[data-navbar]");
@@ -227,6 +271,12 @@
         n.textContent = pick.address;
       });
     }
+
+    /* The session is the source of truth, so repaint on every auth signal and
+       when services publish — that is when a restored session first lands. */
+    document.addEventListener("kt:auth", paintAuthCta);
+    document.addEventListener("kt:services", paintAuthCta);
+    paintAuthCta();
 
     document.addEventListener("kt:auth", function (e) {
       if (!e.detail.signedIn || !KT.services) return;

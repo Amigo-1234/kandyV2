@@ -75,6 +75,15 @@
     KT.components.paintCards(document);
     paintIcons(document);
     if (KT.theme) KT.theme.paintToggles();
+
+    /* Keep every auth-dependent CTA in step with the real session. */
+    function repaintAuthUi() {
+      if (KT.components.paintAuthCta) KT.components.paintAuthCta();
+      if (KT.components.paintFooterAccount) KT.components.paintFooterAccount();
+    }
+    document.addEventListener("kt:auth", repaintAuthUi);
+    document.addEventListener("kt:services", repaintAuthUi);
+    repaintAuthUi();
     KT.images.bindAll(document);
     KT.motion.reveal();
     KT.motion.parallax();

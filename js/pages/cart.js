@@ -59,6 +59,14 @@
         KT.loadingLabel("Loading your saved addresses…");
     }
 
+    /* Say nothing until the session is known — otherwise a signed-in customer
+       sees "Sign in to add an address" for a moment on every cart load. */
+    if (KT.authResolving && KT.authResolving()) {
+      return '<div class="deliverycard"><span class="deliverycard__icon">' +
+        KT.spinner(18) + "</span><div><strong>Checking your account…</strong>" +
+        "<p>One moment while we load your saved addresses.</p></div></div>";
+    }
+
     if (!KT.auth || !KT.auth.user()) {
       return (
         '<div class="deliverycard">' +

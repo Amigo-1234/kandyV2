@@ -20,12 +20,9 @@
     },
     {
       title: "Your account",
-      links: [
-        ["Sign in", "pages/login.html"],
-        ["Create account", "pages/signup.html"],
-        ["Order history", "pages/orders.html"],
-        ["Saved addresses", "pages/account.html"]
-      ]
+      /* Rendered by accountLinks() so the column can follow the session. */
+      dynamic: "account",
+      links: []
     },
     {
       title: "Kandy's",
@@ -93,14 +90,42 @@
 
   KT.components = KT.components || {};
 
+  /**
+   * Session-aware links for the "Your account" column. While auth is still
+   * resolving we show only the neutral entries — never "Sign in", which a
+   * signed-in customer would otherwise see for a moment on every page load.
+   */
+  function accountLinks() {
+    var neutral = [
+      ["Order history", "pages/orders.html"],
+      ["Saved addresses", "pages/account.html"]
+    ];
+    if (KT.authResolving && KT.authResolving()) return neutral;
+    if (KT.auth && KT.auth.isSignedIn()) {
+      return [["My account", "pages/account.html"]].concat(neutral);
+    }
+    return [["Sign in", "pages/login.html"], ["Create account", "pages/signup.html"]]
+      .concat(neutral);
+  }
+
+  function paintAccountLinks() {
+    var host = KT.qs("[data-foot-account]");
+    if (!host) return;
+    host.innerHTML = accountLinks().map(function (l) {
+      return '<li><a href="' + KT.url(l[1]) + '">' + l[0] + "</a></li>";
+    }).join("");
+  }
+  KT.components.paintFooterAccount = paintAccountLinks;
+
   KT.components.footer = function () {
     var host = KT.qs("[data-footer]");
     if (!host) return;
 
     var cols = COLUMNS.map(function (c) {
       return (
-        '<div class="foot__col"><h3 class="foot__title">' + c.title + "</h3><ul>" +
-        c.links
+        '<div class="foot__col"><h3 class="foot__title">' + c.title + "</h3>" +
+        "<ul" + (c.dynamic === "account" ? " data-foot-account" : "") + ">" +
+        (c.dynamic === "account" ? accountLinks() : c.links)
           .map(function (l) {
             return '<li><a href="' + KT.url(l[1]) + '">' + l[0] + "</a></li>";
           })
