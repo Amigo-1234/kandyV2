@@ -103,6 +103,12 @@
      the variable changes on an element that also transitions
      background-color — .nav kept its old colour while .tabbar (no transition)
      updated. Explicit values remove the ambiguity. */
+  /* --kt-plum is a dark plum used mostly as a BACKGROUND, so it must not be
+     inverted for dark mode. These two are the places it is used as TEXT, and
+     they do need to flip. */
+  --ink-on-light-chip: var(--kt-plum);
+  --ink-on-selection: var(--kt-plum);
+
   --surface-glass: rgba(255, 255, 255, 0.82);
   --surface-glass-strong: rgba(255, 255, 255, 0.92);
   --surface-glass-bar: rgba(255, 255, 255, 0.94);
@@ -122,9 +128,6 @@
     --kt-pink-100: #3d1730;
     --kt-pink-50: #2a1020;
 
-    --plum: #f7eaf1;
-    --plum-2: #e7d2de;
-    --plum-3: #d3b6c6;
 
     --ink: #f6eef2;
     --ink-2: #cdbcc6;
@@ -137,6 +140,12 @@
     --surface: #1a1217;
     --surface-2: #120c10;
     --surface-3: #221820;
+    /* Pure white, not --ink (#f6eef2, a pink-tinted near-white): on the
+       dark chip over the hero photo that tint reads as dim grey next to
+       the neighbouring white chips. Only the "Kitchen is open" chip
+       uses this token. */
+    --ink-on-light-chip: #ffffff;
+    --ink-on-selection: var(--ink);
     --surface-glass: rgba(26, 18, 23, 0.86);
     --surface-glass-strong: rgba(26, 18, 23, 0.94);
     --surface-glass-bar: rgba(18, 12, 16, 0.96);
@@ -167,9 +176,6 @@
   --kt-pink-100: #3d1730;
   --kt-pink-50: #2a1020;
 
-  --plum: #f7eaf1;
-  --plum-2: #e7d2de;
-  --plum-3: #d3b6c6;
 
   --ink: #f6eef2;
   --ink-2: #cdbcc6;
@@ -182,6 +188,8 @@
   --surface: #1a1217;
   --surface-2: #120c10;
   --surface-3: #221820;
+  --ink-on-light-chip: #ffffff;
+  --ink-on-selection: var(--ink);
   --surface-glass: rgba(26, 18, 23, 0.86);
   --surface-glass-strong: rgba(26, 18, 23, 0.94);
   --surface-glass-bar: rgba(18, 12, 16, 0.96);
@@ -289,7 +297,7 @@ p {
 
 ::selection {
   background: var(--kt-pink-100);
-  color: var(--kt-plum);
+  color: var(--ink-on-selection);
 }
 
 /* ==========================================================================

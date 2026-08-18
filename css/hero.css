@@ -297,7 +297,9 @@
 .herochip--live {
   left: 8%;
   bottom: 6%;
-  color: var(--kt-plum);
+  /* --kt-plum is near-black, which vanished against the dark chip in dark
+     mode. This token is plum in light and near-white in dark. */
+  color: var(--ink-on-light-chip);
   animation: kt-float 7.6s ease-in-out infinite reverse;
 }
 .herochip__pulse {
