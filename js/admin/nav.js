@@ -31,7 +31,12 @@
     ]},
     { group: "Management", items: [
       { id: "menu-manage", label: "Menu management",  icon: "settings", min: "admin" },
-      { id: "customers",   label: "Customers",        icon: "user",     min: "admin" },
+      /* staff+, not admin: Phase 7 gives staff an operational customer view
+         (name, phone, order history). The redaction is enforced server-side
+         by admin_list_customers / admin_get_customer, which return null for
+         email, spend and addresses to a staff caller — so widening the nav
+         does not widen the data. */
+      { id: "customers",   label: "Customers",        icon: "user",     min: "staff" },
       { id: "announcements", label: "Announcements",  icon: "sparkle",  min: "admin" },
       { id: "messages",    label: "Contact messages", icon: "mail",     min: "admin" },
       { id: "finance",     label: "Finance",          icon: "wallet",   min: "admin" },

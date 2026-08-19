@@ -423,3 +423,7 @@ verify_jwt = true
 
 [functions.wallet-fund-initialize]
 verify_jwt = true
+
+# Owner-only; the tier is verified inside using the caller's own JWT.
+[functions.admin-delete-customer]
+verify_jwt = true

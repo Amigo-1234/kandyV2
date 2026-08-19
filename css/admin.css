@@ -580,3 +580,74 @@
   .mstatus { width: 100%; }
   .mstatus__btn { flex: 1; text-align: center; }
 }
+
+/* ==========================================================================
+   Customers module
+   ========================================================================== */
+
+.clist { display: grid; gap: 10px; }
+
+.ccard {
+  display: flex; align-items: center; gap: 13px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: 13px 15px; cursor: pointer;
+  transition: border-color var(--t-fast) linear, box-shadow var(--t-fast) linear;
+}
+.ccard:hover { border-color: var(--kt-pink-200); box-shadow: var(--sh-1); }
+.ccard:focus-visible { outline: 3px solid var(--kt-pink-bright); outline-offset: 2px; }
+
+.ccard__avatar {
+  flex: none; width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--kt-pink-50); color: var(--kt-pink);
+  font-size: 0.8rem; font-weight: 800;
+}
+/* --kt-pink is deliberately darker in dark mode so it works as a button fill,
+   which drops it to 3.9 on the tinted avatar. Use the bright accent instead. */
+:root[data-theme="dark"] .ccard__avatar,
+:root:not([data-theme="light"]) .ccard__avatar { color: var(--kt-pink-bright); }
+.ccard__main { flex: 1; min-width: 0; }
+.ccard__top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 2px; }
+.ccard__top strong { font-family: var(--font-display); font-size: 0.98rem; }
+.ccard__contact { margin: 0 0 2px; font-size: 0.85rem; color: var(--ink-2); overflow-wrap: anywhere; }
+.ccard__meta { margin: 0; display: flex; gap: 7px; flex-wrap: wrap; font-size: 0.74rem; color: var(--ink-3); }
+
+/* Restricted rather than absent: staff should see that something exists and
+   is withheld, not silently get a blank. */
+.ccard__redacted {
+  /* --ink-4 is the faintest ink and measured 2.61 here: de-emphasised to the
+     point of unreadable. This still reads as secondary at ~4.8 while staying
+     legible, which matters because the whole point is telling a staff member
+     that something exists and is withheld. */
+  font-style: italic; color: var(--ink-3);
+  border-bottom: 1px dashed var(--ink-4); padding-bottom: 1px;
+}
+
+.ccard__right { flex: none; display: grid; justify-items: end; line-height: 1.15; }
+.ccard__orders { font-family: var(--font-display); font-size: 1.25rem; }
+.ccard__ordersLabel { font-size: 0.68rem; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+.ccard__spent { font-size: 0.8rem; font-weight: 700; color: var(--mint); margin-top: 3px; }
+:root[data-theme="dark"] .ccard__spent,
+:root:not([data-theme="light"]) .ccard__spent { color: #35d6a8; }
+
+.cpager {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  margin-top: 16px; font-size: 0.85rem; color: var(--ink-3);
+}
+
+.cdetail__name { font-family: var(--font-display); font-size: 1.2rem; margin: 0 0 10px; }
+.cdetail__sub { display: block; font-size: 0.75rem; color: var(--ink-3); font-weight: 400; }
+
+.caddr {
+  padding: 10px 0; border-bottom: 1px dashed var(--line);
+}
+.caddr:last-child { border-bottom: 0; }
+.caddr strong { display: block; margin-bottom: 3px; }
+.caddr p { margin: 0 0 2px; font-size: 0.87rem; }
+
+@media (max-width: 560px) {
+  .ccard { align-items: flex-start; flex-wrap: wrap; }
+  .ccard__right { flex-direction: row; align-items: baseline; gap: 6px; width: 100%; justify-items: start; }
+  .ccard__spent { margin-top: 0; }
+  .oline { flex-wrap: wrap; }
+}
