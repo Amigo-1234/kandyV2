@@ -146,9 +146,18 @@
     return h || "dashboard";
   }
 
+  var lastView = null;
+
   function route() {
     if (!state.ready) return;
     var id = currentId();
+
+    /* Let the outgoing module release subscriptions and transient state. */
+    if (lastView && lastView !== id) {
+      var teardown = KT.admin.views[lastView + "Teardown"];
+      if (typeof teardown === "function") teardown();
+    }
+    lastView = id;
     var host = KT.qs("[data-admin-page]");
     if (!host) return;
 
@@ -160,8 +169,9 @@
          database if the module behind it tried to read anything. */
       KT.mount(host, KT.admin.views.forbidden(ctx, id));
       setTitle(item ? item.label : "Not found");
-    } else if (id === "dashboard") {
-      KT.mount(host, KT.admin.views.dashboard(ctx));
+    } else if (typeof KT.admin.views[id] === "function") {
+      /* A real module. Its own view owns the content from here. */
+      KT.mount(host, KT.admin.views[id](ctx));
       setTitle(item.label);
     } else {
       KT.mount(host, KT.admin.views.placeholder(ctx, item));
