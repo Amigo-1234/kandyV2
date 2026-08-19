@@ -78,9 +78,15 @@ async function boot() {
      home / menu / product / cart already listen for. Awaiting it here used to
      hold kt:services for seconds, so the account and orders pages sat on a
      stale or empty state waiting for food data they never needed. */
-  menuService.load()
-    .then(() => menuService.watch())
-    .catch((error) => console.warn("[Kandy's] menu load deferred:", error));
+  /* Only the storefront has a catalogue to hydrate. The admin app loads this
+     same service layer without js/data/menu.js or the cart, and menuService
+     writes straight into window.KT.menu / window.KT.cart — so starting it
+     there would throw during boot. */
+  if (window.KT.menu && window.KT.cart) {
+    menuService.load()
+      .then(() => menuService.watch())
+      .catch((error) => console.warn("[Kandy's] menu load deferred:", error));
+  }
 }
 
 boot().catch((error) => {

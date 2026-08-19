@@ -56,7 +56,13 @@ function broadcast() {
 function settle(session) {
   currentUser = shape(session && session.user);
   /* Re-scope the basket so a guest's items follow them into their account. */
-  window.KT.cart.setScope(currentUser ? currentUser.uid : null);
+  /* The admin app reuses this exact service layer but never loads the
+     storefront cart, so this must not assume KT.cart exists. Without the
+     guard the whole auth boot rejected on /admin/ and the page sat on its
+     skeleton forever. */
+  if (window.KT.cart && window.KT.cart.setScope) {
+    window.KT.cart.setScope(currentUser ? currentUser.uid : null);
+  }
   if (!ready) { ready = true; resolveReady(currentUser); }
   broadcast();
 }
