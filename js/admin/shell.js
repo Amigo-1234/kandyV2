@@ -23,6 +23,11 @@
 
   var state = { role: null, name: "", email: "", ready: false };
 
+  /* Modules ask the shell what tier the caller is, so role-dependent UI has a
+     single source. It is presentation only — every restricted operation is
+     re-checked server-side regardless of what this returns. */
+  KT.admin.currentRole = function () { return state.role; };
+
   function root() { return KT.qs("[data-admin-root]"); }
 
   /* ---- States before the app is allowed to render ---------------------- */

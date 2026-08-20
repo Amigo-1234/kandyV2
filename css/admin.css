@@ -797,3 +797,114 @@
   .sfilters__search { flex: 1 1 100%; }
   .sdetail__head { flex-direction: column; }
 }
+
+/* ---- Finance ------------------------------------------------------------ */
+
+.fin__tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.fin__tabcount {
+  display: inline-grid; place-items: center; min-width: 18px; height: 18px;
+  margin-left: 5px; padding: 0 5px; border-radius: var(--r-pill);
+  background: var(--chili); color: #fff; font-size: 0.66rem; font-weight: 800;
+}
+.fin__asof { margin: 0 0 14px; color: var(--ink-3); font-size: 0.82rem; }
+.fin__section {
+  margin: 24px 0 12px; font-family: var(--font-display); font-size: 1.02rem;
+  display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap;
+}
+.fin__section span { font-family: var(--font-ui); font-size: 0.78rem; font-weight: 600; color: var(--ink-3); }
+.fin__section:first-child { margin-top: 0; }
+
+.fin__note {
+  display: flex; gap: 9px; align-items: flex-start;
+  margin: 16px 0; padding: 11px 13px;
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: var(--surface-3); color: var(--ink-2); font-size: 0.84rem; line-height: 1.5;
+}
+.fin__note.is-bad { border-color: var(--chili); background: var(--chili-50); }
+.fin__note svg { flex: none; margin-top: 2px; }
+.fin__count { margin: 0 0 10px; color: var(--ink-3); font-size: 0.82rem; font-weight: 600; }
+
+.astat--good .astat__value { color: var(--mint); }
+.astat--warn .astat__value { color: var(--amber); }
+.astat--bad  .astat__value { color: var(--chili); }
+
+.fin__filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.fin__filters .field { margin: 0; }
+.fin__search { flex: 1 1 260px; }
+
+.fin__rows { display: grid; gap: 10px; }
+.finrow {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: 14px 16px;
+}
+.finrow--critical { border-left: 3px solid var(--chili); }
+.finrow--warning  { border-left: 3px solid var(--amber); }
+.finrow--info     { border-left: 3px solid var(--ink-4); }
+.finrow__top { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 7px; }
+.finrow__issue {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem; color: var(--ink-2);
+  overflow-wrap: anywhere;      /* a long gateway reference must not widen the row */
+}
+.finrow__when {
+  margin-left: auto; font-size: 0.75rem; white-space: nowrap;
+  /* --ink-4 measured 2.54 in light and 3.45 in dark. A timestamp on a
+     financial record is information, not decoration, so it needs to clear AA
+     like the rest of the row. */
+  color: var(--ink-3);
+}
+.finrow__detail { margin: 0 0 10px; font-size: 0.88rem; color: var(--ink-2); }
+.finrow__facts {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px 14px; margin: 0;
+}
+.finrow__facts dt {
+  /* --ink-3, not --ink-4: at 0.68rem this is normal text for contrast
+     purposes, and --ink-4 measured 3.45 against the dark ground — under the
+     4.5 AA threshold. These labels name financial figures, so they have to be
+     readable rather than merely decorative. */
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.finrow__facts dd { margin: 0; font-size: 0.88rem; font-weight: 600; overflow-wrap: anywhere; }
+.finrow__facts dd.is-bad { color: var(--chili); }
+.finrow__actions { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+
+.sevbadge, .paybadge {
+  font-size: 0.64rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: var(--r-pill);
+}
+.sevbadge--critical { background: var(--chili-50); color: var(--chili); }
+.sevbadge--warning  { background: #fdf3e0; color: #8a5a00; }
+.sevbadge--info     { background: var(--surface-3); color: var(--ink-2); }
+.paybadge--success   { background: var(--mint-50); color: var(--mint); }
+.paybadge--failed,
+.paybadge--mismatch  { background: var(--chili-50); color: var(--chili); }
+.paybadge--cancelled { background: var(--surface-3); color: var(--ink-3); }
+.paybadge--ignored   { background: var(--surface-3); color: var(--ink-4); }
+
+/* amber-on-cream needs its own dark pairing to stay legible */
+:root[data-theme="dark"] .sevbadge--warning { background: #3a2a0e; color: #f5c66b; }
+
+.fin__modal { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 18px; }
+.fin__modalscrim { position: absolute; inset: 0; background: rgba(28, 16, 23, 0.55); }
+.fin__modalpanel {
+  position: relative; width: min(460px, 100%);
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-lg); box-shadow: var(--sh-3); padding: 22px;
+}
+.fin__modalpanel h3 { font-family: var(--font-display); font-size: 1.15rem; margin: 0 0 12px; }
+.fin__warn {
+  display: flex; gap: 9px; align-items: flex-start;
+  padding: 11px 13px; margin: 0 0 14px;
+  border: 1px solid var(--chili); border-radius: var(--r-sm);
+  background: var(--chili-50); color: var(--ink); font-size: 0.85rem; line-height: 1.5;
+}
+.fin__warn svg { flex: none; margin-top: 2px; color: var(--chili); }
+.fin__modalactions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+
+@media (max-width: 640px) {
+  .finrow__when { margin-left: 0; width: 100%; }
+  .fin__modalactions { flex-direction: column-reverse; }
+  .fin__modalactions .btn { width: 100%; }
+}
