@@ -17,6 +17,10 @@
 
   var state = { convs: [], activeId: null, msgs: [], loading: true, error: null, names: {} };
   var stop = null;
+  /* Where this panel draws. The Support Center injects its own tab body;
+     falling back to the page host keeps the standalone view working. */
+  var hostEl = null;
+  function host() { return hostEl || KT.qs("[data-admin-page]"); }
 
   function clock(d) {
     if (!d) return "";
@@ -74,12 +78,13 @@ why()  + "</p>";
   }
 
   function paint() {
-    var host = KT.qs("[data-admin-page]");
-    if (!host) return;
-    KT.mount(host,
-      '<header class="apage__head"><div><h1>Live chat</h1>' +
+    var el = host();
+    if (!el) return;
+    KT.mount(el,
+      (hostEl ? "" :
+        '<header class="apage__head"><div><h1>Live chat</h1>' +
         '<p class="apage__lede">Customer conversations, in real time. Replies are sent as your ' +
-        "role — the database stamps it, not the browser.</p></div></header>" +
+        "role — the database stamps it, not the browser.</p></div></header>") +
       (state.error
         ? '<div class="panel apanel"><div class="empty"><div class="empty__art">' +
           KT.icon("close", 32) + "</div><h3>Could not load conversations</h3><p>" +
@@ -181,6 +186,20 @@ why()  + "</p>";
       if (i2) i2.focus();
     }
   });
+
+  /* Embeddable panel — the Support Center's Live Chat tab uses this so there
+     is exactly one chat implementation on the admin side. */
+  KT.admin.chatPanel = {
+    mount: function (el) {
+      hostEl = el;
+      state = { convs: [], activeId: null, msgs: [], loading: true, error: null, names: {} };
+      load();
+    },
+    teardown: function () {
+      if (stop) { stop(); stop = null; }
+      hostEl = null;
+    }
+  };
 
   KT.admin.views.chat = function () {
     state = { convs: [], activeId: null, msgs: [], loading: true, error: null, names: {} };

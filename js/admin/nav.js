@@ -27,8 +27,7 @@
       { id: "dashboard",  label: "Dashboard",         icon: "grid",     min: "staff" },
       { id: "orders",     label: "Orders",            icon: "receipt",  min: "staff" },
       { id: "menu",       label: "Menu availability", icon: "flame",    min: "staff" },
-      { id: "support",    label: "Support",           icon: "mail",     min: "staff" },
-      { id: "chat",       label: "Live chat",         icon: "sparkle",  min: "staff" }
+      { id: "support",    label: "Support",           icon: "mail",     min: "staff" }
     ]},
     { group: "Management", items: [
       { id: "menu-manage", label: "Menu management",  icon: "settings", min: "admin" },
@@ -39,7 +38,6 @@
          does not widen the data. */
       { id: "customers",   label: "Customers",        icon: "user",     min: "staff" },
       { id: "announcements", label: "Announcements",  icon: "sparkle",  min: "admin" },
-      { id: "messages",    label: "Contact messages", icon: "mail",     min: "admin" },
       { id: "finance",     label: "Finance",          icon: "wallet",   min: "admin" },
       { id: "exports",     label: "Exports",          icon: "arrowRight", min: "admin" }
     ]},

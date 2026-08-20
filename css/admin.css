@@ -651,3 +651,149 @@
   .ccard__spent { margin-top: 0; }
   .oline { flex-wrap: wrap; }
 }
+
+/* ---- Support Center ----------------------------------------------------- */
+
+.stabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;              /* tabs scroll rather than widening the page */
+  scrollbar-width: none;
+}
+.stabs::-webkit-scrollbar { display: none; }
+.stab {
+  flex: none;
+  padding: 9px 14px;
+  border: 0;
+  background: none;
+  color: var(--ink-3);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+.stab:hover { color: var(--ink); }
+.stab.is-active {
+  color: var(--ink-on-pink-pill);
+  border-bottom-color: var(--kt-pink);
+}
+.stab__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--kt-pink);
+  color: #fff;
+  font-size: 0.66rem;
+}
+.stab:focus-visible { outline: 3px solid var(--kt-pink-bright); outline-offset: -3px; }
+
+.spanel { min-height: 320px; }
+
+.sfilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.sfilters__search { flex: 1 1 240px; min-width: 0; }
+
+.slist { display: grid; gap: 10px; }
+
+.scard {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.scard--static { cursor: default; }
+.scard:not(.scard--static):hover { border-color: var(--kt-pink-200); }
+.scard.is-unread { border-left: 3px solid var(--kt-pink); }
+.scard__top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.scard__top strong { font-size: 0.95rem; }
+.scard__body {
+  margin: 0 0 8px;
+  color: var(--ink-2);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.scard__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  color: var(--ink-3);
+  font-size: 0.76rem;
+}
+.scard__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+
+/* Status pills reuse the existing token palette so both themes come free. */
+.sbadge {
+  flex: none;
+  padding: 2px 9px;
+  border-radius: var(--r-pill);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--surface-3);
+  color: var(--ink-3);
+}
+.sbadge--new,
+.sbadge--open { background: var(--kt-pink-50); color: var(--ink-on-pink-pill); }
+.sbadge--answered,
+.sbadge--read { background: var(--mint-50); color: var(--mint); }
+.sbadge--closed { background: var(--surface-3); color: var(--ink-3); }
+
+.sdetail__back { margin-bottom: 14px; }
+.sdetail__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.sdetail__head h2 { font-family: var(--font-display); font-size: 1.2rem; margin: 0 0 3px; }
+.sdetail__meta { margin: 0; color: var(--ink-3); font-size: 0.8rem; }
+.sdetail__msg {
+  padding: 14px 16px;
+  background: var(--surface-3);
+  border-radius: var(--r-md);
+  color: var(--ink-2);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.sdetail__none { color: var(--ink-3); font-size: 0.86rem; margin: 14px 0; }
+.sthread { display: grid; gap: 8px; margin: 14px 0; }
+.sdetail__reply { border: 1px solid var(--line); border-radius: var(--r-pill); padding: 6px; }
+.sdetail__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+/* The embedded Live Chat tab keeps the two-pane inbox but drops its own
+   heading — the Support Center already provides one. */
+.spanel .achat { min-height: 420px; }
+
+@media (max-width: 700px) {
+  .sfilters__search { flex: 1 1 100%; }
+  .sdetail__head { flex-direction: column; }
+}

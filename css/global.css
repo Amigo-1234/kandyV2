@@ -107,6 +107,10 @@
      inverted for dark mode. These two are the places it is used as TEXT, and
      they do need to flip. */
   --ink-on-light-chip: var(--kt-plum);
+  /* Pink text on a pale pink pill (status badges, the active support tab).
+     Needs a per-theme value: --kt-pink reads at only 3.9 on the dark pill,
+     while the brighter pink is unreadable on the light one. */
+  --ink-on-pink-pill: var(--kt-pink);
   --ink-on-selection: var(--kt-plum);
 
   --surface-glass: rgba(255, 255, 255, 0.82);
@@ -145,6 +149,7 @@
        the neighbouring white chips. Only the "Kitchen is open" chip
        uses this token. */
     --ink-on-light-chip: #ffffff;
+    --ink-on-pink-pill: #ff8cc4;
     --ink-on-selection: var(--ink);
     --surface-glass: rgba(26, 18, 23, 0.86);
     --surface-glass-strong: rgba(26, 18, 23, 0.94);
@@ -189,6 +194,7 @@
   --surface-2: #120c10;
   --surface-3: #221820;
   --ink-on-light-chip: #ffffff;
+  --ink-on-pink-pill: #ff8cc4;
   --ink-on-selection: var(--ink);
   --surface-glass: rgba(26, 18, 23, 0.86);
   --surface-glass-strong: rgba(26, 18, 23, 0.94);
