@@ -38,6 +38,8 @@ async function boot() {
   const { addressService } = await import("./addresses.js");
   const { orderService } = await import("./orders.js");
   const { paymentService } = await import("./payments.js");
+  const { chatService } = await import("./chat.js");
+  const { careersService } = await import("./careers.js");
   const { walletService } = await import("./wallet.js");
 
   /* Every live service is Supabase now, so one error handler covers them. */
@@ -53,6 +55,8 @@ async function boot() {
     addresses: addressService,
     orders: orderService,
     payments: paymentService,
+    chat: chatService,
+    careers: careersService,
     wallet: walletService,
     errorMessage,
     backend: {
@@ -60,7 +64,8 @@ async function boot() {
       addresses: "supabase", favourites: "supabase",
       catalogue: "supabase", orders: "supabase",
       reviews: "supabase", content: "supabase",
-      payments: "supabase+paystack", wallet: "supabase+paystack"
+      payments: "supabase+paystack", wallet: "supabase+paystack",
+      chat: "supabase+realtime", careers: "supabase"
     }
   };
 

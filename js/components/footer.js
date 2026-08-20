@@ -29,8 +29,18 @@
       links: [
         ["Our story", "index.html#story"],
         ["Delivery areas", "index.html#delivery"],
-        ["Catering enquiries", "index.html#catering"],
-        ["Careers", "index.html#careers"]
+        /* Opens the in-site chat panel. Deliberately NOT a WhatsApp link —
+           the conversation stays inside Kandy's. The href is still a real
+           anchor so it goes somewhere sensible before JS is ready. */
+        ["Live Chat", "index.html#chat", "data-open-chat"]
+      ]
+    },
+    {
+      title: "Careers",
+      links: [
+        ["Become a Chef", "index.html#careers", 'data-apply="chef"'],
+        ["Become a Rider", "index.html#careers", 'data-apply="rider"'],
+        ["Become a Kitchen Assistant", "index.html#careers", 'data-apply="kitchen-assistant"']
       ]
     }
   ];
@@ -112,7 +122,8 @@
     var host = KT.qs("[data-foot-account]");
     if (!host) return;
     host.innerHTML = accountLinks().map(function (l) {
-      return '<li><a href="' + KT.url(l[1]) + '">' + l[0] + "</a></li>";
+      return '<li><a href="' + KT.url(l[1]) + '"' + (l[2] ? " " + l[2] : "") +
+        ">" + l[0] + "</a></li>";
     }).join("");
   }
   KT.components.paintFooterAccount = paintAccountLinks;
@@ -127,7 +138,8 @@
         "<ul" + (c.dynamic === "account" ? " data-foot-account" : "") + ">" +
         (c.dynamic === "account" ? accountLinks() : c.links)
           .map(function (l) {
-            return '<li><a href="' + KT.url(l[1]) + '">' + l[0] + "</a></li>";
+            return '<li><a href="' + KT.url(l[1]) + '"' + (l[2] ? " " + l[2] : "") +
+              ">" + l[0] + "</a></li>";
           })
           .join("") +
         "</ul></div>"

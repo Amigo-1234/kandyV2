@@ -42,14 +42,31 @@
     if (rotator && !KT.prefersReducedMotion) {
       var words = ["jollof", "shawarma", "peppered gizzard", "chicken & chips", "parfait"];
       var i = 0;
-      setInterval(function () {
+      var swap = null;
+
+      function show() {
+        window.clearTimeout(swap);
+        rotator.textContent = words[i];
+        rotator.classList.remove("is-out");
+      }
+
+      window.setInterval(function () {
+        /* .is-out sets opacity:0 and a nested timeout puts the word back.
+           A hidden tab throttles and coalesces timers, so that restore can be
+           delayed indefinitely — the headline is then left reading
+           "Craving ?" with a blank gap. Skip the animation while hidden
+           rather than starting one we cannot reliably finish. */
+        if (document.hidden) return;
         i = (i + 1) % words.length;
         rotator.classList.add("is-out");
-        setTimeout(function () {
-          rotator.textContent = words[i];
-          rotator.classList.remove("is-out");
-        }, 260);
+        window.clearTimeout(swap);
+        swap = window.setTimeout(show, 260);
       }, 2600);
+
+      /* Whatever state a throttled tab left behind, return visible. */
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden) show();
+      });
     }
   }
 

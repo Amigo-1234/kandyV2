@@ -27,7 +27,8 @@
       { id: "dashboard",  label: "Dashboard",         icon: "grid",     min: "staff" },
       { id: "orders",     label: "Orders",            icon: "receipt",  min: "staff" },
       { id: "menu",       label: "Menu availability", icon: "flame",    min: "staff" },
-      { id: "support",    label: "Support",           icon: "mail",     min: "staff" }
+      { id: "support",    label: "Support",           icon: "mail",     min: "staff" },
+      { id: "chat",       label: "Live chat",         icon: "sparkle",  min: "staff" }
     ]},
     { group: "Management", items: [
       { id: "menu-manage", label: "Menu management",  icon: "settings", min: "admin" },
