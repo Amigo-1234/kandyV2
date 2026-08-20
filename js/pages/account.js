@@ -226,7 +226,7 @@
           ? '<form data-support-form>' +
               '<label class="field"><span class="field__label">What is it about?</span>' +
                 '<select class="select" name="orderId">' +
-                  '<option value="">Not about a specific order</option>' +
+                  '<option value="">About</option>' +
                   state.orders.map(function (o) {
                     return '<option value="' + o.id + '">' + o.id + " · " +
                       KT.naira(o.total) + "</option>";
@@ -234,7 +234,7 @@
                 "</select></label>" +
               '<label class="field" style="margin-top:16px">' +
                 '<span class="field__label">Subject</span>' +
-                '<input class="input" name="subject" placeholder="Missing item from my order"></label>' +
+                '<input class="input" name="subject" placeholder="What is this about?"></label>' +
               '<label class="field" style="margin-top:16px">' +
                 '<span class="field__label">What happened?</span>' +
                 '<textarea class="textarea" name="message" rows="4" ' +
@@ -301,21 +301,20 @@
         '<div class="panel__head"><div><h2>' + (a.id ? "Edit address" : "New delivery address") + "</h2>" +
           "<p>" + KT.config.serviceArea.note + "</p></div></div>" +
         '<input type="hidden" name="id" value="' + (a.id || "") + '">' +
-        '<div class="authrow">' +
-          '<label class="field"><span class="field__label">Label</span>' +
-            '<input class="input" name="label" placeholder="Home, Office…" value="' + (a.label || "") + '"></label>' +
-          '<label class="field"><span class="field__label">Who receives it?</span>' +
-            '<input class="input" name="recipientName" placeholder="Full name" value="' + (a.recipientName || "") + '"></label>' +
-        "</div>" +
+        /* No Label field: addresses.clean() defaults it to "Delivery address",
+           so the column and every consumer are unaffected — the customer just
+           is not asked for something they never needed to provide. */
+        '<label class="field"><span class="field__label">Who receives it?</span>' +
+          '<input class="input" name="recipientName" placeholder="Full name" value="' + (a.recipientName || "") + '"></label>' +
         '<label class="field" style="margin-top:16px"><span class="field__label">Phone number</span>' +
           '<input class="input" name="phone" type="tel" placeholder="+234 801 234 5678" value="' +
             KT.rules.displayPhone(a.phone) + '"></label>' +
         '<label class="field" style="margin-top:16px"><span class="field__label">Full address</span>' +
           '<textarea class="textarea" name="address" rows="3" ' +
-            'placeholder="Street, area and a landmark — e.g. 14 Adeola Odeku Street, Victoria Island, opposite the filling station">' +
+            'placeholder="Street, area and a landmark — e.g. EKSU Main Gate, Iworoko Road, Ado-Ekiti">' +
             (a.address || "") + "</textarea>" +
-          '<span class="field__hint">We deliver within ' + KT.config.serviceArea.state +
-            " State only. Type it in full — there is no map lookup.</span></label>" +
+          '<span class="field__hint">We deliver to ' + KT.config.serviceArea.areas.join(", ") +
+            ". Type it in full — there is no map lookup.</span></label>" +
         '<label class="field" style="margin-top:16px"><span class="field__label">Note for the rider (optional)</span>' +
           '<input class="input" name="notes" placeholder="Gate code, call on arrival…" value="' + (a.notes || "") + '"></label>' +
         '<label class="checkline" style="margin-top:16px"><input type="checkbox" name="isDefault"' +

@@ -960,3 +960,21 @@ picture {
 :root.is-theme-switching *::after {
   transition: none !important;
 }
+
+/* ---- Our story ---------------------------------------------------------- */
+
+.story__inner {
+  max-width: 68ch;
+}
+.story__body {
+  color: var(--ink-2);
+  margin: 0 0 18px;
+}
+.story__stamp {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--kt-pink);
+}

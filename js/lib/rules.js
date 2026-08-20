@@ -38,7 +38,11 @@
   var FULFILMENTS = ["delivery", "pickup"];
 
   /* Estimated minutes, mirroring the draft defaults in V1's app.js. */
-  var ETA_MINUTES = { delivery: 35, pickup: 20 };
+  /* Customer-facing preparation estimates. ETA_MINUTES is the single number
+     stored on an order (estimatedDeliveryMinutes); ETA_TEXT is what the
+     storefront shows, because a range reads more honestly than a point value. */
+  var ETA_MINUTES = { delivery: 25, pickup: 10 };
+  var ETA_TEXT = { delivery: "20–25 min", pickup: "~10 min" };
 
   var rules = {
     DELIVERY_FEE: DELIVERY_FEE,
@@ -48,6 +52,7 @@
     COUPONS: COUPONS,
     FULFILMENTS: FULFILMENTS,
     ETA_MINUTES: ETA_MINUTES,
+    ETA_TEXT: ETA_TEXT,
 
     /* ---- Formatting ------------------------------------------------- */
 

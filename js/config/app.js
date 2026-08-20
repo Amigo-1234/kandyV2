@@ -69,7 +69,10 @@
       state: "Ekiti",
       country: "Nigeria",
       label: "Ado-Ekiti/Iworoko",
-      note: "We deliver across Ado-Ekiti/Iworoko. Type your address in full so the rider can find you."
+      /* Every town we currently reach. Stated once here and rendered wherever
+         coverage is shown, so the list cannot drift between pages. */
+      areas: ["Ado-Ekiti", "Iworoko", "Ifaki", "Oye-Ekiti"],
+      note: "We deliver across Ado-Ekiti, Iworoko, Ifaki and Oye-Ekiti. Type your address in full so the rider can find you."
     },
 
     /* ---- Business details shown to customers -------------------------
