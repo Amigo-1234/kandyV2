@@ -70,7 +70,24 @@ function settle(session) {
 /* onAuthStateChange fires INITIAL_SESSION on load — restored from localStorage
    — then SIGNED_IN / SIGNED_OUT / TOKEN_REFRESHED / USER_UPDATED. Handling all
    of them here keeps one dispatcher for kt:auth. */
-supabase.auth.onAuthStateChange((_event, session) => settle(session));
+/* PASSWORD_RECOVERY needs telling apart from a normal sign-in. Supabase
+   establishes a REAL session from the emailed link, so ignoring the event type
+   made a recovery indistinguishable from signing in — the login page saw a
+   session, ran its "already signed in" redirect and sent the customer to their
+   account without ever offering a new password. */
+let recovery = false;
+
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === "PASSWORD_RECOVERY") {
+    recovery = true;
+    document.dispatchEvent(new CustomEvent("kt:recovery", {
+      detail: { email: (session && session.user && session.user.email) || "" }
+    }));
+  }
+  /* A deliberate sign-out ends the recovery window. */
+  if (event === "SIGNED_OUT") recovery = false;
+  settle(session);
+});
 
 /* Belt and braces: if the SDK never emits (offline, blocked CDN), resolve from
    the stored session so ready() cannot hang the page forever. */
@@ -140,12 +157,34 @@ export const authService = {
     return null;
   },
 
+  /**
+   * True while a session came from a recovery link rather than a login. The
+   * login page uses this to stand down its redirect, and the reset screen uses
+   * it to know the session is legitimate.
+   */
+  isRecovery: () => recovery,
+
   async resetPassword(email) {
     const { error } = await supabase.auth.resetPasswordForEmail(
       String(email).trim(),
-      { redirectTo: absolute(window.KT.url("pages/login.html")) }
+      /* Its own screen. Sending recovery back to the login page is what caused
+         the bounce: a session exists, so the page redirected away. */
+      { redirectTo: absolute(window.KT.url("pages/reset-password.html")) }
     );
     if (error) throw error;
+  },
+
+  /**
+   * Set a new password for the current (recovery) session. Supabase requires
+   * an authenticated session, which the emailed link supplies.
+   */
+  async updatePassword(newPassword) {
+    const pw = String(newPassword || "");
+    if (pw.length < 6) throw new Error("Use at least 6 characters for your password.");
+    const { error } = await supabase.auth.updateUser({ password: pw });
+    if (error) throw error;
+    recovery = false;
+    return true;
   },
 
   async resendVerification() {

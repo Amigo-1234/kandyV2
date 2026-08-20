@@ -156,6 +156,10 @@
   /* Already signed in? Skip the form. */
   function redirectIfSignedIn() {
     document.addEventListener("kt:auth", function (e) {
+      /* A recovery link also produces a session. Redirecting on it would send
+         someone who asked to reset their password straight to their account
+         instead — which is exactly what used to happen. */
+      if (KT.auth && KT.auth.isRecovery && KT.auth.isRecovery()) return;
       /* No handoff here: arriving already-authenticated is not a fresh
          sign-in, so it must not trigger a welcome message. */
       if (e.detail.signedIn && KT.auth) window.location.href = KT.auth.nextUrl();
