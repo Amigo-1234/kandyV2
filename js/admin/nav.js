@@ -44,7 +44,10 @@
     { group: "Owner", items: [
       { id: "reconciliation", label: "Payment reconciliation", icon: "lock", min: "owner" },
       { id: "settings",       label: "App settings",           icon: "settings", min: "owner" },
-      { id: "team",           label: "Team & roles",           icon: "user",     min: "owner" }
+      /* admin+ because admin_list_team permits a manager to VIEW the roster.
+         Changing a role stays owner-only inside admin_set_role, so widening
+         the nav widens visibility, not authority. */
+      { id: "team",           label: "Team & roles",           icon: "user",     min: "admin" }
     ]}
   ];
 

@@ -228,10 +228,25 @@
   padding: 1px 7px;
   border-radius: var(--r-pill);
   background: var(--surface-3);
-  color: var(--ink-3);
+  /* --ink-3 measured 4.44 in light on this ground. These badges name a
+     person's access level, so they clear AA rather than sit just under it. */
+  color: var(--ink-2);
 }
-.rolebadge--staff { background: var(--mint-50); color: var(--mint); }
+/* --mint on --mint-50 measured 2.87 in light and 4.44 in dark. This badge
+   states a person's access level, so it must be legible rather than merely
+   tinted; these are darker/lighter mints chosen to clear AA on that ground. */
+.rolebadge--staff { background: var(--mint-50); color: #0a6e55; }
+:root[data-theme="dark"] .rolebadge--staff { color: #6fe0bd; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .rolebadge--staff { color: #6fe0bd; }
+}
 .rolebadge--admin { background: var(--kt-pink-50); color: var(--kt-pink); }
+/* In dark, --kt-pink (#d92c85) on the dark pink ground measured 3.9. The
+   brighter pink is already a token and clears AA there. */
+:root[data-theme="dark"] .rolebadge--admin { color: var(--kt-pink-bright); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .rolebadge--admin { color: var(--kt-pink-bright); }
+}
 .rolebadge--owner { background: var(--kt-plum); color: #fff; }
 
 /* ---- Page --------------------------------------------------------------- */
@@ -907,4 +922,81 @@
   .finrow__when { margin-left: 0; width: 100%; }
   .fin__modalactions { flex-direction: column-reverse; }
   .fin__modalactions .btn { width: 100%; }
+}
+
+/* ---- Team management ---------------------------------------------------- */
+
+.teamrow {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: 13px 15px; cursor: pointer;
+  transition: border-color var(--t-fast) linear, background var(--t-fast) linear;
+}
+.teamrow:hover { border-color: var(--kt-pink-200); background: var(--surface-3); }
+.teamrow:focus-visible { outline: 3px solid var(--kt-pink-bright); outline-offset: 2px; }
+.teamrow__avatar {
+  display: grid; place-items: center; width: 38px; height: 38px; flex: none;
+  border-radius: 50%; background: var(--kt-pink); color: #fff;
+  font-size: 0.8rem; font-weight: 800;
+}
+.teamrow__avatar--lg { width: 54px; height: 54px; font-size: 1.05rem; }
+.teamrow__who { display: grid; min-width: 0; flex: 1 1 190px; line-height: 1.35; }
+.teamrow__who strong { font-size: 0.94rem; overflow-wrap: anywhere; }
+.teamrow__who span { font-size: 0.8rem; color: var(--ink-3); overflow-wrap: anywhere; }
+.teamrow__you {
+  font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 1px 6px; border-radius: var(--r-pill); background: var(--surface-3); color: var(--ink-3);
+}
+.teamrow__meta { display: grid; gap: 2px; font-size: 0.75rem; color: var(--ink-3); text-align: right; }
+.teamrow__flag {
+  font-size: 0.64rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 2px 8px; border-radius: var(--r-pill); background: var(--chili-50); color: var(--chili);
+}
+
+.team__pager {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  margin-top: 16px; font-size: 0.84rem; color: var(--ink-3);
+}
+
+.team__drawer { position: fixed; inset: 0; z-index: 65; }
+.team__scrim { position: absolute; inset: 0; background: rgba(28, 16, 23, 0.5); }
+.team__panel {
+  position: absolute; top: 0; right: 0; bottom: 0;
+  width: min(430px, 100vw); display: flex; flex-direction: column;
+  background: var(--surface); border-left: 1px solid var(--line); box-shadow: var(--sh-3);
+}
+.team__panelhead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px; border-bottom: 1px solid var(--line); flex: none;
+}
+.team__panelhead h3 { margin: 0; font-family: var(--font-display); font-size: 1.1rem; }
+.team__panelbody { padding: 18px; overflow-y: auto; }
+
+.team__identity { display: flex; align-items: center; gap: 13px; margin-bottom: 18px; }
+.team__identity div { display: grid; gap: 3px; min-width: 0; justify-items: start; }
+.team__identity strong { font-size: 1rem; overflow-wrap: anywhere; }
+.team__identity span { font-size: 0.82rem; color: var(--ink-3); overflow-wrap: anywhere; }
+.team__facts { margin-bottom: 18px; }
+
+.team__rolebox {
+  padding: 14px; margin-bottom: 18px;
+  border: 1px solid var(--kt-pink-200); border-radius: var(--r-md); background: var(--kt-pink-50);
+}
+.team__rolebox .field { margin: 0; }
+
+.team__subhead {
+  margin: 0 0 10px; font-family: var(--font-display); font-size: 0.98rem;
+}
+.team__muted { margin: 0; color: var(--ink-3); font-size: 0.86rem; }
+.team__history { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+.team__history li {
+  display: grid; gap: 2px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface-3);
+}
+.team__history strong { font-size: 0.86rem; font-weight: 600; }
+.team__history span { font-size: 0.75rem; color: var(--ink-3); overflow-wrap: anywhere; }
+
+@media (max-width: 640px) {
+  .teamrow__meta { text-align: left; width: 100%; grid-auto-flow: column; gap: 12px; justify-content: start; }
+  .team__panel { width: 100vw; border-left: 0; }
 }
