@@ -8,7 +8,7 @@
    MIGRATION STATE (Phase 11)
      Supabase : auth, profile, addresses, favourites, catalogue, orders,
                 reviews, announcements, contact, support, wallet, payments,
-                chat, careers, notifications
+                chat, careers, notifications, web push
      Firebase : NONE. No live service imports the Firebase SDK.
      Deferred : nothing. Every service on KT.services reads real data.
 
@@ -38,6 +38,7 @@ async function boot() {
   const { careersService } = await import("./careers.js");
   const { walletService } = await import("./wallet.js");
   const { notificationService } = await import("./notifications.js");
+  const { pushService } = await import("./push.js");
 
   /* Every live service is Supabase now, so one error handler covers them. */
   const errorMessage = supaError;
@@ -56,6 +57,7 @@ async function boot() {
     careers: careersService,
     wallet: walletService,
     notifications: notificationService,
+    push: pushService,
     errorMessage,
     backend: {
       auth: "supabase", profile: "supabase",
@@ -64,7 +66,8 @@ async function boot() {
       reviews: "supabase", content: "supabase",
       payments: "supabase+paystack", wallet: "supabase+paystack",
       chat: "supabase+realtime", careers: "supabase",
-      notifications: "supabase+realtime"
+      notifications: "supabase+realtime",
+      push: "web-push+vapid"
     }
   };
 

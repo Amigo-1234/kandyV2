@@ -1,0 +1,22 @@
+{
+  "name": "Kandy's Treats",
+  "short_name": "Kandy's",
+  "description": "Nigerian kitchen, cooked to order and delivered across Ado-Ekiti and Iworoko.",
+  "start_url": "/index.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fffbf8",
+  "theme_color": "#d4177e",
+  "lang": "en-NG",
+  "categories": ["food", "shopping"],
+  "icons": [
+    { "src": "/assets/logo/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/logo/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/logo/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "My orders", "url": "/pages/orders.html", "icons": [{ "src": "/assets/logo/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Menu", "url": "/pages/menu.html", "icons": [{ "src": "/assets/logo/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

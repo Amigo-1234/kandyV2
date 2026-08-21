@@ -132,6 +132,11 @@
               'aria-label="Open navigation" aria-expanded="false">' + KT.icon("menu", 22) + "</button>" +
             '<h2 class="atop__title" data-admin-title>Dashboard</h2>' +
             '<div class="atop__right">' +
+              /* Filled in by paintPushControl() once the browser has been
+                 asked what it supports — rendered empty rather than
+                 optimistically, so it never offers something that will fail. */
+              '<span data-admin-push></span>' +
+              '<span data-admin-sound></span>' +
               '<button class="icon-btn" type="button" data-theme-toggle aria-label="Switch theme"></button>' +
               '<div class="auser">' +
                 '<span class="auser__avatar">' + initials(state.name || state.email) + "</span>" +
@@ -147,6 +152,10 @@
     if (KT.theme) KT.theme.paintToggles();
     route();
     watchUnread();
+    /* Handlers only: the alert feed reads admin_* notifications, which the
+       database only ever addresses to operational roles. */
+    if (KT.admin.alerts) { KT.admin.alerts.start(); KT.admin.alerts.paintControls(); }
+    refreshPushState();
   }
 
   function initials(v) {
@@ -280,6 +289,38 @@
     unread.support = 0;
   }
 
+  /* ---- Order alerts ------------------------------------------------------ */
+
+  var pushState = { checked: false, supported: false, enabled: false, reason: null, busy: false };
+
+  function paintPushControl() {
+    var slot = KT.qs("[data-admin-push]");
+    if (!slot) return;
+    if (!pushState.checked || !pushState.supported) { slot.innerHTML = ""; return; }
+    slot.innerHTML = pushState.enabled
+      ? '<button class="icon-btn apush is-on" type="button" data-admin-push-off ' +
+        'aria-label="Order alerts are on" title="Order alerts are on — click to turn off">' +
+        KT.icon("bell", 20) + "</button>"
+      : '<button class="btn btn--soft btn--sm apush" type="button" data-admin-push-on' +
+        (pushState.busy ? " disabled" : "") + ' title="Get notified about new orders even when this tab is closed">' +
+        KT.icon("bell", 15) + (pushState.busy ? "Enabling…" : "Order alerts") + "</button>";
+  }
+
+  async function refreshPushState() {
+    if (!KT.services || !KT.services.push) return;
+    try {
+      var s = KT.services.push.support();
+      pushState.supported = s.supported;
+      pushState.reason = s.reason;
+      pushState.enabled = s.supported && s.permission === "granted" &&
+        await KT.services.push.isEnabled();
+    } catch (error) {
+      pushState.supported = false;
+    }
+    pushState.checked = true;
+    paintPushControl();
+  }
+
   /* ---- Authorisation --------------------------------------------------- */
 
   async function resolveAccess() {
@@ -289,6 +330,7 @@
       state.ready = false;
       teardownView();
       unwatchUnread();                 /* no channel may outlive the session */
+      if (KT.admin.alerts) KT.admin.alerts.stop();
       gateSignedOut();
       return;
     }
@@ -312,6 +354,7 @@
       state.ready = false;
       teardownView();
       unwatchUnread();
+      if (KT.admin.alerts) KT.admin.alerts.stop();
       gateNotStaff();
       return;
     }
@@ -326,10 +369,34 @@
     if (e.target.closest("[data-admin-nav-open]"))  { e.preventDefault(); openNav(); }
     if (e.target.closest("[data-admin-nav-close]")) { e.preventDefault(); closeNav(); }
     if (e.target.closest("[data-admin-retry]"))     { e.preventDefault(); renderSkeleton(); resolveAccess(); }
+
+    if (e.target.closest("[data-admin-push-on]")) {
+      e.preventDefault();
+      pushState.busy = true; paintPushControl();
+      var res = await KT.services.push.enable();
+      pushState.busy = false;
+      pushState.enabled = !!res.ok;
+      paintPushControl();
+      KT.toast(res.ok
+        ? "Order alerts on. You will hear about new orders with this tab closed."
+        : "Could not enable order alerts (" + res.reason + "). Sounds and on-screen alerts still work.",
+        res.ok ? "success" : "error", { duration: 6000 });
+      return;
+    }
+    if (e.target.closest("[data-admin-push-off]")) {
+      e.preventDefault();
+      var off = await KT.services.push.disable();
+      pushState.enabled = !off.ok;
+      paintPushControl();
+      KT.toast(off.ok ? "Order alerts off for this device." : "Could not turn alerts off.",
+        off.ok ? "success" : "error");
+      return;
+    }
     if (e.target.closest("[data-admin-signout]")) {
       e.preventDefault();
       teardownView();
       unwatchUnread();
+      if (KT.admin.alerts) KT.admin.alerts.stop();
       if (KT.auth) await KT.auth.signOut();
       window.location.href = KT.url("index.html");
     }
@@ -346,6 +413,16 @@
      shell back to the gate rather than leave it on screen. */
   document.addEventListener("kt:auth", resolveAccess);
   document.addEventListener("kt:services", resolveAccess);
+
+  /* The admin does not load js/app.js, so it registers the worker itself.
+     Handlers need push for exactly the same reason customers do: to hear
+     about a new order when the admin tab is closed. */
+  if ("serviceWorker" in navigator && window.isSecureContext) {
+    navigator.serviceWorker.register(KT.url("sw.js"), { scope: "/" })
+      .catch(function (error) {
+        console.warn("[Kandy's] admin service worker not registered:", error && error.message);
+      });
+  }
 
   renderSkeleton();
   if (KT.services) resolveAccess();

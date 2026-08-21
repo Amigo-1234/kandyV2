@@ -35,6 +35,17 @@
       url: "https://opnddlqzdetysqozafko.supabase.co",
       anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wbmRkbHF6ZGV0eXNxb3phZmtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2NTkxMTYsImV4cCI6MjEwMjIzNTExNn0.yYnYqD8Ah6OcS8xg9dqRpMf1gCf9RV2V-zT50Y8Y7n4"
     },
+    /* ---- Web Push (public identifier — safe in client code) ----------
+       The PUBLIC half of the VAPID keypair, and the half the browser is meant
+       to hold: applicationServerKey is passed to pushManager.subscribe() so
+       the push service can tie the subscription to us. It authorises nothing
+       on its own. The PRIVATE half exists only as a Supabase Edge Function
+       secret (VAPID_PRIVATE_KEY) and is what actually signs a send — it is
+       not in this repository and must never be. */
+    push: {
+      publicKey: "BEkTFWCWPezCeo3U8dwfLgJLYRLsZQv_ra40CH_0HUJB_YhHCDgCOOwFIlNUb7S-xnqQ7XNjjpNGDhn3sCdRpxs"
+    },
+
     supabaseSdkVersion: "2.45.4",
 
     /* Firebase JS SDK version — matches the one V1 runs in production. */

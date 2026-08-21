@@ -90,6 +90,26 @@
     KT.motion.rails();
 
     document.documentElement.classList.add("is-ready");
+
+    /*
+       Register the one service worker. This does NOT ask for permission and
+       does not subscribe anybody to anything — it only makes the site
+       installable and gives Web Push somewhere to be delivered later, when a
+       customer actually presses Enable in the bell.
+
+       Registered for signed-out visitors too, deliberately: iOS will not
+       offer "Add to Home Screen" as an app without it, and on iOS that
+       install is a precondition for push existing at all.
+    */
+    if ("serviceWorker" in navigator && window.isSecureContext) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("/sw.js", { scope: "/" })
+          .catch(function (error) {
+            /* A failed registration must never break the storefront. */
+            console.warn("[Kandy's] service worker not registered:", error && error.message);
+          });
+      });
+    }
   }
 
   if (document.readyState === "loading") {

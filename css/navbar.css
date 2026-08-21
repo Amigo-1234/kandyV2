@@ -756,3 +756,66 @@
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+/* ---- Push permission offer, inside the bell panel ---------------------- */
+
+.notifpush {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--kt-pink-50);
+}
+.notifpush.is-on {
+  background: var(--mint-50);
+}
+.notifpush__icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--kt-pink);
+}
+.notifpush.is-on .notifpush__icon {
+  /* #0a6e55 clears AA on the mint ground; --mint alone does not. */
+  color: #0a6e55;
+}
+.notifpush__text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.notifpush__text strong {
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+.notifpush__text span {
+  font-size: 0.775rem;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+.notifpush__text em {
+  font-style: normal;
+  font-weight: 700;
+}
+.notifpush__on {
+  flex: none;
+  align-self: center;
+}
+.notifpush__off {
+  flex: none;
+  align-self: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  padding: 5px 9px;
+  border-radius: var(--r-pill);
+}
+.notifpush__off:hover {
+  background: var(--surface);
+}

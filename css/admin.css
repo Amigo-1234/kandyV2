@@ -1942,3 +1942,152 @@
   .cinbox.is-thread .cthread { display: flex; }
   .cthread__back { display: grid; }
 }
+
+/* ==========================================================================
+   New-order alerts
+   --------------------------------------------------------------------------
+   Bottom-right of the admin, above everything. Deliberately not a toast:
+   these persist for 30s and carry an action, because a new order is a thing
+   to be acted on rather than acknowledged.
+   ========================================================================== */
+
+.oalerts {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 240;
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+  width: min(360px, calc(100vw - 32px));
+  pointer-events: none;
+}
+.oalerts > * { pointer-events: auto; }
+
+.oalert {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 12px 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--kt-pink-200);
+  background: var(--surface);
+  box-shadow: var(--sh-3);
+  animation: kt-toast-in 220ms var(--ease-out);
+}
+.oalert__mark {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--kt-pink-50);
+  color: var(--kt-pink);
+}
+.oalert__body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.oalert__title {
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+.oalert__detail {
+  font-size: 0.78rem;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.oalert__close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--ink-3);
+}
+.oalert__close:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+/* ---- Sound control ----------------------------------------------------- */
+
+.osound {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  box-shadow: var(--sh-1);
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.osound:hover { border-color: var(--kt-pink-200); }
+/* Autoplay was refused: this is the interaction that unlocks audio, so it has
+   to read as an action rather than a status. */
+.osound--blocked {
+  border-color: #f0d9a8;
+  background: #fff9ef;
+  color: #8f5a00;
+}
+:root[data-theme="dark"] .osound--blocked {
+  border-color: #5c4415;
+  background: #2c220c;
+  color: #f7c46c;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .osound--blocked {
+    border-color: #5c4415;
+    background: #2c220c;
+    color: #f7c46c;
+  }
+}
+
+/* ---- Push control in the top bar --------------------------------------- */
+
+.apush {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  white-space: nowrap;
+}
+.apush.is-on { color: #0a7a5e; }
+:root[data-theme="dark"] .apush.is-on { color: #6fe0bd; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .apush.is-on { color: #6fe0bd; }
+}
+
+@media (max-width: 560px) {
+  .oalerts { right: 10px; left: 10px; bottom: 10px; width: auto; }
+  /* The label would push the user chip off the top bar on a phone. */
+  .apush.btn { padding: 7px 9px; font-size: 0; gap: 0; }
+  .apush.btn svg { font-size: 1rem; }
+}
+
+/* The always-available mute switch, beside the push control in the top bar. */
+.asound { color: var(--ink-2); }
+.asound:hover { color: var(--kt-pink); }
+/*
+   The muted state is NOT dimmed. --ink-4 measured 2.5 in light and 3.28 in
+   dark, and "sound is off" is precisely the state a handler needs to spot
+   across a kitchen — making it the faintest thing on the bar is backwards.
+   The crossed icon already carries the meaning; the chili tint carries the
+   urgency.
+*/
+.asound.is-off { color: #c4441f; }
+:root[data-theme="dark"] .asound.is-off { color: #ff9d7d; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .asound.is-off { color: #ff9d7d; }
+}
+.asound:focus-visible { outline: 3px solid var(--kt-pink-bright); outline-offset: 2px; }

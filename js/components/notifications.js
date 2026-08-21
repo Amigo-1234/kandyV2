@@ -36,6 +36,11 @@
   var boundUid = null;      /* who the current subscription belongs to */
   var hostEl = null;        /* body-level layer the panel is drawn into */
 
+  /* Web Push state, resolved lazily. `null` means "not looked at yet" — the
+     panel renders nothing about push until it knows, rather than flashing an
+     offer and then withdrawing it. */
+  var push = { checked: false, supported: false, reason: null, enabled: false, busy: false };
+
   /*
      The panel lives on <body>, NOT inside the header — the same place the
      chat panel and cart drawer put themselves, and for the same reason.
@@ -132,6 +137,48 @@
         inner + "</div>";
   }
 
+  /*
+     The permission offer. It is the only place the site ever asks, it is
+     rendered inside a panel the customer opened deliberately, and it says
+     what the permission is for before asking for it (§6). Every refusal
+     state has its own wording, because "enable notifications" shown to
+     somebody who has already blocked them is a dead end.
+  */
+  function pushRowHTML() {
+    if (!push.checked) return "";
+    if (push.enabled) {
+      return '<div class="notifpush is-on">' +
+        '<span class="notifpush__icon">' + KT.icon("check", 15) + "</span>" +
+        '<span class="notifpush__text"><strong>Order alerts are on</strong>' +
+        "<span>This device gets updates even when the site is closed.</span></span>" +
+        '<button class="notifpush__off" type="button" data-push-disable>Turn off</button>' +
+      "</div>";
+    }
+    if (push.reason === "ios-needs-install") {
+      return '<div class="notifpush">' +
+        '<span class="notifpush__icon">' + KT.icon("phone", 15) + "</span>" +
+        '<span class="notifpush__text"><strong>Add Kandy\'s to your Home Screen</strong>' +
+        "<span>On iPhone, alerts need the app installed: tap Share, then " +
+        "<em>Add to Home Screen</em>, and open it from there.</span></span></div>";
+    }
+    if (push.reason === "blocked") {
+      return '<div class="notifpush">' +
+        '<span class="notifpush__icon">' + KT.icon("lock", 15) + "</span>" +
+        '<span class="notifpush__text"><strong>Notifications are blocked</strong>' +
+        "<span>Your browser is refusing them for this site. Allow notifications " +
+        "in the site settings to turn them back on.</span></span></div>";
+    }
+    if (!push.supported) return "";
+    return '<div class="notifpush">' +
+      '<span class="notifpush__icon">' + KT.icon("bell", 15) + "</span>" +
+      '<span class="notifpush__text"><strong>Get order updates</strong>' +
+      "<span>Know the moment your order is being prepared or on its way — " +
+      "even with the site closed.</span></span>" +
+      '<button class="btn btn--primary btn--sm notifpush__on" type="button" data-push-enable' +
+        (push.busy ? " disabled" : "") + ">" + (push.busy ? "Enabling…" : "Enable") + "</button>" +
+    "</div>";
+  }
+
   function panelHTML() {
     var body;
     if (state.error) {
@@ -158,6 +205,7 @@
           '<button class="icon-btn notifpanel__close" type="button" data-notif-close ' +
             'aria-label="Close notifications">' + KT.icon("close", 18) + "</button>" +
         "</header>" +
+        pushRowHTML() +
         body +
         '<a class="notifpanel__foot" href="' + KT.url("pages/account.html#notifications") + '">' +
           "See everything in your account" + KT.icon("chevronRight", 15) + "</a>" +
@@ -223,10 +271,30 @@
 
   /* ---- Open / close ------------------------------------------------------ */
 
+  async function refreshPushState() {
+    var svcPush = KT.services && KT.services.push;
+    if (!svcPush) return;
+    try {
+      var s = svcPush.support();
+      push.supported = s.supported;
+      push.reason = s.reason || (s.permission === "denied" ? "blocked" : null);
+      push.enabled = s.supported && s.permission === "granted" && await svcPush.isEnabled();
+    } catch (error) {
+      push.supported = false;
+      push.reason = "unsupported";
+    }
+    push.checked = true;
+    if (state.open) paintPanel();
+  }
+
   function open() {
     state.open = true;
     paintPanel();
     if (!state.loaded || state.unread) loadList(); else paintPanel();
+    /* Resolved on open, not on page load: asking the browser about push costs
+       a service-worker round trip, and nobody who never opens the bell should
+       pay for it. */
+    refreshPushState();
   }
 
   function close() {
@@ -275,6 +343,21 @@
     boundUid = null;
   }
 
+  /** One sentence per refusal, because each one has a different way out. */
+  function pushRefusal(res) {
+    switch (res.reason) {
+      case "blocked":          return "Your browser is blocking notifications for this site. Allow them in site settings.";
+      case "dismissed":        return "No problem — you can turn alerts on any time from here.";
+      case "ios-needs-install":return "On iPhone, add Kandy's to your Home Screen first, then enable alerts from there.";
+      case "signed-out":       return "Sign in first so we know whose orders to tell you about.";
+      case "not-configured":   return "Push is not configured for this site yet.";
+      case "insecure":         return "Notifications need a secure (https) connection.";
+      case "unsupported":      return "This browser does not support notifications.";
+      case "subscribe-failed": return "This browser refused the subscription. Alerts still show in the bell.";
+      default:                 return "Could not turn on alerts. The bell still works.";
+    }
+  }
+
   /* ---- Wiring ------------------------------------------------------------ */
 
   document.addEventListener("click", async function (e) {
@@ -285,6 +368,35 @@
     }
     if (e.target.closest("[data-notif-close]")) { e.preventDefault(); close(); return; }
     if (e.target.closest("[data-notif-reload]")) { e.preventDefault(); loadList(); return; }
+
+    if (e.target.closest("[data-push-enable]")) {
+      e.preventDefault();
+      push.busy = true; paintPanel();
+      var res = await KT.services.push.enable();
+      push.busy = false;
+      if (res.ok) {
+        push.enabled = true; push.reason = null;
+        KT.toast("Order alerts are on for this device.", "success");
+      } else {
+        push.reason = res.reason;
+        push.enabled = false;
+        KT.toast(pushRefusal(res), "error", { duration: 6000 });
+      }
+      paintPanel();
+      return;
+    }
+
+    if (e.target.closest("[data-push-disable]")) {
+      e.preventDefault();
+      push.busy = true; paintPanel();
+      var off = await KT.services.push.disable();
+      push.busy = false;
+      push.enabled = !off.ok;
+      KT.toast(off.ok ? "Order alerts turned off for this device."
+                      : "Could not turn alerts off.", off.ok ? "success" : "error");
+      paintPanel();
+      return;
+    }
 
     if (e.target.closest("[data-notif-readall]")) {
       e.preventDefault();
@@ -333,9 +445,13 @@
     if (KT.auth && KT.auth.isSignedIn()) {
       refreshCount();
       watch();
+      if (KT.services && KT.services.push) KT.services.push.listenForResubscribe();
     } else {
       unwatch();
       state.items = []; state.loaded = false; state.unread = 0;
+      /* Signing out invalidates what we knew about this device's permission
+         for the previous account. */
+      push = { checked: false, supported: false, reason: null, enabled: false, busy: false };
     }
   }
 
