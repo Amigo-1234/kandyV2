@@ -80,6 +80,21 @@
     return found;
   };
 
+  /**
+   * Query parameters carried on the hash, e.g. #/orders?status=Preparing.
+   * The shell already splits the id off at "?"; this reads what follows so a
+   * dashboard tile can deep-link into a module's existing filters instead of
+   * a new screen being built for each one.
+   */
+  KT.admin.routeParams = function () {
+    var h = String(window.location.hash || "");
+    var q = h.indexOf("?");
+    var out = {};
+    if (q === -1) return out;
+    new URLSearchParams(h.slice(q + 1)).forEach(function (v, k) { out[k] = v; });
+    return out;
+  };
+
   /** May this role open this view? */
   KT.admin.canOpen = function (role, id) {
     var item = KT.admin.itemById(id);

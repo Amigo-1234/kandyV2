@@ -84,7 +84,9 @@
   padding: 3px 11px;
   border-radius: var(--r-pill);
   background: var(--surface-3);
-  color: var(--ink-3);
+  /* --ink-3 on --surface-3 lands at 4.44 — just under AA for text this
+     small. */
+  color: var(--ink-2);
   font-size: 0.7rem;
   font-weight: 700;
 }
@@ -121,6 +123,17 @@
   color: var(--ink-4);
 }
 .chat__row.is-mine .chat__time { color: rgba(255, 255, 255, 0.78); }
+/*
+   The sender label sits on a PINK bubble in the admin inbox and on a white
+   one in the storefront, because "is-mine" means different people in the two
+   apps: the customer's own messages on the storefront, the staff reply in the
+   admin. --kt-pink on --kt-pink measured 1.0 — the role was rendering
+   invisibly on every staff bubble in Support.
+*/
+.chat__row.is-mine .chat__who { color: rgba(255, 255, 255, 0.92); }
+/* --ink-4 on a white bubble measured 2.61. The timestamp is small text and
+   still has to be readable. */
+.chat__row.is-them .chat__time { color: var(--ink-3); }
 
 .chat__state {
   margin: auto;

@@ -355,6 +355,18 @@
 
   KT.admin.views.orders = function (viewCtx) {
     ctx = viewCtx || ctx;
+
+    /* A dashboard tile links here with the filter already chosen, e.g.
+       #/orders?status=Preparing. Reading it here means "In the kitchen" opens
+       the real Orders screen rather than a second, near-identical view. An
+       absent parameter resets the filter, so arriving from the sidebar always
+       shows everything. */
+    var qp = KT.admin.routeParams();
+    state.status = STATUS_TABS.some(function (t) { return t[0] === qp.status; })
+      ? qp.status : "all";
+    state.payment = (qp.payment === "paid" || qp.payment === "unpaid") ? qp.payment : "all";
+    var wanted = qp.code || null;
+
     /* Returned synchronously so the router can mount immediately; the real
        content replaces it as soon as the service module resolves. */
     setTimeout(async function () {
@@ -370,6 +382,7 @@
       }
       await load();
       startWatch();
+      if (wanted) openDetail(wanted);
     }, 0);
 
     return '<div data-orders-mount>' + KT.loadingLabel("Loading orders…") +

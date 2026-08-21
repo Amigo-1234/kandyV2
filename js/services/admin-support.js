@@ -36,9 +36,36 @@ function shapeTicket(row, names) {
   };
 }
 
+export const CHAT_FILTERS = [
+  { id: "all",    label: "All" },
+  { id: "unread", label: "Unread" },
+  { id: "recent", label: "Recent" }
+];
+
 export const adminSupportService = {
   TICKET_STATUSES,
   CONTACT_STATUSES,
+  CHAT_FILTERS,
+
+  /**
+   * The support inbox. One RPC does the conversation/profile/last-message
+   * join, the search and the paging in Postgres.
+   *
+   * This replaces a client-side pattern that fetched every conversation and
+   * then called admin_list_customers({limit: 200}) purely to turn user_ids
+   * into names — an N+1 in disguise that also had no way to search or page.
+   *
+   * It is not a second chat system: reading a thread, sending and the
+   * realtime channel all remain in js/services/chat.js. This only lists.
+   * `email` comes back null for staff and supervisor, decided server-side.
+   */
+  async inbox({ search = "", filter = "all", limit = 30, offset = 0 } = {}) {
+    const { data, error } = await supabase.rpc("admin_chat_inbox", {
+      p_search: search, p_filter: filter, p_limit: limit, p_offset: offset
+    });
+    if (error) throw error;
+    return data || { rows: [], total: 0, can_see_email: false, unread_total: 0 };
+  },
 
   /**
    * Tickets, newest activity first. RLS returns only the caller's own rows

@@ -400,6 +400,12 @@
 
   function mount(viewCtx) {
     ctx = viewCtx || ctx;
+
+    /* #/menu?status=sold_out, from the dashboard's availability tile. */
+    var qp = KT.admin.routeParams();
+    state.status = (qp.status === "sold_out" || qp.status === "hidden" ||
+                    qp.status === "available") ? qp.status : "all";
+
     setTimeout(async function () {
       if (!svc) {
         try { svc = await import("../services/admin-menu.js"); }

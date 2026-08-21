@@ -6,9 +6,13 @@
 
    Two things are deliberately NOT the browser's decision:
 
-     sender_role   chat_message_stamp() overwrites it with auth_role() on
-                   every insert, and 0030 removed it from the column grant.
-                   A forged role is discarded before the row lands.
+     sender_role   Two layers, and until Phase 12 only one of them existed.
+                   chat_message_stamp() overwrites it with auth_role() on
+                   every insert, so a forged role was always discarded — but
+                   the column was still in the INSERT grant, so the attempt
+                   was accepted with a 201 rather than refused. 0042 revoked
+                   it; now the grant rejects it first and the trigger remains
+                   the backstop.
 
      who sees what RLS scopes conversations to `user_id = auth.uid() OR
                    is_admin()`. A customer asking for another customer's

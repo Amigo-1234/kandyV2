@@ -179,7 +179,12 @@
     if (!state.ready) return;
     var id = currentId();
 
-    if (lastView && lastView !== id) teardownView();
+    /* Tear down on EVERY re-entry, not only when the id changes. Navigating
+       #/orders -> #/orders?status=Out, or clicking Dashboard while already on
+       it, re-runs the view's mount — which is where modules open their
+       realtime channels. Without this, same-route navigation was the one path
+       that could stack a duplicate subscription. */
+    teardownView();
     lastView = id;
     var host = KT.qs("[data-admin-page]");
     if (!host) return;

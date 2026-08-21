@@ -1,53 +1,16 @@
 /* ==========================================================================
    Kandy's Treats — Admin views
    --------------------------------------------------------------------------
-   Phase 4 ships the dashboard placeholder only. Every other view renders an
-   honest "not built yet" panel rather than a fake screen, so nobody mistakes
-   scaffolding for a working module.
+   Shared fallbacks only. The dashboard moved to js/admin/dashboard.js in
+   Phase 12 when it stopped being a placeholder; what is left here is the
+   "not built yet" panel and the forbidden screen, both of which exist so
+   nobody mistakes scaffolding — or a blocked route — for a working module.
    ========================================================================== */
 (function (KT) {
   "use strict";
 
   KT.admin = KT.admin || {};
   KT.admin.views = {};
-
-  function card(label, value, hint) {
-    return '<div class="astat">' +
-      '<span class="astat__label">' + label + "</span>" +
-      '<strong class="astat__value">' + value + "</strong>" +
-      (hint ? '<span class="astat__hint">' + hint + "</span>" : "") +
-      "</div>";
-  }
-
-  KT.admin.views.dashboard = function (ctx) {
-    var first = String(ctx.name || "").split(" ")[0] || "there";
-    return (
-      '<header class="apage__head">' +
-        "<div><h1>Welcome back, " + first + "</h1>" +
-        '<p class="apage__lede">You are signed in as <strong>' + ctx.role +
-        "</strong>. This is the admin dashboard shell — live figures arrive with the " +
-        "reporting module.</p></div>" +
-      "</header>" +
-
-      '<div class="astat__grid">' +
-        card("Orders today", "—", "placeholder") +
-        card("In the kitchen", "—", "placeholder") +
-        card("Out for delivery", "—", "placeholder") +
-        card("Completed today", "—", "placeholder") +
-      "</div>" +
-
-      '<div class="panel apanel">' +
-        '<div class="panel__head"><h2>Not wired up yet</h2></div>' +
-        "<p>These cards are deliberately blank. Phase 4 covers the shell, " +
-        "authentication, authorisation and navigation only — no business " +
-        "module reads or writes data yet.</p>" +
-        '<p class="apanel__note">Your access level decides what appears in the ' +
-        "sidebar, but the real boundary is the database: every screen built from " +
-        "here is refused server-side if your role is not permitted, regardless of " +
-        "what the interface shows.</p>" +
-      "</div>"
-    );
-  };
 
   /** Placeholder for every module still to be built. */
   KT.admin.views.placeholder = function (ctx, item) {

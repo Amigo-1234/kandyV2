@@ -870,9 +870,23 @@
 .fin__note svg { flex: none; margin-top: 2px; }
 .fin__count { margin: 0 0 10px; color: var(--ink-3); font-size: 0.82rem; font-weight: 600; }
 
-.astat--good .astat__value { color: var(--mint); }
-.astat--warn .astat__value { color: var(--amber); }
-.astat--bad  .astat__value { color: var(--chili); }
+/*
+   The raw tokens are chip/graphic colours, not text colours: on --surface
+   they measure 3.16, 2.04 and 3.68 against white, all under AA, and these are
+   the largest figures on the Finance screen. Darkened to the same hues the
+   badge styles in this file already use for exactly this reason.
+*/
+.astat--good .astat__value { color: #0a7a5e; }
+.astat--warn .astat__value { color: #8f5a00; }
+.astat--bad  .astat__value { color: #c4441f; }
+:root[data-theme="dark"] .astat--good .astat__value { color: #6fe0bd; }
+:root[data-theme="dark"] .astat--warn .astat__value { color: #f7c46c; }
+:root[data-theme="dark"] .astat--bad  .astat__value { color: #ff9d7d; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .astat--good .astat__value { color: #6fe0bd; }
+  :root:not([data-theme="light"]) .astat--warn .astat__value { color: #f7c46c; }
+  :root:not([data-theme="light"]) .astat--bad  .astat__value { color: #ff9d7d; }
+}
 
 .fin__filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
 .fin__filters .field { margin: 0; }
@@ -1308,4 +1322,623 @@
   .inviterow .btn {
     width: 100%;
   }
+}
+
+/* ==========================================================================
+   Dashboard
+   --------------------------------------------------------------------------
+   A kitchen board, not an analytics product. Counts are large, every tile is
+   a link into the module that owns the number, and the only colour that
+   appears is on a figure somebody is expected to act on today.
+   ========================================================================== */
+
+.dhead {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.dhead__right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dlive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  /* #0a6e55 on --mint-50 clears AA in light; --mint alone does not at this
+     size. --mint-50 is a DARK token in dark mode, so the pairing has to flip
+     with it — a dark green on a dark ground measured 2.26. */
+  color: #0a6e55;
+  background: var(--mint-50);
+  padding: 5px 11px;
+  border-radius: var(--r-pill);
+}
+:root[data-theme="dark"] .dlive { color: #6fe0bd; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .dlive { color: #6fe0bd; }
+}
+.dlive__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mint);
+  animation: kt-pulse 2.4s var(--ease-out) infinite;
+}
+.dstamp {
+  margin: -12px 0 20px;
+  font-size: 0.75rem;
+  color: var(--ink-3);
+}
+
+/* ---- Sections ---------------------------------------------------------- */
+
+.dsec { margin-bottom: 26px; }
+.dsec__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.dsec__head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+}
+.dsec__head h2 svg { color: var(--kt-pink); }
+.dsec__all {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--kt-pink);
+}
+.dsec__all:hover { text-decoration: underline; }
+/* --kt-pink measures 4.28 on the dark page ground; the bright token is the
+   one this file already uses for pink text in dark mode. */
+:root[data-theme="dark"] .dsec__all { color: var(--kt-pink-bright); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .dsec__all { color: var(--kt-pink-bright); }
+}
+.dsec__note {
+  margin: -10px 0 0;
+  font-size: 0.82rem;
+  color: var(--ink-2);
+}
+.dsec__note--muted {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-3);
+}
+
+/* ---- Tiles ------------------------------------------------------------- */
+
+.astat--link {
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--t-fast) linear, transform var(--t-fast) var(--ease-out),
+    box-shadow var(--t-fast) linear;
+}
+.astat--link:hover {
+  border-color: var(--kt-pink-200);
+  box-shadow: var(--sh-1);
+  transform: translateY(-1px);
+}
+.astat--link:focus-visible {
+  outline: 3px solid var(--kt-pink-bright);
+  outline-offset: 2px;
+}
+.astat__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.astat__icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--ink-2);
+}
+.astat__label { margin: 0; }
+.dtile--alert .astat__label,
+.dtile--warn .astat__label,
+.dtile--info .astat__label {
+  /* --ink-3 lands at 4.23-4.48 on these tints — just under AA. */
+  color: var(--ink-2);
+}
+
+.astat--link .astat__hint {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  /* --ink-4 measures ~2.5 on --surface. This line carries the destination of
+     the link, so it uses the readable ink instead. */
+  color: var(--ink-3);
+}
+.astat--link .astat__hint svg { margin-left: auto; opacity: 0.7; }
+
+/* Tone is applied only when the figure is non-zero — see tile() in
+   js/admin/dashboard.js. Nothing to chase should not look like an alert.
+
+   Namespaced `dtile--` rather than reusing `astat--warn`: Finance already
+   owns that class and colours the FIGURE amber with it, which on this pale
+   amber ground measured 1.95. Two modules sharing a tone class meant one
+   module restyling the other by accident. */
+.dtile--alert { border-color: #f0b9a6; background: var(--chili-50); }
+.dtile--alert .astat__icon { background: #fff; color: #c4441f; }
+.dtile--warn  { border-color: #f0d9a8; background: #fff9ef; }
+.dtile--warn .astat__icon  { background: #fff; color: #8f5a00; }
+.dtile--info  { border-color: #b9d5f5; background: #f2f8ff; }
+.dtile--info .astat__icon  { background: #fff; color: #0b62c4; }
+
+:root[data-theme="dark"] .dtile--alert { border-color: #6b2a17; background: #33150d; }
+:root[data-theme="dark"] .dtile--warn  { border-color: #5c4415; background: #2c220c; }
+:root[data-theme="dark"] .dtile--info  { border-color: #1d3f66; background: #0f2237; }
+:root[data-theme="dark"] .dtile--alert .astat__icon { background: #180a06; color: #ff9d7d; }
+:root[data-theme="dark"] .dtile--warn  .astat__icon { background: #17110a; color: #f7c46c; }
+:root[data-theme="dark"] .dtile--info  .astat__icon { background: #08131f; color: #7cb8f5; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .dtile--alert { border-color: #6b2a17; background: #33150d; }
+  :root:not([data-theme="light"]) .dtile--warn  { border-color: #5c4415; background: #2c220c; }
+  :root:not([data-theme="light"]) .dtile--info  { border-color: #1d3f66; background: #0f2237; }
+  :root:not([data-theme="light"]) .dtile--alert .astat__icon { background: #180a06; color: #ff9d7d; }
+  :root:not([data-theme="light"]) .dtile--warn  .astat__icon { background: #17110a; color: #f7c46c; }
+  :root:not([data-theme="light"]) .dtile--info  .astat__icon { background: #08131f; color: #7cb8f5; }
+}
+
+.astat--sk { pointer-events: none; }
+
+/* ---- Panels ------------------------------------------------------------ */
+
+.dsplit {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 18px;
+}
+.dpanel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.dpanel__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 18px 13px;
+  border-bottom: 1px solid var(--line);
+}
+.dpanel__head h2 { font-family: var(--font-display); font-size: 0.98rem; }
+.dpanel__hint {
+  margin-left: auto;
+  font-size: 0.74rem;
+  color: var(--ink-3);
+}
+
+.dlist { display: grid; }
+.drow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color var(--t-fast) linear;
+}
+.drow:last-child { border-bottom: 0; }
+.drow:hover { background: var(--surface-3); }
+.drow__main { display: grid; gap: 2px; min-width: 0; }
+.drow__main strong { font-size: 0.9rem; }
+.drow__sub {
+  font-size: 0.76rem;
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.drow__price {
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.drow__unpaid {
+  font-style: normal;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #c4441f;
+}
+:root[data-theme="dark"] .drow__unpaid { color: #ff9d7d; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .drow__unpaid { color: #ff9d7d; }
+}
+.drow__time {
+  font-size: 0.72rem;
+  color: var(--ink-3);
+  min-width: 58px;
+  text-align: right;
+}
+
+/* ---- Activity feed ----------------------------------------------------- */
+
+.dfeed { display: grid; }
+.dfeed__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 11px 18px;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color var(--t-fast) linear;
+}
+.dfeed li:last-child .dfeed__row { border-bottom: 0; }
+.dfeed__row:hover { background: var(--surface-3); }
+.dfeed__icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--ink-2);
+}
+.dfeed__icon--order   { background: var(--kt-pink-50); color: var(--kt-pink); }
+.dfeed__icon--chat,
+.dfeed__icon--ticket,
+.dfeed__icon--contact { background: #e4f0ff; color: #0b62c4; }
+.dfeed__icon--menu    { background: #fff3dd; color: #8f5a00; }
+:root[data-theme="dark"] .dfeed__icon--chat,
+:root[data-theme="dark"] .dfeed__icon--ticket,
+:root[data-theme="dark"] .dfeed__icon--contact { background: #0f2237; color: #7cb8f5; }
+:root[data-theme="dark"] .dfeed__icon--menu { background: #2c220c; color: #f7c46c; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .dfeed__icon--chat,
+  :root:not([data-theme="light"]) .dfeed__icon--ticket,
+  :root:not([data-theme="light"]) .dfeed__icon--contact { background: #0f2237; color: #7cb8f5; }
+  :root:not([data-theme="light"]) .dfeed__icon--menu { background: #2c220c; color: #f7c46c; }
+}
+.dfeed__body { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.dfeed__body strong { font-size: 0.85rem; }
+.dfeed__detail {
+  font-size: 0.76rem;
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dfeed__time {
+  flex: none;
+  font-size: 0.72rem;
+  color: var(--ink-3);
+}
+
+.dempty {
+  padding: 32px 22px;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  text-align: center;
+  color: var(--ink-2);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+.dempty svg { color: var(--ink-4); }
+.dempty__art {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--surface-3);
+}
+.dempty__art--bad { background: var(--chili-50); color: #c4441f; }
+:root[data-theme="dark"] .dempty__art--bad { background: #33150d; color: #ff9d7d; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .dempty__art--bad { background: #33150d; color: #ff9d7d; }
+}
+
+/* ==========================================================================
+   Support inbox
+   --------------------------------------------------------------------------
+   Two panels on a desktop, one at a time on a phone. The list row has fixed
+   slots — avatar, name, time, preview, unread — so the three facts it shows
+   can never run together the way the old inline spans did.
+   ========================================================================== */
+
+.cinbox {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface);
+  /* Fills the admin page area without the whole page scrolling: each panel
+     scrolls on its own, which is what makes it feel like an inbox. */
+  height: calc(100vh - var(--nav-h) - 150px);
+  min-height: 440px;
+}
+
+.cinbox__list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--line);
+  background: var(--surface-3);
+}
+
+.cinbox__filters {
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.cinbox__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.cinbox__search svg {
+  position: absolute;
+  left: 12px;
+  color: var(--ink-3);
+  pointer-events: none;
+}
+.cinbox__search .input { padding-left: 36px; }
+.cinbox__chips { flex-wrap: wrap; gap: 6px; }
+
+.cinbox__rows {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.cinbox__skeleton { padding: 16px; }
+
+.cconv {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  transition: background-color var(--t-fast) linear;
+}
+.cconv:hover { background: var(--surface); }
+.cconv.is-active { background: var(--surface); box-shadow: inset 3px 0 0 var(--kt-pink); }
+.cconv.is-unread { background: var(--kt-pink-50); }
+.cconv.is-unread:hover,
+.cconv.is-unread.is-active { background: var(--kt-pink-100); }
+
+.cconv__avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--kt-plum);
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+.cconv__body { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.cconv__top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.cconv__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cconv__time {
+  flex: none;
+  font-size: 0.7rem;
+  /* The row's ground is --surface-3, where --ink-3 measures 4.44 — under AA
+     for text this size. Same reason as .cconv__preview below. */
+  color: var(--ink-2);
+}
+.cconv.is-unread .cconv__time { color: var(--kt-pink); font-weight: 700; }
+.cconv__bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cconv__preview {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.78rem;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cconv.is-unread .cconv__preview { color: var(--ink); font-weight: 600; }
+.cconv__unread {
+  flex: none;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  background: var(--kt-pink);
+  color: #fff;
+  font-size: 0.66rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.cconv__email {
+  font-size: 0.7rem;
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cinbox__more {
+  padding: 12px;
+  text-align: center;
+  font-size: 0.74rem;
+  color: var(--ink-3);
+}
+
+.cinbox__state {
+  padding: 34px 22px;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  text-align: center;
+  color: var(--ink-2);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+.cinbox__state h3 { font-family: var(--font-display); font-size: 1rem; }
+.cinbox__state--placeholder { margin: auto; }
+.cinbox__art {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--ink-3);
+}
+.cinbox__art--bad { background: var(--chili-50); color: #c4441f; }
+:root[data-theme="dark"] .cinbox__art--bad { background: #33150d; color: #ff9d7d; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .cinbox__art--bad { background: #33150d; color: #ff9d7d; }
+}
+
+/* ---- Thread ------------------------------------------------------------ */
+
+.cthread {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--surface);
+}
+.cthread__head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.cthread__back { display: none; }
+.cthread__who { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.cthread__who strong { font-size: 0.92rem; }
+.cthread__who span {
+  font-size: 0.74rem;
+  color: var(--ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cthread__profile { flex: none; }
+
+.cctx {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-3);
+  display: grid;
+  gap: 8px;
+}
+.cctx__facts { display: flex; flex-wrap: wrap; gap: 14px; }
+.cctx__fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.76rem;
+  color: var(--ink-2);
+}
+.cctx__fact svg { color: var(--ink-3); }
+.cctx__orders { display: flex; flex-wrap: wrap; gap: 8px; }
+.cctx__order {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  font-size: 0.74rem;
+  color: inherit;
+  text-decoration: none;
+}
+.cctx__order:hover { border-color: var(--kt-pink-200); }
+
+.cthread__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cthread__loading { padding: 16px; }
+.cthread__compose {
+  border-top: 1px solid var(--line);
+  padding: 12px 14px;
+  margin: 0;
+}
+.cthread__error {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 9px 16px;
+  background: var(--chili-50);
+  color: #a5371a;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+:root[data-theme="dark"] .cthread__error { background: #33150d; color: #ffb59b; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .cthread__error { background: #33150d; color: #ffb59b; }
+}
+
+/* ---- One panel at a time on a phone ------------------------------------ */
+
+@media (max-width: 860px) {
+  .cinbox {
+    grid-template-columns: 1fr;
+    height: calc(100vh - var(--nav-h) - 96px);
+  }
+  .cinbox__list { border-right: 0; }
+  /* The thread is off-screen until a conversation is chosen, then it takes
+     the full width and the list steps aside. */
+  .cinbox .cthread { display: none; }
+  .cinbox.is-thread .cinbox__list { display: none; }
+  .cinbox.is-thread .cthread { display: flex; }
+  .cthread__back { display: grid; }
 }

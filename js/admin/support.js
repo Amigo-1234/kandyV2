@@ -372,9 +372,14 @@
 
   KT.admin.views.support = function (ctx) {
     state.role = ctx.role;
-    state.tab = "chat";
+    /* #/support?tab=tickets, from the dashboard. Support stays ONE workspace
+       with three tabs — the dashboard picks a tab, it does not get its own
+       route (Phase 12 §14). */
+    var qp = KT.admin.routeParams();
+    var tab = TABS.some(function (t) { return t.id === qp.tab; }) ? qp.tab : "chat";
+    state.tab = tab;
     state.activeTicket = null;
-    window.setTimeout(function () { showTab("chat"); }, 0);
+    window.setTimeout(function () { showTab(tab); }, 0);
     return chrome(KT.loadingLabel("Loading support…") + KT.skeleton.lines(4));
   };
 
