@@ -131,6 +131,29 @@
   color: var(--kt-pink);
 }
 
+/* A short explanatory note on an auth screen — the invitation page uses it
+   to say what accepting does before anyone presses the button. */
+.authnote {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 13px 15px;
+  border-radius: var(--r-md);
+  background: var(--surface-3);
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+.authnote svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--kt-pink);
+}
+
+.authactions {
+  display: grid;
+}
+
 /* ---- Brand panel ------------------------------------------------------ */
 
 .auth__art {

@@ -198,6 +198,11 @@
           '<p class="odetail__note">Payment state is set by the settlement system and is read-only here.</p>' +
         "</section>" +
         '<section class="odetail__sec"><h3>Saved addresses</h3>' + addresses + "</section>" +
+        /* d.tier is the server's word for what this caller is — the same
+           value that decided whether email and spend were redacted above. A
+           staff or supervisor caller does not see this section, and
+           admin_notify_customer() refuses them regardless. */
+        (d.tier === "manager" ? notifyHTML(p) : "") +
         (isOwner()
           ? '<section class="odetail__sec"><h3>Danger zone</h3>' +
             '<p class="odetail__muted">Deleting an account removes its wallet, addresses, ' +
@@ -206,6 +211,34 @@
               "Delete this account</button></section>"
           : "") +
       "</div>"
+    );
+  }
+
+  /*
+     Admin -> customer, outside any conversation the customer started. It
+     lands in their notification centre in real time, exactly like a chat or
+     ticket reply, because it is the same table and the same trigger-free
+     path: admin_notify_customer() calls notify_user() server-side. Nothing
+     here inserts a notification, and nothing here could — `authenticated`
+     has no INSERT grant on the table.
+  */
+  function notifyHTML(p) {
+    return (
+      '<section class="odetail__sec"><h3>Send a notification</h3>' +
+        '<p class="odetail__muted">Appears in this customer\'s notification ' +
+        "centre straight away. It is recorded in the audit log with your name " +
+        "against it.</p>" +
+        '<form class="cnotify" data-cnotify="' + esc(p.id) + '">' +
+          '<label class="field"><span class="field__label">Title</span>' +
+            '<input class="input" name="title" maxlength="120" required ' +
+              'placeholder="Your order is ready"></label>' +
+          '<label class="field"><span class="field__label">Message</span>' +
+            '<textarea class="input" name="message" rows="3" maxlength="500" required ' +
+              'placeholder="Short and specific — they see this as a notification."></textarea>' +
+          "</label>" +
+          '<button class="btn btn--soft btn--sm" type="submit">Send notification</button>' +
+        "</form>" +
+      "</section>"
     );
   }
 
@@ -346,6 +379,26 @@
   }
 
   /* ---- Entry ----------------------------------------------------------- */
+
+  document.addEventListener("submit", async function (e) {
+    var form = e.target.closest("[data-cnotify]");
+    if (!form) return;
+    e.preventDefault();
+    var data = Object.fromEntries(new FormData(form).entries());
+    var done = KT.busy(KT.qs("[type=submit]", form), "Sending…");
+    if (!done) return;
+    try {
+      var mod = await import("../services/admin-notify.js");
+      await mod.adminNotifyService.notifyCustomer(
+        form.getAttribute("data-cnotify"), data.title, data.message);
+      form.reset();
+      KT.toast("Notification sent.", "success");
+    } catch (error) {
+      KT.toast(KT.services.errorMessage(error), "error", { duration: 6000 });
+    } finally {
+      done();
+    }
+  });
 
   KT.admin.views.customers = function (viewCtx) {
     ctx = viewCtx || ctx;

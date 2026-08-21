@@ -5,15 +5,12 @@
    scripts. Module scripts are deferred, so window.KT and its components
    already exist by the time this runs.
 
-   MIGRATION STATE (Phase 4 — auth + profile)
+   MIGRATION STATE (Phase 11)
      Supabase : auth, profile, addresses, favourites, catalogue, orders,
-                reviews, announcements, contact, support
+                reviews, announcements, contact, support, wallet, payments,
+                chat, careers, notifications
      Firebase : NONE. No live service imports the Firebase SDK.
-     Deferred : wallet, notifications, reviews, support, payments.
-                These are owner-scoped in Firestore and would be queried with a
-                Supabase UUID that Firebase Auth has never seen, so they are
-                not wired up here. All of them are empty in both backends.
-                Phase 5 moves them.
+     Deferred : nothing. Every service on KT.services reads real data.
 
    If the backend fails to load — offline, blocked, or opened over file:// —
    the storefront still renders from the bundled menu snapshot. Ordering is
@@ -32,15 +29,15 @@ async function boot() {
   const { contentService } = await import("./content.js");
   const { reviewService } = await import("./reviews.js");
 
-  /* Not migrated yet. Inert stand-ins with the same method surface, so the UI
-     renders empty states instead of spraying permission-denied errors from
-     Firestore queries made with a Supabase UUID. See deferred.js. */
+  /* Everything below is live Supabase too. They are imported after the three
+     above only because nothing on a first paint waits on them. */
   const { addressService } = await import("./addresses.js");
   const { orderService } = await import("./orders.js");
   const { paymentService } = await import("./payments.js");
   const { chatService } = await import("./chat.js");
   const { careersService } = await import("./careers.js");
   const { walletService } = await import("./wallet.js");
+  const { notificationService } = await import("./notifications.js");
 
   /* Every live service is Supabase now, so one error handler covers them. */
   const errorMessage = supaError;
@@ -58,6 +55,7 @@ async function boot() {
     chat: chatService,
     careers: careersService,
     wallet: walletService,
+    notifications: notificationService,
     errorMessage,
     backend: {
       auth: "supabase", profile: "supabase",
@@ -65,7 +63,8 @@ async function boot() {
       catalogue: "supabase", orders: "supabase",
       reviews: "supabase", content: "supabase",
       payments: "supabase+paystack", wallet: "supabase+paystack",
-      chat: "supabase+realtime", careers: "supabase"
+      chat: "supabase+realtime", careers: "supabase",
+      notifications: "supabase+realtime"
     }
   };
 

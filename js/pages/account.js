@@ -184,6 +184,8 @@
   function notificationsPanel() {
     if (!state.notifications.length) return "";
     var unread = state.notifications.filter(function (n) { return !n.read; }).length;
+    var NOTE_ICON = { order: "receipt", chat: "mail", support: "mail",
+      wallet: "wallet", message: "sparkle" };
     return (
       '<div class="panel" id="notifications">' +
         '<div class="panel__head"><div><h2>Updates' +
@@ -197,14 +199,20 @@
               '<span class="ring" style="display:grid;place-items:center;background:' +
                 (n.read ? "var(--surface-3)" : "var(--kt-pink-50)") + ';color:' +
                 (n.read ? "var(--ink-3)" : "var(--kt-pink)") + '">' +
-                KT.icon(n.type === "wallet" ? "wallet" : "receipt", 18) + "</span>" +
+                KT.icon(NOTE_ICON[n.type] || "sparkle", 18) + "</span>" +
               '<div class="orderitem__text"><strong>' + (n.title || "Update") + "</strong>" +
                 "<span>" + (n.message || "") + "</span></div>" +
               (n.read ? "" : '<span class="tile__badge">New</span>');
 
-            return n.relatedId
-              ? '<a class="orderitem" href="' +
-                KT.url("pages/order-detail.html?id=" + encodeURIComponent(n.relatedId)) +
+            /* Where it points is decided by the notification's TYPE, in the
+               service. A chat notification carries a conversation id, so the
+               old "any relatedId means an order" rule produced dead links the
+               moment anything other than orders started notifying. */
+            var link = KT.services && KT.services.notifications
+              ? KT.services.notifications.href(n) : null;
+
+            return link
+              ? '<a class="orderitem" href="' + link +
                 '" data-notification="' + n.id + '">' + body + "</a>"
               : '<div class="orderitem" data-notification="' + n.id + '">' + body + "</div>";
           }).join("") +
@@ -676,10 +684,9 @@
       }
 
       if (t.closest("[data-read-all]")) {
-        await Promise.all(state.notifications.filter(function (n) { return !n.read; })
-          .map(function (n) {
-            return KT.services.account.markNotificationRead(n.id).catch(function () {});
-          }));
+        /* One statement, scoped by RLS to this customer's own rows — not a
+           fan-out of one request per notification. */
+        await KT.services.account.markAllNotificationsRead().catch(function () {});
         state.notifications = state.notifications.map(function (n) {
           return Object.assign({}, n, { read: true });
         });

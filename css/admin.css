@@ -163,6 +163,26 @@
 .anav__link.is-active { background: var(--kt-pink); color: #fff; }
 .anav__link.is-danger { color: #ffb3d4; }
 .anav__icon { display: grid; place-items: center; flex: none; }
+/* Unread count on a nav item. Pushed to the end of the row so a long label
+   never collides with it. */
+/* White on --chili (#e4572e) measures 3.68 — under AA for text this size,
+   and this badge is a count somebody has to read and act on. Darkened to the
+   nearest alert red that clears it (4.91). */
+.anav__badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  background: #c8431c;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.anav__link.is-active .anav__badge { background: rgba(255, 255, 255, 0.24); }
 
 .asidefoot {
   padding: 12px;
@@ -246,6 +266,17 @@
 :root[data-theme="dark"] .rolebadge--admin { color: var(--kt-pink-bright); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .rolebadge--admin { color: var(--kt-pink-bright); }
+}
+/* Amber on its own tint. --amber (#f5a524) on a pale amber ground measures
+   well under AA, so the light value is a darkened amber and the dark value a
+   lightened one — same reasoning as the staff and admin badges above. */
+.rolebadge--supervisor { background: #fdf1de; color: #8a5205; }
+:root[data-theme="dark"] .rolebadge--supervisor { background: #3a2a10; color: #f7c46c; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .rolebadge--supervisor {
+    background: #3a2a10;
+    color: #f7c46c;
+  }
 }
 .rolebadge--owner { background: var(--kt-plum); color: #fff; }
 
@@ -999,4 +1030,282 @@
 @media (max-width: 640px) {
   .teamrow__meta { text-align: left; width: 100%; grid-auto-flow: column; gap: 12px; justify-content: start; }
   .team__panel { width: 100vw; border-left: 0; }
+}
+
+/* ==========================================================================
+   Settings
+   --------------------------------------------------------------------------
+   A card per key. The locked treatment is applied from `editable` on the
+   server response, so a card an admin cannot write looks unavailable rather
+   than looking editable and then failing on save.
+   ========================================================================== */
+
+.setgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.setcard {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--sh-1);
+  overflow: hidden;
+}
+.setcard.is-locked {
+  background: var(--surface-3);
+}
+
+.setcard__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 17px 18px 12px;
+}
+.setcard__head h3 {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  margin-bottom: 4px;
+}
+.setcard__blurb {
+  font-size: 0.82rem;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+.setcard__tier {
+  flex: none;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--ink-2);
+}
+/* :not() is load-bearing. Without it this rule (three classes) out-specifies
+   .setcard__tier--owner (one class), so an owner-only chip on a locked card
+   kept its white text and lost its plum ground — white on white, which is
+   every owner-only card when an admin is looking. */
+.setcard.is-locked .setcard__tier:not(.setcard__tier--owner) {
+  background: var(--surface);
+}
+/* Owner-only reuses the owner role badge's plum, so "owner" reads the same
+   wherever it appears in the admin. */
+.setcard__tier--owner {
+  background: var(--kt-plum);
+  color: #fff;
+}
+
+.setcard__body {
+  flex: 1;
+  padding: 4px 18px 16px;
+}
+
+.setform__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+}
+.setform__field {
+  min-width: 0;
+}
+.setform__input {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.setform__input .input {
+  min-width: 0;
+}
+.setform__affix {
+  flex: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ink-3);
+}
+
+/* ---- Switch ------------------------------------------------------------ */
+
+.setform__switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  padding: 6px 0;
+}
+.setform__switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.setform__track {
+  position: relative;
+  flex: none;
+  width: 50px;
+  height: 29px;
+  border-radius: var(--r-pill);
+  background: var(--line-2);
+  transition: background-color var(--t-fast) linear;
+}
+.setform__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--sh-1);
+  transition: transform var(--t-mid) var(--ease-spring);
+}
+.setform__switch input:checked + .setform__track {
+  background: var(--mint);
+}
+.setform__switch input:checked + .setform__track .setform__knob {
+  transform: translateX(21px);
+}
+.setform__switch input:disabled + .setform__track {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.setform__switch input:focus-visible + .setform__track {
+  outline: 3px solid var(--kt-pink-bright);
+  outline-offset: 2px;
+}
+.setform__switchlabel {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.setcard__foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-3);
+}
+.setcard.is-locked .setcard__foot {
+  background: transparent;
+}
+.setcard__stamp {
+  flex: 1;
+  min-width: 130px;
+  font-size: 0.74rem;
+  color: var(--ink-3);
+}
+.setcard__actions {
+  display: flex;
+  gap: 8px;
+}
+.setcard__locked {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+/* ==========================================================================
+   Invitations
+   ========================================================================== */
+
+.team__invitebtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.team__invites {
+  margin-bottom: 20px;
+  padding: 16px 18px;
+  border: 1px dashed var(--line-2);
+  border-radius: var(--r-lg);
+  background: var(--surface-3);
+}
+
+.inviterow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 11px 0;
+  border-top: 1px solid var(--line);
+}
+.inviterow:first-of-type {
+  border-top: 0;
+}
+.inviterow.is-expired {
+  opacity: 0.6;
+}
+.inviterow__icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-2);
+}
+.inviterow__who {
+  flex: 1;
+  min-width: 160px;
+  display: grid;
+  gap: 2px;
+}
+.inviterow__who strong {
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.inviterow__who span {
+  font-size: 0.76rem;
+  color: var(--ink-3);
+}
+
+/* The one time the token is on screen. Monospace so a hand-copied character
+   cannot be mistaken for another. */
+.team__tokenbox {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+}
+
+.team__rolehint {
+  margin-top: 9px;
+  font-size: 0.8rem;
+  color: var(--ink-2);
+  line-height: 1.5;
+}
+
+/* ---- Send a customer a notification ------------------------------------ */
+
+.cnotify {
+  display: grid;
+  gap: 11px;
+  margin-top: 12px;
+}
+.cnotify textarea.input {
+  resize: vertical;
+  min-height: 74px;
+  line-height: 1.5;
+}
+.cnotify .btn {
+  justify-self: start;
+}
+
+@media (max-width: 560px) {
+  .setgrid {
+    grid-template-columns: 1fr;
+  }
+  .inviterow .btn {
+    width: 100%;
+  }
 }

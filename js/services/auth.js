@@ -208,7 +208,11 @@ export const authService = {
     const routes = {
       cart: "pages/cart.html",
       account: "pages/account.html",
-      orders: "pages/orders.html"
+      orders: "pages/orders.html",
+      /* An invitee leaves this page to sign up and must land back on it. The
+         token itself is not carried in the URL — join.js parks it in
+         sessionStorage before sending them away. */
+      join: "pages/join.html"
     };
     return window.KT.url(routes[next] || "pages/account.html");
   }

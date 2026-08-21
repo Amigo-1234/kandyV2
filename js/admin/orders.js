@@ -147,8 +147,10 @@
     var moves = svc ? svc.nextStatuses(o.status) : [];
     var rank = KT.admin.rank(ctx.role);
     var buttons = moves.filter(function (m) {
-      /* Cancelling is manager+. Everything else is staff+. */
-      return m !== "Cancelled" || rank >= KT.admin.rank("admin");
+      /* Cancelling is supervisor+ since Phase 11 — enforce_order_status_tier()
+         moved from is_manager() to is_supervisor(). Everything else is staff+.
+         Mirrors the trigger; the trigger is what actually decides. */
+      return m !== "Cancelled" || rank >= KT.admin.rank("supervisor");
     }).map(function (m) {
       var danger = m === "Cancelled";
       return '<button class="btn ' + (danger ? "btn--ghost odanger" : "btn--primary") +

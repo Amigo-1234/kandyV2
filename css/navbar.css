@@ -495,3 +495,264 @@
   outline: 3px solid var(--kt-pink-bright);
   outline-offset: 2px;
 }
+
+/* ==========================================================================
+   Notification bell
+   --------------------------------------------------------------------------
+   Sits in the existing .nav__right row. It borrows .cartbtn's size, radius
+   and hover so the header keeps one visual language rather than gaining a
+   new control that looks bolted on.
+
+   Colours come from the same tokens as everything else, so dark mode needs no
+   separate block here — only the panel's own surface is spelled out.
+   ========================================================================== */
+
+.nav__notif {
+  display: contents;
+}
+
+.notifbtn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: 50%;
+  color: var(--ink);
+  background: var(--surface-3);
+  transition: transform var(--t-fast) var(--ease-spring),
+    background-color var(--t-fast) linear, color var(--t-fast) linear;
+}
+.notifbtn:hover {
+  background: var(--kt-pink);
+  color: #fff;
+}
+.notifbtn:active {
+  transform: scale(0.92);
+}
+.notifbtn:focus-visible {
+  outline: 3px solid var(--kt-pink-bright);
+  outline-offset: 2px;
+}
+
+/* White on --chili (#e4572e) measures 3.68 — under AA for text this size,
+   and this badge is a count somebody has to read and act on. Darkened to the
+   nearest alert red that clears it (4.91). */
+.notifbtn__badge {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: #c8431c;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--surface);
+  font-variant-numeric: tabular-nums;
+}
+.notifbtn.has-unread {
+  color: var(--kt-pink);
+}
+.notifbtn.has-unread:hover {
+  color: #fff;
+}
+
+/* ---- Panel ------------------------------------------------------------- */
+
+/* A body-level layer, because .nav carries a backdrop-filter and would
+   otherwise become the containing block for anything fixed inside it. Empty
+   and inert until the panel opens, so it never swallows a click. --notif-top
+   is measured from the real header at open time. */
+.notifhost {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  pointer-events: none;
+}
+.notifhost.is-open {
+  pointer-events: auto;
+}
+
+.notifpanel {
+  position: fixed;
+  top: var(--notif-top, 84px);
+  right: max(var(--gutter), calc((100vw - var(--wrap)) / 2 + var(--gutter)));
+  width: min(384px, calc(100vw - 32px));
+  max-height: min(70vh, 560px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--sh-3);
+  animation: kt-toast-in 180ms var(--ease-out);
+}
+
+.notifpanel__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 12px 13px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.notifpanel__head strong {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+}
+.notifpanel__all {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--kt-pink);
+  padding: 5px 10px;
+  border-radius: var(--r-pill);
+}
+.notifpanel__all:hover {
+  background: var(--kt-pink-50);
+}
+.notifpanel__close {
+  width: 32px;
+  height: 32px;
+  color: var(--ink-3);
+}
+
+.notifpanel__list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  display: grid;
+  gap: 2px;
+}
+
+.notifitem {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 11px 12px;
+  border-radius: var(--r-md);
+  text-align: left;
+  width: 100%;
+  color: inherit;
+  transition: background-color var(--t-fast) linear;
+}
+.notifitem:hover,
+.notifitem:focus-visible {
+  background: var(--surface-3);
+}
+.notifitem.is-unread {
+  background: var(--kt-pink-50);
+}
+.notifitem.is-unread:hover {
+  background: var(--kt-pink-100);
+}
+
+.notifitem__icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--ink-2);
+}
+.notifitem.is-unread .notifitem__icon {
+  background: var(--surface);
+  color: var(--kt-pink);
+}
+
+.notifitem__text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.notifitem__text strong {
+  font-size: 0.885rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.notifitem__text span {
+  font-size: 0.82rem;
+  color: var(--ink-2);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.notifitem__text time {
+  font-size: 0.72rem;
+  color: var(--ink-3);
+  font-weight: 600;
+}
+.notifitem__dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--kt-pink);
+}
+
+.notifpanel__state {
+  padding: 30px 22px;
+  text-align: center;
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  color: var(--ink-2);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+.notifpanel__art {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--ink-3);
+}
+
+.notifpanel__foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 13px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-3);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--kt-pink);
+}
+.notifpanel__foot:hover {
+  background: var(--kt-pink-50);
+}
+
+/* ---- Small screens: a bottom sheet, not a dangling dropdown ------------- */
+
+@media (max-width: 560px) {
+  .notifhost.is-open {
+    z-index: 120;
+    background: rgba(28, 10, 20, 0.42);
+  }
+  .notifpanel {
+    inset: auto 0 0 0;
+    top: auto;
+    right: auto;
+    width: 100%;
+    max-height: 78vh;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    border-bottom: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

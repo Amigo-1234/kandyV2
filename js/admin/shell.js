@@ -22,6 +22,12 @@
   KT.admin = KT.admin || {};
 
   var state = { role: null, name: "", email: "", ready: false };
+  /* Unread counts for the nav badges. Read from admin_support_unread(), which
+     sums counters the database already maintains — this is a mirror, never a
+     second tally. */
+  var unread = { support: 0 };
+  var notifySvc = null;
+  var stopUnread = null;
 
   /* Modules ask the shell what tier the caller is, so role-dependent UI has a
      single source. It is presentation only — every restricted operation is
@@ -91,7 +97,10 @@
       return '<div class="anav__group"><p class="anav__title">' + g.group + "</p>" +
         g.items.map(function (i) {
           return '<a class="anav__link" href="#/' + i.id + '" data-nav="' + i.id + '">' +
-            '<span class="anav__icon">' + KT.icon(i.icon, 18) + "</span>" + i.label + "</a>";
+            '<span class="anav__icon">' + KT.icon(i.icon, 18) + "</span>" + i.label +
+            (i.badge
+              ? '<span class="anav__badge" data-nav-badge="' + i.badge + '" hidden>0</span>'
+              : "") + "</a>";
         }).join("") + "</div>";
     }).join("");
   }
@@ -137,6 +146,7 @@
 
     if (KT.theme) KT.theme.paintToggles();
     route();
+    watchUnread();
   }
 
   function initials(v) {
@@ -153,15 +163,23 @@
 
   var lastView = null;
 
+  /* Releasing the current view's subscriptions and transient state. Pulled out
+     of route() because navigation is not the only way a view stops being
+     shown: signing out replaces the whole shell with a gate, and the module
+     that was mounted would otherwise keep its realtime channel open against a
+     session that no longer exists. */
+  function teardownView() {
+    if (!lastView) return;
+    var teardown = KT.admin.views[lastView + "Teardown"];
+    if (typeof teardown === "function") teardown();
+    lastView = null;
+  }
+
   function route() {
     if (!state.ready) return;
     var id = currentId();
 
-    /* Let the outgoing module release subscriptions and transient state. */
-    if (lastView && lastView !== id) {
-      var teardown = KT.admin.views[lastView + "Teardown"];
-      if (typeof teardown === "function") teardown();
-    }
+    if (lastView && lastView !== id) teardownView();
     lastView = id;
     var host = KT.qs("[data-admin-page]");
     if (!host) return;
@@ -215,18 +233,67 @@
     if (b) b.setAttribute("aria-expanded", "false");
   }
 
+  /* ---- Unread badges --------------------------------------------------- */
+
+  function paintBadges() {
+    KT.qsa("[data-nav-badge]").forEach(function (b) {
+      var n = unread[b.getAttribute("data-nav-badge")] || 0;
+      b.textContent = n > 99 ? "99+" : String(n);
+      b.hidden = n === 0;
+    });
+  }
+
+  async function refreshUnread() {
+    if (!state.ready || !notifySvc) return;
+    try {
+      var u = await notifySvc.unread();
+      /* One number for the Support item: conversations waiting plus tickets
+         still open. Both are things a person has to answer. */
+      unread.support = (Number(u.chat_conversations) || 0) + (Number(u.open_tickets) || 0);
+    } catch (error) {
+      unread.support = 0;      /* a refused count must not break the shell */
+    }
+    paintBadges();
+  }
+
+  async function watchUnread() {
+    if (stopUnread) return;
+    try {
+      if (!notifySvc) {
+        notifySvc = (await import("../services/admin-notify.js")).adminNotifyService;
+      }
+      await refreshUnread();
+      stopUnread = notifySvc.subscribe(refreshUnread);
+    } catch (error) {
+      /* Realtime is a convenience. Without it the counts simply do not move
+         until the next navigation, which is better than a broken shell. */
+    }
+  }
+
+  function unwatchUnread() {
+    if (stopUnread) { stopUnread(); stopUnread = null; }
+    unread.support = 0;
+  }
+
   /* ---- Authorisation --------------------------------------------------- */
 
   async function resolveAccess() {
     if (!KT.services || !KT.auth) return;             /* services not up yet */
 
-    if (!KT.auth.isSignedIn()) { state.ready = false; gateSignedOut(); return; }
+    if (!KT.auth.isSignedIn()) {
+      state.ready = false;
+      teardownView();
+      unwatchUnread();                 /* no channel may outlive the session */
+      gateSignedOut();
+      return;
+    }
 
     var profile;
     try {
       profile = await KT.services.account.profile();
     } catch (error) {
       state.ready = false;
+      teardownView();
       gateError(KT.services.errorMessage ? KT.services.errorMessage(error) : "");
       return;
     }
@@ -238,6 +305,8 @@
 
     if (KT.admin.rank(state.role) < KT.admin.rank("staff")) {
       state.ready = false;
+      teardownView();
+      unwatchUnread();
       gateNotStaff();
       return;
     }
@@ -254,6 +323,8 @@
     if (e.target.closest("[data-admin-retry]"))     { e.preventDefault(); renderSkeleton(); resolveAccess(); }
     if (e.target.closest("[data-admin-signout]")) {
       e.preventDefault();
+      teardownView();
+      unwatchUnread();
       if (KT.auth) await KT.auth.signOut();
       window.location.href = KT.url("index.html");
     }
@@ -261,6 +332,10 @@
 
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeNav(); });
   window.addEventListener("hashchange", route);
+  /* Reading a conversation clears admin_unread server-side, so the badge is
+     stale the moment Support is left. */
+  window.addEventListener("hashchange", refreshUnread);
+  window.addEventListener("pagehide", unwatchUnread);
 
   /* Re-resolve on every auth signal: a sign-out in another tab must drop the
      shell back to the gate rather than leave it on screen. */

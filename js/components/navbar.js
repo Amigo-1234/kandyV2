@@ -81,6 +81,10 @@
                navbar markup theme-agnostic. */
             '<button class="icon-btn nav__theme" type="button" data-theme-toggle ' +
               'aria-label="Switch theme" title="Switch theme"></button>' +
+            /* The bell renders itself: KT.components.notifications owns the
+               three auth states and the unread count, and repaints this slot
+               on every kt:auth signal. */
+            '<span class="nav__notif" data-notif-slot></span>' +
             '<button class="cartbtn" type="button" data-open-cart aria-label="Open cart">' +
               KT.icon("cart", 21) +
               '<span class="cartbtn__badge" data-cart-count hidden>0</span>' +
@@ -186,6 +190,9 @@
     if (cta) cta.innerHTML = authCtaHTML();
     var sheet = KT.qs("[data-auth-sheet-cta]");
     if (sheet) sheet.innerHTML = authSheetHTML();
+    /* The bell shares the CTA's three states, so it repaints on the same
+       signals rather than listening for auth a second time. */
+    if (KT.components.notifications) KT.components.notifications.paint();
   }
   KT.components.paintAuthCta = paintAuthCta;
 

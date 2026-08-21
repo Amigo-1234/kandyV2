@@ -215,5 +215,18 @@
     }
   });
 
+  /* A chat notification links to ?chat=1 rather than to a separate page —
+     the thread lives in this panel, so deep-linking means opening it. The
+     parameter is stripped afterwards so a refresh does not reopen it. */
+  function openFromQuery() {
+    if (!/[?&]chat=1\b/.test(window.location.search)) return;
+    var url = new URL(window.location.href);
+    url.searchParams.delete("chat");
+    window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+    open();
+  }
+
+  document.addEventListener("kt:services", openFromQuery);
+
   KT.components.chat = { open: open, close: close };
 })(window.KT || (window.KT = {}));

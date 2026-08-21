@@ -15,15 +15,15 @@
    which is still served from Firestore, via menu_items.legacy_firestore_id —
    so the UI keeps handing us the ids it already knows.
 
-   PHASE 5B: notifications still live in Firestore and are not migrated yet.
-   They return empty rather than querying Firestore with a Supabase UUID,
-   which would only produce permission errors.
+   Notifications are Supabase as of Phase 11. This file keeps the two methods
+   the account page already calls and forwards them to
+   js/services/notifications.js, so there is one implementation rather than
+   two that can disagree about what "read" means.
    ========================================================================== */
 
 import { supabase, TABLES, errorMessage } from "./supabase.js";
 import { authService } from "./auth.js";
-
-const PHASE_5 = "[Kandy's] not migrated yet (Phase 5B):";
+import { notificationService } from "./notifications.js";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -155,16 +155,14 @@ export const accountService = {
     return true;
   },
 
-  /* ---- Deferred to Phase 5B ------------------------------------------ */
+  /* ---- Notifications (Phase 11) --------------------------------------- */
 
-  async notifications() {
-    console.info(PHASE_5, "notifications");
-    return [];
-  },
-
-  async markNotificationRead() {
-    console.info(PHASE_5, "markNotificationRead");
-  }
+  /* Thin pass-throughs. The account page and the header bell must agree on
+     what a notification is, so they share one module. */
+  notifications(opts) { return notificationService.list(opts); },
+  markNotificationRead(id) { return notificationService.markRead(id); },
+  markAllNotificationsRead() { return notificationService.markAllRead(); },
+  notificationHref(n) { return notificationService.href(n); }
 };
 
 export { errorMessage };

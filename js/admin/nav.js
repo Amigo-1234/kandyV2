@@ -15,7 +15,7 @@
   KT.admin = KT.admin || {};
 
   /* Mirrors public.role_rank() in the database, deliberately. */
-  var RANK = { customer: 10, staff: 20, admin: 30, owner: 40 };
+  var RANK = { customer: 10, staff: 20, supervisor: 25, admin: 30, owner: 40 };
 
   KT.admin.rank = function (role) {
     return RANK[role] || 0;
@@ -27,7 +27,10 @@
       { id: "dashboard",  label: "Dashboard",         icon: "grid",     min: "staff" },
       { id: "orders",     label: "Orders",            icon: "receipt",  min: "staff" },
       { id: "menu",       label: "Menu availability", icon: "flame",    min: "staff" },
-      { id: "support",    label: "Support",           icon: "mail",     min: "staff" }
+      /* badge: the shell paints an unread count on this item from
+         admin_support_unread(). Cosmetic — the counter itself is
+         chat_conversations.admin_unread, maintained server-side. */
+      { id: "support",    label: "Support",           icon: "mail",     min: "staff", badge: "support" }
     ]},
     { group: "Management", items: [
       { id: "menu-manage", label: "Menu management",  icon: "settings", min: "admin" },
@@ -41,12 +44,17 @@
       { id: "finance",     label: "Finance",          icon: "wallet",   min: "admin" },
       { id: "exports",     label: "Exports",          icon: "arrowRight", min: "admin" }
     ]},
-    { group: "Owner", items: [
+    /* Renamed from "Owner": two of these three are now admin+, so calling the
+       group Owner would misdescribe it. Reconciliation is still owner-only. */
+    { group: "Administration", items: [
       { id: "reconciliation", label: "Payment reconciliation", icon: "lock", min: "owner" },
-      { id: "settings",       label: "App settings",           icon: "settings", min: "owner" },
-      /* admin+ because admin_list_team permits a manager to VIEW the roster.
-         Changing a role stays owner-only inside admin_set_role, so widening
-         the nav widens visibility, not authority. */
+      /* admin+ since Phase 11. An admin sees every setting but may only WRITE
+         the operational ones — setting_tier() decides that per key, in the
+         database, and admin_settings() reports it back per row. */
+      { id: "settings",       label: "App settings",           icon: "settings", min: "admin" },
+      /* admin+ because admin_list_team permits a manager to VIEW the roster,
+         and since Phase 11 an admin may also create and manage supervisors.
+         Everything above supervisor stays owner-only inside admin_set_role. */
       { id: "team",           label: "Team & roles",           icon: "user",     min: "admin" }
     ]}
   ];

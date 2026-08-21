@@ -166,11 +166,16 @@
   /* ---- Contact messages -------------------------------------------------- */
 
   function contactsHTML() {
-    if (KT.admin.rank(state.role) < KT.admin.rank("admin")) {
+    /* Supervisor and above since Phase 11 — contact_messages moved from
+       is_manager() to is_supervisor(). This threshold must track that policy,
+       not sit one tier above it: a supervisor being told the table is
+       "manager-only" while the database happily returns the rows is the UI
+       lying about someone's access. */
+    if (KT.admin.rank(state.role) < KT.admin.rank("supervisor")) {
       return '<div class="empty"><div class="empty__art">' + KT.icon("lock", 30) + "</div>" +
-        "<h3>Contact messages are manager-only</h3>" +
+        "<h3>Contact messages are supervisor and above</h3>" +
         "<p>Enquiries from the public contact form include a phone number, so the database " +
-        "restricts them to admin and owner. Your role is <strong>" + esc(state.role) +
+        "restricts them to supervisor, admin and owner. Your role is <strong>" + esc(state.role) +
         "</strong>.</p></div>";
     }
 
