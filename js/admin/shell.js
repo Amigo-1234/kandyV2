@@ -135,6 +135,7 @@
               /* Filled in by paintPushControl() once the browser has been
                  asked what it supports — rendered empty rather than
                  optimistically, so it never offers something that will fail. */
+              '<span data-admin-notif></span>' +
               '<span data-admin-push></span>' +
               '<span data-admin-sound></span>' +
               '<button class="icon-btn" type="button" data-theme-toggle aria-label="Switch theme"></button>' +
@@ -154,6 +155,7 @@
     watchUnread();
     /* Handlers only: the alert feed reads admin_* notifications, which the
        database only ever addresses to operational roles. */
+    if (KT.admin.notifications) KT.admin.notifications.start();
     if (KT.admin.alerts) { KT.admin.alerts.start(); KT.admin.alerts.paintControls(); }
     refreshPushState();
   }
@@ -331,6 +333,7 @@
       teardownView();
       unwatchUnread();                 /* no channel may outlive the session */
       if (KT.admin.alerts) KT.admin.alerts.stop();
+      if (KT.admin.notifications) KT.admin.notifications.stop();
       gateSignedOut();
       return;
     }
@@ -355,6 +358,7 @@
       teardownView();
       unwatchUnread();
       if (KT.admin.alerts) KT.admin.alerts.stop();
+      if (KT.admin.notifications) KT.admin.notifications.stop();
       gateNotStaff();
       return;
     }
@@ -397,6 +401,7 @@
       teardownView();
       unwatchUnread();
       if (KT.admin.alerts) KT.admin.alerts.stop();
+      if (KT.admin.notifications) KT.admin.notifications.stop();
       if (KT.auth) await KT.auth.signOut();
       window.location.href = KT.url("index.html");
     }

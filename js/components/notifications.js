@@ -30,7 +30,9 @@
     loaded: false,
     items: [],
     unread: 0,
-    error: null
+    error: null,
+    prefsOpen: false,
+    prefs: null
   };
   var stop = null;          /* realtime unsubscribe */
   var boundUid = null;      /* who the current subscription belongs to */
@@ -179,6 +181,35 @@
     "</div>";
   }
 
+  /*
+     §13. Four switches, and one of them is deliberately not a switch: order
+     and payment updates are marked CRITICAL server-side
+     (notification_is_critical) and wants_push() returns true for them
+     regardless of preference. Showing a toggle that the server ignores would
+     be a lie, so it is shown as a fixed row that says why.
+  */
+  function prefsHTML() {
+    if (!state.prefsOpen) return "";
+    var p = state.prefs || {};
+    var row = function (key, label, hint) {
+      return '<label class="notifpref">' +
+        '<input type="checkbox" data-pref="' + key + '"' + (p[key] ? " checked" : "") + ">" +
+        '<span class="notifpref__text"><strong>' + esc(label) + "</strong>" +
+        "<span>" + esc(hint) + "</span></span></label>";
+    };
+    return (
+      '<div class="notifprefs">' +
+        '<div class="notifpref is-locked">' +
+          '<span class="notifpref__lock">' + KT.icon("lock", 14) + "</span>" +
+          '<span class="notifpref__text"><strong>Order &amp; payment updates</strong>' +
+          "<span>Always on. These tell you what happened to money you spent " +
+          "or food you are waiting for.</span></span></div>" +
+        row("push_support", "Messages", "Replies from Kandy's in chat and support.") +
+        row("push_marketing", "Announcements", "Offers and news. Off by choice is fine.") +
+      "</div>"
+    );
+  }
+
   function panelHTML() {
     var body;
     if (state.error) {
@@ -202,10 +233,13 @@
           (state.unread
             ? '<button class="notifpanel__all" type="button" data-notif-readall>Mark all read</button>'
             : "") +
+          '<button class="icon-btn notifpanel__prefs" type="button" data-notif-prefs ' +
+            'aria-label="Notification settings" aria-expanded="' +
+            (state.prefsOpen ? "true" : "false") + '">' + KT.icon("settings", 17) + "</button>" +
           '<button class="icon-btn notifpanel__close" type="button" data-notif-close ' +
             'aria-label="Close notifications">' + KT.icon("close", 18) + "</button>" +
         "</header>" +
-        pushRowHTML() +
+        pushRowHTML() + prefsHTML() +
         body +
         '<a class="notifpanel__foot" href="' + KT.url("pages/account.html#notifications") + '">' +
           "See everything in your account" + KT.icon("chevronRight", 15) + "</a>" +
@@ -369,6 +403,18 @@
     if (e.target.closest("[data-notif-close]")) { e.preventDefault(); close(); return; }
     if (e.target.closest("[data-notif-reload]")) { e.preventDefault(); loadList(); return; }
 
+    if (e.target.closest("[data-notif-prefs]")) {
+      e.preventDefault();
+      state.prefsOpen = !state.prefsOpen;
+      paintPanel();
+      if (state.prefsOpen && !state.prefs) {
+        try { state.prefs = await KT.services.push.preferences(); }
+        catch (error) { state.prefs = null; }
+        paintPanel();
+      }
+      return;
+    }
+
     if (e.target.closest("[data-push-enable]")) {
       e.preventDefault();
       push.busy = true; paintPanel();
@@ -432,6 +478,24 @@
     if (state.open && !e.target.closest("[data-notif-panel]")) close();
   });
 
+  document.addEventListener("change", async function (e) {
+    var box = e.target.closest("[data-pref]");
+    if (!box) return;
+    var key = box.getAttribute("data-pref");
+    var value = box.checked;
+    state.prefs = Object.assign({}, state.prefs || {});
+    state.prefs[key] = value;
+    try {
+      var patch = {}; patch[key] = value;
+      await KT.services.push.savePreferences(patch);
+    } catch (error) {
+      /* Put the switch back where the server still has it. */
+      state.prefs[key] = !value;
+      paintPanel();
+      KT.toast(KT.services.errorMessage(error), "error");
+    }
+  });
+
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && state.open) close();
   });
@@ -452,6 +516,7 @@
       /* Signing out invalidates what we knew about this device's permission
          for the previous account. */
       push = { checked: false, supported: false, reason: null, enabled: false, busy: false };
+      state.prefs = null; state.prefsOpen = false;
     }
   }
 

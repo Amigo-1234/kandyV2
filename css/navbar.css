@@ -819,3 +819,41 @@
 .notifpush__off:hover {
   background: var(--surface);
 }
+
+/* ---- Customer notification preferences, inside the bell panel ---------- */
+
+.notifpanel__prefs { width: 30px; height: 30px; color: var(--ink-3); }
+.notifpanel__prefs:hover { color: var(--kt-pink); }
+
+.notifprefs {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-3);
+  padding: 6px;
+  display: grid;
+  gap: 2px;
+}
+.notifpref {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+}
+.notifpref:hover { background: var(--surface); }
+.notifpref input { margin-top: 2px; flex: none; accent-color: var(--kt-pink); width: 16px; height: 16px; }
+.notifpref__text { display: grid; gap: 1px; min-width: 0; }
+.notifpref__text strong { font-size: 0.82rem; }
+.notifpref__text span { font-size: 0.74rem; color: var(--ink-2); line-height: 1.45; }
+/* Not a switch: the server ignores preferences for critical types, so this
+   row states the rule instead of pretending to control it. */
+.notifpref.is-locked { cursor: default; }
+.notifpref.is-locked:hover { background: transparent; }
+.notifpref__lock {
+  flex: none;
+  margin-top: 2px;
+  width: 16px;
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+}

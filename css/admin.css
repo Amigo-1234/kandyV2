@@ -2091,3 +2091,189 @@
   :root:not([data-theme="light"]) .asound.is-off { color: #ff9d7d; }
 }
 .asound:focus-visible { outline: 3px solid var(--kt-pink-bright); outline-offset: 2px; }
+
+/* ==========================================================================
+   Admin notification centre
+   --------------------------------------------------------------------------
+   The record, as opposed to the transient .oalert. Anchored under its bell,
+   and a bottom sheet on a phone for the same reason the customer's is: a
+   dangling dropdown on a 375px screen is unusable.
+   ========================================================================== */
+
+.anotifbtn { position: relative; color: var(--ink-2); }
+.anotifbtn:hover { color: var(--kt-pink); }
+.anotifbtn:focus-visible { outline: 3px solid var(--kt-pink-bright); outline-offset: 2px; }
+.anotifbtn__badge {
+  position: absolute;
+  top: -1px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  /* White on --chili measures 3.68; this is the same alert red darkened to
+     clear AA, matching .anav__badge. */
+  background: #c8431c;
+  color: #fff;
+  font-size: 0.64rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.anotifhost {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+}
+.anotifhost.is-open { pointer-events: auto; }
+
+.anotifpanel {
+  position: fixed;
+  top: var(--anotif-top, 64px);
+  right: var(--anotif-right, 16px);
+  width: min(380px, calc(100vw - 24px));
+  max-height: min(70vh, 560px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--sh-3);
+  animation: kt-toast-in 170ms var(--ease-out);
+}
+.anotifpanel__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 10px 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.anotifpanel__head strong { flex: 1; font-family: var(--font-display); font-size: 0.98rem; }
+.anotifpanel__all {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--kt-pink);
+  padding: 5px 9px;
+  border-radius: var(--r-pill);
+}
+.anotifpanel__all:hover { background: var(--kt-pink-50); }
+:root[data-theme="dark"] .anotifpanel__all { color: var(--kt-pink-bright); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .anotifpanel__all { color: var(--kt-pink-bright); }
+}
+.anotifpanel__close { width: 30px; height: 30px; color: var(--ink-3); }
+
+.anotif__list { overflow-y: auto; overscroll-behavior: contain; padding: 6px; display: grid; gap: 2px; }
+
+.anotif {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 11px;
+  border-radius: var(--r-md);
+  transition: background-color var(--t-fast) linear;
+}
+.anotif:hover { background: var(--surface-3); }
+.anotif.is-unread { background: var(--kt-pink-50); }
+.anotif.is-unread:hover { background: var(--kt-pink-100); }
+
+.anotif__icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--ink-2);
+}
+.anotif__icon--order   { background: var(--kt-pink-50); color: var(--kt-pink); }
+.anotif__icon--support { background: #e4f0ff; color: #0b62c4; }
+.anotif__icon--payment { background: #fff3dd; color: #8f5a00; }
+:root[data-theme="dark"] .anotif__icon--support { background: #0f2237; color: #7cb8f5; }
+:root[data-theme="dark"] .anotif__icon--payment { background: #2c220c; color: #f7c46c; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .anotif__icon--support { background: #0f2237; color: #7cb8f5; }
+  :root:not([data-theme="light"]) .anotif__icon--payment { background: #2c220c; color: #f7c46c; }
+}
+
+.anotif__body { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.anotif__body strong { font-size: 0.85rem; }
+.anotif__msg {
+  font-size: 0.78rem;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* --ink-3 lands at 4.40 on the unread tint — just under AA for text this
+   size, and the timestamp is how a handler judges whether an order is still
+   worth chasing. */
+.anotif__time { font-size: 0.7rem; color: var(--ink-2); }
+.anotif__action { flex: none; align-self: center; }
+/*
+   .btn--soft is --kt-pink on a pink ground; on the unread tint in dark mode
+   that measured 3.90. This is the row's primary action — the thing a handler
+   presses to go and cook something — so it uses the bright pink token this
+   stylesheet already reaches for whenever pink text sits on a dark ground.
+*/
+/* --btn-fg, not `color`: .btn--soft themes itself through that custom
+   property, so setting `color` here fights the button system instead of
+   using it. */
+:root[data-theme="dark"] .anotif__action { --btn-fg: var(--kt-pink-bright); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .anotif__action { --btn-fg: var(--kt-pink-bright); }
+}
+
+.anotif__state {
+  padding: 30px 20px;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--ink-2);
+  line-height: 1.55;
+}
+.anotif__art {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  color: var(--ink-3);
+}
+
+/* ---- Test-sound control ------------------------------------------------ */
+
+.asoundwrap { display: inline-flex; align-items: center; gap: 2px; }
+.asoundtest {
+  padding: 4px 8px;
+  border-radius: var(--r-pill);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--ink-2);
+  border: 1px solid var(--line-2);
+}
+.asoundtest:hover { border-color: var(--kt-pink-200); color: var(--kt-pink); }
+
+@media (max-width: 560px) {
+  .anotifhost.is-open { background: rgba(28, 10, 20, 0.42); }
+  .anotifpanel {
+    inset: auto 0 0 0;
+    top: auto;
+    right: auto;
+    width: 100%;
+    max-height: 78vh;
+    border-radius: var(--r-xl) var(--r-xl) 0 0;
+    border-bottom: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* The label would push the user chip off a 375px top bar. */
+  .asoundtest { display: none; }
+}

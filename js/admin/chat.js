@@ -380,6 +380,7 @@
       paintList();
 
       loadContext(state.active && state.active.user_id);
+      startPresence(id);
     } catch (error) {
       state.threadLoading = false;
       state.threadError = (KT.services && KT.services.errorMessage)
@@ -407,6 +408,32 @@
     paintThread();
   }
 
+  /* ---- Presence ------------------------------------------------------------
+     Tells the database this thread is being READ right now, so the customer's
+     next message does not also become a notification and a buzzing phone for
+     a handler who is looking straight at it (§7). Stamped on open and every
+     30s while it stays open; the server treats anything older than 45s as
+     "not watching", so a closed tab stops counting on its own. */
+
+  var presenceTimer = null;
+  var presenceFor = null;
+
+  function startPresence(conversationId) {
+    stopPresence();
+    presenceFor = conversationId;
+    var touch = function () {
+      if (!presenceFor) return;
+      KT.services.chat.touchPresence(presenceFor).catch(function () {});
+    };
+    touch();
+    presenceTimer = window.setInterval(touch, 30000);
+  }
+
+  function stopPresence() {
+    if (presenceTimer) { window.clearInterval(presenceTimer); presenceTimer = null; }
+    presenceFor = null;
+  }
+
   /* ---- Realtime ----------------------------------------------------------- */
 
   function startWatch() {
@@ -432,6 +459,7 @@
   function stopWatch() {
     if (stop) { stop(); stop = null; }
     window.clearTimeout(searchTimer);
+    stopPresence();
   }
 
   /* ---- Events ------------------------------------------------------------- */
@@ -443,6 +471,7 @@
     if (e.target.closest("[data-chat-back]")) {
       e.preventDefault();
       state.mobileThread = false;
+      stopPresence();
       paint();
       return;
     }
@@ -508,6 +537,14 @@
     await ensureSvc();
     await loadInbox();
     startWatch();
+
+    /* #/support?tab=chat&conversation=<id>, from a notification. Opened after
+       the inbox has loaded so the row's name and email are already known and
+       the header does not flash a placeholder. */
+    var wanted = (KT.admin.routeParams && KT.admin.routeParams().conversation) || null;
+    if (wanted && state.rows.some(function (r) { return r.id === wanted; })) {
+      openConv(wanted);
+    }
   }
 
   /* Embeddable panel — the Support Center's Live Chat tab uses this, so there

@@ -59,7 +59,8 @@ function href(n) {
     case "chat":
       return url("pages/account.html?chat=1");
     case "support":
-      return url("pages/account.html#support");
+      /* ?section= opens the panel; the #hash alone only scrolls to it. */
+      return url("pages/account.html?section=support#support");
     case "wallet":
       return url("pages/account.html#wallet");
     default:

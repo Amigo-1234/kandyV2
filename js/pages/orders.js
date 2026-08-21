@@ -181,7 +181,12 @@
   /* ---- Detail ---------------------------------------------------------- */
 
   KT.pages["order-detail"] = function () {
-    var orderId = KT.param("id");
+    /* Both spellings, on purpose. The page has always taken ?id=<uuid> and
+       notifications already sent to real customers carry that form, so it
+       cannot be dropped. ?code=KD-… is what a human reads and what a support
+       conversation quotes, so it is accepted too — orderService.get() looks
+       up by either. */
+    var orderId = KT.param("id") || KT.param("code");
     var order = null;
     var myRatings = {};
     var host = KT.qs("[data-order-detail]");

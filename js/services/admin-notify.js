@@ -59,6 +59,38 @@ export const adminNotifyService = {
     channel = null;
   },
 
+  /**
+   * The handler's own notification centre. Reads only rows the database
+   * addressed to THIS account (notifications_select_own scopes it to
+   * user_id = auth.uid()), filtered to the operational types.
+   */
+  async centre({ limit = 20, unreadOnly = false } = {}) {
+    const { data, error } = await supabase.rpc("admin_notifications", {
+      p_limit: limit, p_unread_only: unreadOnly
+    });
+    if (error) throw error;
+    return data || { rows: [], unread: 0, unread_orders: 0 };
+  },
+
+  /** Mark one. RLS allows only the caller's own rows, and only read/read_at. */
+  async markRead(id) {
+    const { error } = await supabase
+      .from("notifications")
+      .update({ read: true, read_at: new Date().toISOString() })
+      .eq("id", id).eq("read", false);
+    if (error) throw error;
+  },
+
+  /** No user_id filter: RLS already scopes the statement to this account. */
+  async markAllRead() {
+    const { error } = await supabase
+      .from("notifications")
+      .update({ read: true, read_at: new Date().toISOString() })
+      .eq("read", false)
+      .in("type", ["admin_order", "admin_support", "payment", "message"]);
+    if (error) throw error;
+  },
+
   /** Send one customer a deliberate message. Manager+, audited server-side. */
   async notifyCustomer(userId, title, message) {
     const { data, error } = await supabase.rpc("admin_notify_customer", {

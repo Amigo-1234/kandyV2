@@ -156,6 +156,10 @@
         await KT.services.chat.markRead(state.conv.id, "customer").catch(function () {});
         state.conv.customer_unread = 0;
       }
+      /* While this panel is open the customer is demonstrably reading the
+         thread, so a staff reply should land as a message and not also as a
+         notification and a push. Stops when the panel closes. */
+      startPresence(state.conv.id);
       paint();
       var input = KT.qs(".chat__input");
       if (input) input.focus();
@@ -164,6 +168,25 @@
       state.error = KT.services ? KT.services.errorMessage(error) : "We could not open the chat.";
       paint();
     }
+  }
+
+  var presenceTimer = null;
+  var presenceFor = null;
+
+  function startPresence(conversationId) {
+    stopPresence();
+    presenceFor = conversationId;
+    var touch = function () {
+      if (!presenceFor || !KT.services) return;
+      KT.services.chat.touchPresence(presenceFor).catch(function () {});
+    };
+    touch();
+    presenceTimer = window.setInterval(touch, 30000);
+  }
+
+  function stopPresence() {
+    if (presenceTimer) { window.clearInterval(presenceTimer); presenceTimer = null; }
+    presenceFor = null;
   }
 
   function close() {
@@ -175,6 +198,7 @@
     /* Always drop the channel — reopening resubscribes, and leaving it would
        stack duplicate handlers and double-render every message. */
     if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+    stopPresence();
     window.setTimeout(function () { if (!state.open) root.hidden = true; }, 240);
   }
 

@@ -32,12 +32,46 @@
   KT.admin = KT.admin || {};
 
   var MUTE_KEY = "kt.admin.sound_muted";
+  var CLAIM_KEY = "kt.admin.sound_claim";
   var ctx = null;
   var unlocked = false;
   var blocked = false;          /* we tried to play and the browser said no */
   var stop = null;
   var seen = Object.create(null); /* notification ids already alerted on */
   var queue = [];               /* visible alerts on screen */
+  /* Anything older than this when we first hear about it is history, not
+     news — see claimSound(). */
+  var startedAt = Date.now();
+
+  /*
+     §12: two admin tabs must both UPDATE, but only one may make a noise.
+
+     localStorage is shared across tabs of an origin and its writes are
+     synchronous, so it works as a claim ticket: whoever writes the id first
+     owns the sound for it. The read-then-write is not atomic in theory, but
+     both tabs are reacting to the same realtime frame and the window between
+     them is microseconds — and the failure mode if two ever tie is one extra
+     beep, not a wrong action.
+
+     The record is a small ring of recent ids rather than a single value, so
+     two orders arriving together do not evict one another.
+  */
+  function claimSound(id) {
+    var now = Date.now();
+    var claims = [];
+    try { claims = JSON.parse(window.localStorage.getItem(CLAIM_KEY) || "[]"); }
+    catch (e) { claims = []; }
+    if (!Array.isArray(claims)) claims = [];
+
+    /* Drop anything older than a minute so the list cannot grow forever. */
+    claims = claims.filter(function (c) { return c && (now - c.t) < 60000; });
+    if (claims.some(function (c) { return c.id === id; })) return false;
+
+    claims.push({ id: id, t: now });
+    try { window.localStorage.setItem(CLAIM_KEY, JSON.stringify(claims.slice(-20))); }
+    catch (e) { /* private mode: fall through and let this tab play */ }
+    return true;
+  }
 
   function muted() {
     try { return window.localStorage.getItem(MUTE_KEY) === "1"; } catch (e) { return false; }
@@ -161,11 +195,19 @@
   /** The persistent control, rendered by the shell into its top bar. */
   function toggleHTML() {
     var off = muted();
-    return '<button class="icon-btn asound' + (off ? " is-off" : "") + '" type="button" ' +
-      'data-sound-toggle aria-pressed="' + (off ? "false" : "true") + '" ' +
-      'title="' + (off ? "Order sounds are off" : "Order sounds are on") + '" ' +
-      'aria-label="' + (off ? "Turn order sounds on" : "Turn order sounds off") + '">' +
-      KT.icon(off ? "close" : "bell", 19) + "</button>";
+    return '<span class="asoundwrap">' +
+      '<button class="icon-btn asound' + (off ? " is-off" : "") + '" type="button" ' +
+        'data-sound-toggle aria-pressed="' + (off ? "false" : "true") + '" ' +
+        'title="' + (off ? "Order sounds are off" : "Order sounds are on") + '" ' +
+        'aria-label="' + (off ? "Turn order sounds on" : "Turn order sounds off") + '">' +
+        KT.icon(off ? "close" : "bell", 19) + "</button>" +
+      /* §4: hearing it once, deliberately, is the only way to know the tab is
+         allowed to make noise before the first real order depends on it. The
+         click doubles as the gesture that unlocks autoplay. */
+      (off ? "" :
+        '<button class="asoundtest" type="button" data-sound-test ' +
+          'title="Play the order sound">Test</button>') +
+    "</span>";
   }
 
   function paintControls() {
@@ -176,6 +218,24 @@
 
   /* ---- Reacting to a notification --------------------------------------- */
 
+  function hrefFor(n) {
+    if (n.type === "admin_order") {
+      return n.relatedId ? "#/orders?code=" + encodeURIComponent(n.relatedId) : "#/orders";
+    }
+    if (n.type === "admin_support") {
+      return n.relatedId
+        ? "#/support?tab=chat&conversation=" + encodeURIComponent(n.relatedId)
+        : "#/support?tab=chat";
+    }
+    if (n.type === "admin_ticket") {
+      return n.relatedId
+        ? "#/support?tab=tickets&ticket=" + encodeURIComponent(n.relatedId)
+        : "#/support?tab=tickets";
+    }
+    if (n.type === "payment") return "#/reconciliation";
+    return "#/dashboard";
+  }
+
   function show(n) {
     /* One alert per notification id, however many times realtime tells us
        about it. This is the client half of the duplicate guard; the server
@@ -183,14 +243,21 @@
     if (seen[n.id]) return;
     seen[n.id] = true;
 
-    var href = n.type === "admin_order"
-      ? (n.relatedId ? "#/orders?code=" + encodeURIComponent(n.relatedId) : "#/orders")
-      : "#/support?tab=chat";
-
-    queue.unshift({ id: n.id, title: n.title, message: n.message, href: href });
+    queue.unshift({ id: n.id, title: n.title, message: n.message, href: hrefFor(n) });
     queue = queue.slice(0, 3);
     paintAlerts();
-    if (n.type === "admin_order") play();
+
+    /*
+       §22: a realtime reconnect re-delivers rows we have already lived
+       through, and a backlog replayed as sound would have the kitchen
+       chasing orders from an hour ago. Two guards, both required:
+       the event must be newer than this tab, and no other tab may have
+       claimed it.
+    */
+    if (n.type === "admin_order") {
+      var at = n.createdAt ? new Date(n.createdAt).getTime() : Date.now();
+      if (at >= startedAt - 5000 && claimSound(n.id)) play();
+    }
 
     window.setTimeout(function () { dismiss(n.id); }, 30000);
   }
@@ -215,6 +282,12 @@
       else KT.toast("This browser will not let the page play sound.", "error");
       return;
     }
+    if (e.target.closest("[data-sound-test]")) {
+      e.preventDefault();
+      if (unlock()) { tone(); KT.toast("That is the new-order sound.", "success"); }
+      else KT.toast("This browser will not let the page play sound.", "error");
+      return;
+    }
     if (e.target.closest("[data-sound-toggle]")) {
       e.preventDefault();
       var next = !muted();
@@ -232,9 +305,13 @@
       if (stop) return;
       if (!KT.services || !KT.services.notifications) return;
       stop = KT.services.notifications.subscribe(function (change) {
+        /* One subscription on public.notifications for the whole admin. The
+           centre is told rather than opening its own channel — two channels
+           on the same table is how a notification arrives twice. */
+        if (KT.admin.notifications) KT.admin.notifications.onIncoming(change);
         if (change.event !== "INSERT") return;
         var n = change.notification;
-        if (n.type !== "admin_order" && n.type !== "admin_support") return;
+        if (["admin_order", "admin_support", "admin_ticket"].indexOf(n.type) === -1) return;
         if (n.read) return;
         show(n);
       });

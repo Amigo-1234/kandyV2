@@ -592,6 +592,20 @@
   }
 
   KT.pages.account = function () {
+    /* Deep links from a notification. #support has always worked as an
+       anchor; ?section=support is what the support-reply notification sends,
+       and it also OPENS the panel rather than just scrolling to it. */
+    (function () {
+      var section = KT.param("section");
+      if (section === "support") {
+        state.editing = "support";
+        window.setTimeout(function () {
+          var panel = KT.qs("#support");
+          if (panel) panel.scrollIntoView({ block: "center", behavior: "smooth" });
+        }, 400);
+      }
+    })();
+
     render();
     document.addEventListener("kt:auth", function () { if (booted) requestLoad(); });
     document.addEventListener("kt:services", function () { booted = true; requestLoad(); });

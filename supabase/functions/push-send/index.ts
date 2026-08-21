@@ -59,9 +59,10 @@ function linkFor(n: { type: string; related_id: string | null }): string {
     case "order":        return n.related_id ? `/pages/order-detail.html?id=${encodeURIComponent(n.related_id)}` : "/pages/orders.html";
     case "payment":      return n.related_id ? `/pages/order-detail.html?id=${encodeURIComponent(n.related_id)}` : "/pages/orders.html";
     case "chat":         return "/pages/account.html?chat=1";
-    case "support":      return "/pages/account.html#support";
+    case "support":      return "/pages/account.html?section=support#support";
     case "admin_order":  return n.related_id ? `/admin/index.html#/orders?code=${encodeURIComponent(n.related_id)}` : "/admin/index.html#/orders";
-    case "admin_support":return "/admin/index.html#/support?tab=chat";
+    case "admin_support":return n.related_id ? `/admin/index.html#/support?tab=chat&conversation=${encodeURIComponent(n.related_id)}` : "/admin/index.html#/support?tab=chat";
+    case "admin_ticket": return n.related_id ? `/admin/index.html#/support?tab=tickets&ticket=${encodeURIComponent(n.related_id)}` : "/admin/index.html#/support?tab=tickets";
     default:             return "/pages/account.html#notifications";
   }
 }

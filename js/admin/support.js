@@ -379,7 +379,12 @@
     var tab = TABS.some(function (t) { return t.id === qp.tab; }) ? qp.tab : "chat";
     state.tab = tab;
     state.activeTicket = null;
-    window.setTimeout(function () { showTab(tab); }, 0);
+    /* #/support?tab=tickets&ticket=<id>, from a notification. */
+    var wantTicket = qp.ticket || null;
+    window.setTimeout(function () {
+      showTab(tab);
+      if (tab === "tickets" && wantTicket) window.setTimeout(function () { openTicket(wantTicket); }, 350);
+    }, 0);
     return chrome(KT.loadingLabel("Loading support…") + KT.skeleton.lines(4));
   };
 

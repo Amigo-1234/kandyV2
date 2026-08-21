@@ -97,6 +97,19 @@ export const chatService = {
     return shapeMessage(data);
   },
 
+  /**
+   * "I am reading this thread right now." The database stamps whichever side
+   * the caller's role puts them on — a customer cannot claim the admin is
+   * present, which would otherwise be a way to silence the handler's alert.
+   * Safe to call repeatedly; it is a timestamp, not a counter.
+   */
+  async touchPresence(conversationId) {
+    const { error } = await supabase.rpc("touch_chat_presence", {
+      p_conversation_id: conversationId
+    });
+    if (error) throw error;
+  },
+
   /** Clear MY badge only; 0030 refuses any attempt to touch the other side's. */
   async markRead(conversationId, side = "customer") {
     const patch = side === "customer" ? { customer_unread: 0 } : { admin_unread: 0 };
