@@ -73,11 +73,69 @@
       .replace(/"/g, "&quot;");
   }
 
-  function paint() {
+  /* Within this many pixels of the end counts as "following the conversation". */
+  var FOLLOW_SLACK = 60;
+  /*
+     Whether the reader is pinned to the newest message.
+
+     Kept as state rather than measured on demand, because the two moments
+     that need the answer — a resize and a repaint — are both moments where
+     measuring gives the wrong one. A rotation or an opening keyboard relays
+     out the thread BEFORE the event fires, so by the time anything can ask
+     "were they at the bottom?", they demonstrably are not: the content did
+     not move, the window shrank under it. The flag records what the reader
+     last chose, which is the thing actually being preserved.
+  */
+  var following = true;
+
+  function atBottom(el) {
+    return (el.scrollHeight - el.scrollTop - el.clientHeight) <= FOLLOW_SLACK;
+  }
+
+  /*
+     A smooth scroll can finish short: the list is still being painted when the
+     animation starts, so scrollHeight grows underneath it. Measured 196px shy
+     of the end after tapping the pill — which is exactly the message the pill
+     was advertising. So the animation is a nicety and the snap is the
+     contract: whatever the animation managed, land at the end.
+  */
+  function toBottom(el, smooth) {
+    if (!el) return;
+    following = true;
+    setJump(false);
+    if (smooth && !KT.prefersReducedMotion) {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      window.setTimeout(function () {
+        if (!atBottom(el)) el.scrollTop = el.scrollHeight;
+      }, 420);
+      return;
+    }
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function setJump(show) {
+    var pill = KT.qs("[data-chat-jump]");
+    if (pill) pill.classList.toggle("is-shown", !!show);
+  }
+
+  function paint(opts) {
+    opts = opts || {};
     var body = KT.qs("[data-chat-thread]");
     if (!body) return;
+    /* Decided BEFORE the repaint: afterwards the metrics describe the new
+       content, not where the reader was. */
+    /*
+       A repaint is a trustworthy moment to measure: nothing has resized, the
+       reader is wherever they left themselves. Refresh the flag here as well
+       as on scroll, so the pill decision never rests on a stale record — and
+       so it still behaves correctly where scroll events are coalesced away
+       (a backgrounded tab renders no frames and therefore fires none).
+    */
+    if (body.scrollHeight) following = atBottom(body);
+    var wasFollowing = opts.force || !body.scrollHeight || following;
     body.innerHTML = threadHTML();
-    body.scrollTop = body.scrollHeight;
+    if (wasFollowing) toBottom(body);
+    else setJump(true);          /* they had scrolled up — offer, do not jump */
     var badge = KT.qs("[data-chat-badge]");
     if (badge) {
       var n = state.conv ? Number(state.conv.customer_unread || 0) : 0;
@@ -99,6 +157,9 @@
             KT.icon("close", 20) + "</button>" +
         "</header>" +
         '<div class="chat__thread" data-chat-thread></div>' +
+        '<button class="chat__jump" type="button" data-chat-jump ' +
+          'aria-label="Jump to the newest message">' + KT.icon("chevronDown", 15) +
+          "New message</button>" +
         '<form class="chat__compose" data-chat-form>' +
           '<input class="chat__input" name="body" autocomplete="off" ' +
             'placeholder="Type a message…" aria-label="Message">' +
@@ -112,14 +173,88 @@
 
   /* ---- Open / close ------------------------------------------------------ */
 
+  /* ---- Mobile viewport plumbing -----------------------------------------
+     Two numbers the CSS cannot work out on its own:
+
+       --kt-kb           how much of the viewport the on-screen keyboard is
+                         covering. visualViewport is the only API that
+                         reports this; without it iOS scrolls the whole page
+                         to reveal the focused input, which is what makes a
+                         chat "jump unpredictably".
+
+       --kt-safe-bottom  the home-indicator inset, but ONLY while the
+                         keyboard is down. With the keyboard up that space is
+                         already taken, and adding it again leaves a gap
+                         under the composer.
+  */
+  var vvHandler = null;
+
+  function syncViewport() {
+    var root = document.documentElement;
+    var body = KT.qs("[data-chat-thread]");
+    var vv = window.visualViewport;
+    if (!vv) {
+      root.style.setProperty("--kt-kb", "0px");
+    } else {
+      /* layout height - visual height - how far the visual viewport is offset
+         = the slice the keyboard is covering. Clamped: rounding and
+         rubber-band scrolling can make this fractionally negative. */
+      var covered = Math.max(0, Math.round(
+        window.innerHeight - vv.height - vv.offsetTop));
+      root.style.setProperty("--kt-kb", covered + "px");
+      root.style.setProperty("--kt-safe-bottom",
+        covered > 0 ? "0px" : "env(safe-area-inset-bottom, 0px)");
+    }
+
+    /* Keep the newest message in view as the keyboard opens or the phone
+       rotates — but only for a reader who was already following. */
+    if (following && body) toBottom(body);
+  }
+
+  function bindViewport() {
+    if (vvHandler) { syncViewport(); return; }
+    vvHandler = function () { syncViewport(); };
+    /* passive: this fires on every keyboard frame and must never block it. */
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", vvHandler, { passive: true });
+      window.visualViewport.addEventListener("scroll", vvHandler, { passive: true });
+    }
+    /* Rotation changes the LAYOUT viewport. visualViewport.resize covers that
+       on the browsers that have it, and this covers the ones that do not —
+       either way the reader keeps their place in the thread. */
+    window.addEventListener("resize", vvHandler, { passive: true });
+    syncViewport();
+  }
+
+  function unbindViewport() {
+    if (vvHandler) {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", vvHandler);
+        window.visualViewport.removeEventListener("scroll", vvHandler);
+      }
+      window.removeEventListener("resize", vvHandler);
+    }
+    vvHandler = null;
+    var root = document.documentElement;
+    root.style.removeProperty("--kt-kb");
+    root.style.removeProperty("--kt-safe-bottom");
+  }
+
   async function open() {
     mount();
+    /* Every open starts at the newest message, whatever the last session
+       left the flag on. */
+    following = true;
     var root = KT.qs("[data-chat]");
     root.hidden = false;
     /* Resolve the closed state before animating in, or the panel jumps. */
     void root.offsetHeight;
     root.classList.add("is-open");
     state.open = true;
+    /* Hides the storefront tab bar and locks the page behind — see the
+       html.kt-chat-open rules in css/chat.css. */
+    document.documentElement.classList.add("kt-chat-open");
+    bindViewport();
     KT.lockScroll(true);
 
     if (!KT.auth || !KT.auth.isSignedIn()) {
@@ -143,7 +278,7 @@
       state.conv = await KT.services.chat.myConversation();
       state.msgs = await KT.services.chat.messages(state.conv.id);
       state.busy = false;
-      paint();
+      paint({ force: true });      /* open at the latest message */
 
       unsubscribe = KT.services.chat.subscribe(state.conv.id, function (m) {
         /* Our own insert already rendered optimistically. */
@@ -194,6 +329,11 @@
     if (!root) return;
     root.classList.remove("is-open");
     state.open = false;
+    /* Everything the open added, removed — the tab bar comes back, the page
+       scrolls again, and no listener outlives the panel. */
+    document.documentElement.classList.remove("kt-chat-open");
+    unbindViewport();
+    setJump(false);
     KT.lockScroll(false);
     /* Always drop the channel — reopening resubscribes, and leaving it would
        stack duplicate handlers and double-render every message. */
@@ -205,10 +345,27 @@
   /* ---- Wiring ------------------------------------------------------------ */
 
   document.addEventListener("click", function (e) {
+    if (e.target.closest("[data-chat-jump]")) {
+      e.preventDefault();
+      toBottom(KT.qs("[data-chat-thread]"), true);
+      return;
+    }
     if (e.target.closest("[data-open-chat]")) { e.preventDefault(); open(); return; }
     if (e.target.closest("[data-chat-close]")) { e.preventDefault(); close(); return; }
     if (e.target.closest("[data-chat-retry]")) { e.preventDefault(); open(); }
   });
+
+  /* Delegated and passive. Attached once for the life of the page rather than
+     per-open, so there is no listener to leak, and passive so it can never
+     hold up a scroll frame. */
+  document.addEventListener("scroll", function (e) {
+    var el = e.target;
+    if (!el || !el.classList || !el.classList.contains("chat__thread")) return;
+    /* The one place a reader's own intent is expressed: scrolling away means
+       stop following, scrolling back means resume. */
+    following = atBottom(el);
+    if (following) setJump(false);
+  }, { passive: true, capture: true });
 
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && state.open) close();
@@ -229,7 +386,8 @@
       if (!state.msgs.some(function (x) { return x.id === sent.id; })) {
         state.msgs.push(sent);
       }
-      paint();
+      /* force: your own message always scrolls into view, wherever you were. */
+      paint({ force: true });
     } catch (error) {
       input.value = text;             /* never lose what they typed */
       KT.toast(KT.services.errorMessage(error), "error", { duration: 5000 });

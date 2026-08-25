@@ -131,6 +131,16 @@
    invisibly on every staff bubble in Support.
 */
 .chat__row.is-mine .chat__who { color: rgba(255, 255, 255, 0.92); }
+/* On the dark theme the them-bubble ground is #1a1217, where --kt-pink
+   measured 4.07 — under AA, and this is 10.9px text. The brighter pink is
+   already a token and clears it at 7.16. Light keeps --kt-pink, which sits on
+   a white bubble and passes there. */
+:root[data-theme="dark"] .chat__row.is-them .chat__who { color: var(--kt-pink-bright); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .chat__row.is-them .chat__who {
+    color: var(--kt-pink-bright);
+  }
+}
 /* --ink-4 on a white bubble measured 2.61. The timestamp is small text and
    still has to be readable. */
 .chat__row.is-them .chat__time { color: var(--ink-3); }
@@ -281,3 +291,161 @@
 @media (prefers-reduced-motion: reduce) {
   .chat__panel, .careers__panel, .chat__scrim, .careers__scrim { transition: none; }
 }
+
+/* ==========================================================================
+   Mobile chat — a dedicated messaging view, not a shrunken popover
+   --------------------------------------------------------------------------
+   THE BUG THIS FIXES
+   ------------------
+   .chat sits at z-index 60 and .tabbar at 70, so the storefront's bottom
+   navigation rendered ON TOP of the conversation. The composer lived at
+   779-844px inside a 390x844 viewport and the tab bar covered 778-844 — the
+   input was completely invisible and there was no way to reply. The panel
+   also kept its desktop shape (a 390px card pinned bottom-right with a
+   560px cap), so on a phone it was a popover pretending to be an app.
+
+   THE SHAPE
+   ---------
+   Below 720px the panel becomes the whole viewport and is laid out as three
+   rows: header / message list / composer. Only the middle row scrolls, so the
+   composer cannot be pushed off-screen by a long conversation and the header
+   cannot be scrolled away.
+
+   HEIGHT
+   ------
+   100dvh, not 100vh. On mobile Safari and Chrome the URL bar collapses on
+   scroll; vh is frozen to the LARGEST viewport, so a vh-sized panel is taller
+   than the screen and its last row sits below the fold — which is the same
+   class of bug as the tab bar, arrived at differently. dvh tracks the browser
+   chrome as it moves. --kt-kb is the keyboard inset, set from visualViewport
+   by js/components/chat.js; it is 0px on desktop and whenever no keyboard is
+   showing.
+   ========================================================================== */
+
+@media (max-width: 719px) {
+  .chat.is-open {
+    /* Above the tab bar (70) rather than below it. Belt and braces: the
+       storefront also hides the tab bar while the chat is open — see
+       html.kt-chat-open below — but a stacking order that only works because
+       something else is hidden is not a stacking order. */
+    z-index: 120;
+  }
+  .chat__scrim { display: none; }   /* nothing behind to dim: the panel is full-bleed */
+
+  .chat__panel {
+    position: fixed;
+    inset: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    /* The keyboard eats from the bottom. Shrinking the PANEL (rather than
+       scrolling the page) keeps the composer glued to the top of the
+       keyboard and leaves the message list scrollable above it. */
+    height: calc(100dvh - var(--kt-kb, 0px));
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    transform: translateY(12px);
+    display: grid;
+    /* header / list / composer — the list is the only flexible row. */
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  .chat.is-open .chat__panel { transform: none; }
+
+  .chat__head {
+    /* Never under the notch or the status bar. */
+    padding-top: calc(13px + env(safe-area-inset-top, 0px));
+    padding-left: calc(14px + env(safe-area-inset-left, 0px));
+    padding-right: calc(14px + env(safe-area-inset-right, 0px));
+  }
+
+  .chat__thread {
+    min-height: 0;              /* required, or the grid row refuses to shrink */
+    padding: 14px 14px 18px;
+    overscroll-behavior: contain;   /* no scroll chaining to the page behind */
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .chat__compose {
+    /* Home-indicator clearance. Only applied when the keyboard is DOWN: with
+       it up the inset is already consumed by the keyboard, and adding it
+       again leaves a visible gap under the input. */
+    padding-bottom: calc(10px + var(--kt-safe-bottom, 0px));
+    padding-left: calc(10px + env(safe-area-inset-left, 0px));
+    padding-right: calc(10px + env(safe-area-inset-right, 0px));
+  }
+
+  .chat__bubble {
+    max-width: 84%;
+    /* break-word alone still lets an unbroken 80-character URL widen the
+       row on some engines. anywhere is the one that always wraps. */
+    overflow-wrap: anywhere;
+  }
+  .chat__input { font-size: 16px; }  /* < 16px makes iOS Safari zoom on focus */
+}
+
+/*
+   While the mobile chat is open the storefront's own furniture steps aside.
+   Hidden rather than merely covered: a tab bar peeking through a
+   full-screen conversation is the thing being fixed, and leaving it tappable
+   under the panel invites a mis-tap that navigates away mid-message.
+   Restored the moment the chat closes.
+*/
+@media (max-width: 719px) {
+  html.kt-chat-open .tabbar,
+  html.kt-chat-open .stickycart { display: none; }
+
+  /* The page behind must not scroll while a full-screen panel is over it.
+     KT.lockScroll() already does this from script; this is the CSS half, and
+     it is scoped to mobile because that is where the panel is full-bleed —
+     the desktop popover leaves the page visible and untouched. */
+  html.kt-chat-open,
+  html.kt-chat-open body { overflow: hidden; }
+}
+
+/* ---- "New message" pill ------------------------------------------------ */
+
+/*
+   Shown only when a message arrives while the reader is scrolled up. Jumping
+   someone to the bottom mid-sentence is how you make them lose their place,
+   so the choice is handed back to them.
+*/
+.chat__jump {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  bottom: 78px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--r-pill);
+  border: 0;
+  background: var(--kt-plum);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  box-shadow: var(--sh-2);
+  opacity: 0;
+  pointer-events: none;
+  /* visibility, not opacity alone: an opacity-0 button is still in the
+     accessibility tree, so a screen reader would offer "Jump to the newest
+     message" at every moment including the ones where there is no newer
+     message to jump to. visibility takes it out of the tree and still
+     transitions, because it is animatable between its two keywords. */
+  visibility: hidden;
+  transition: opacity var(--t-fast) linear,
+              transform var(--t-fast) var(--ease-out),
+              visibility 0s linear var(--t-fast);
+}
+.chat__jump.is-shown {
+  opacity: 1;
+  transform: translateX(-50%);
+  pointer-events: auto;
+  visibility: visible;
+  transition-delay: 0s, 0s, 0s;
+}
+.chat__jump:focus-visible { outline: 3px solid var(--kt-pink-bright); outline-offset: 2px; }

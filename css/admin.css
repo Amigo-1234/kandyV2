@@ -359,7 +359,13 @@
 
 .opage__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 
-.olive { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: var(--mint); }
+/* --mint on the page ground measured 3.07 in light. The dot stays --mint —
+   it is decoration with a text label beside it — but the word "Live" is the
+   thing that says whether the screen can be trusted, so it takes the darker
+   mint the badges already use (5.16). Dark keeps --mint, which passes there. */
+.olive { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; color: #0a7a5e; }
+:root[data-theme="dark"] .olive,
+:root:not([data-theme="light"]) .olive { color: var(--mint); }
 .olive__dot {
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--mint); box-shadow: 0 0 0 0 rgba(15, 164, 127, 0.5);
@@ -417,17 +423,26 @@
    backgrounds, which fails. These are deliberately darker shades of the same
    hues, measured rather than eyeballed:
      completed/paid  #0a7a5e on mint-50   4.80
-     cancelled       #c4441f on chili-50  4.43
+     cancelled       #ad3917 on chili-50  5.51
      preparing       #8f5a00 on #fff3dd   5.27
      out             #0b62c4 on #e4f0ff   5.12
-     new             --kt-pink on pink-50 4.57  */
+     new             --kt-pink on pink-50 4.57
+   Phase 15 re-measured these against the live page: cancelled was 4.43 with
+   the old #c4441f, i.e. under AA rather than over it. The unpaid chip and the
+   order-type tag shared the same near miss through --ink-3 and are corrected
+   below. */
 .obadge.is-new        { background: var(--kt-pink-50); color: var(--kt-pink); }
 .obadge.is-preparing  { background: #fff3dd; color: #8f5a00; }
 .obadge.is-out        { background: #e4f0ff; color: #0b62c4; }
 .obadge.is-completed  { background: var(--mint-50); color: #0a7a5e; }
-.obadge.is-cancelled  { background: var(--chili-50); color: #c4441f; }
+.obadge.is-cancelled  { background: var(--chili-50); color: #ad3917; }
 .obadge--pay.is-paid   { background: var(--mint-50); color: #0a7a5e; }
-.obadge--pay.is-unpaid { background: var(--surface-3); color: var(--ink-3); }
+/* --ink-3 on --surface-3 measured 4.44 in light — under AA for 0.68rem text.
+   #6d5d6a is the same muted grey a shade darker and measures 5.69. Dark keeps
+   --ink-3, which is a LIGHT ink there and already clears it comfortably. */
+.obadge--pay.is-unpaid { background: var(--surface-3); color: #6d5d6a; }
+:root[data-theme="dark"] .obadge--pay.is-unpaid,
+:root:not([data-theme="light"]) .obadge--pay.is-unpaid { color: var(--ink-3); }
 
 /* Dark theme needs its own tints for the two hard-coded amber/blue states —
    the light values are unreadable on a dark card. */
@@ -461,8 +476,11 @@
 
 .otag {
   font-size: 0.7rem; font-weight: 700; padding: 2px 8px;
-  border-radius: var(--r-pill); background: var(--surface-3); color: var(--ink-3);
+  /* Same near miss as the unpaid chip, same correction — see above. */
+  border-radius: var(--r-pill); background: var(--surface-3); color: #6d5d6a;
 }
+:root[data-theme="dark"] .otag,
+:root:not([data-theme="light"]) .otag { color: var(--ink-3); }
 
 /* ---- Detail drawer ------------------------------------------------------ */
 
@@ -497,9 +515,13 @@
 .odetail__sec p { margin: 0 0 4px; }
 .odetail__muted { color: var(--ink-3); font-size: 0.86rem; }
 .odetail__note {
-  margin-top: 10px; font-size: 0.82rem; color: var(--ink-3);
+  /* --ink-3 on --surface-3 again: 4.44 in light, under AA. Same darker muted
+     grey as the chips; dark keeps --ink-3, which passes there. */
+  margin-top: 10px; font-size: 0.82rem; color: #6d5d6a;
   background: var(--surface-3); border-radius: var(--r-sm); padding: 9px 11px;
 }
+:root[data-theme="dark"] .odetail__note,
+:root:not([data-theme="light"]) .odetail__note { color: var(--ink-3); }
 .odetail__status { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .odetail__actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .odanger { color: var(--chili); border-color: var(--chili); }
@@ -2276,4 +2298,177 @@
   }
   /* The label would push the user chip off a 375px top bar. */
   .asoundtest { display: none; }
+}
+
+/* ==========================================================================
+   Orders command centre — the board
+   --------------------------------------------------------------------------
+   A kitchen works a queue per state, not a date-ordered list, so the default
+   Orders screen is five counted sections rather than one stream. Each section
+   is fetched and paged separately by js/services/admin-orders.js; nothing here
+   slices a single list, because a hundred finished orders would otherwise push
+   the new ones off the screen.
+   ========================================================================== */
+
+.ofilters__row { display: flex; gap: 14px; flex-wrap: wrap; }
+
+.oboard { display: grid; gap: 26px; }
+
+.osection__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+}
+.osection__head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  margin: 0;
+}
+.osection__count {
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+  font-weight: 800;
+  min-width: 22px;
+  padding: 2px 7px;
+  text-align: center;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--ink-2);
+}
+.osection__hint { font-size: 0.8rem; color: var(--ink-3); }
+.osection__more {
+  margin-left: auto;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--kt-pink);
+  cursor: pointer;
+}
+.osection__more:hover { text-decoration: underline; }
+/* --kt-pink is deliberately DARKER in dark mode so it still works as a button
+   fill, which leaves it at ~4.3 on a dark ground. Every other pink-on-dark
+   label in this file takes the bright accent instead; these are the same case
+   — .octx__link measured 4.28 before this. */
+:root[data-theme="dark"] .osection__more,
+:root:not([data-theme="light"]) .osection__more { color: var(--kt-pink-bright); }
+.osection__more:focus-visible { outline: 3px solid var(--kt-pink-bright); outline-offset: 3px; }
+.osection__empty {
+  margin: 0;
+  padding: 16px 18px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-md);
+  color: var(--ink-3);
+  font-size: 0.88rem;
+}
+
+/* The live queues carry a coloured spine so the eye finds them without
+   reading the headings; finished work deliberately does not. */
+.osection--new .olist > .ocard    { border-left: 3px solid var(--kt-pink); }
+.osection--preparing .olist > .ocard { border-left: 3px solid #d99000; }
+.osection--out .olist > .ocard    { border-left: 3px solid #2f7fd6; }
+
+.omore { display: flex; justify-content: center; margin-top: 14px; }
+
+/* ---- Card additions ----------------------------------------------------- */
+
+.ocard__route { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.ocard__route > span:last-child {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 30ch;
+}
+.otag--pickup { background: var(--mint-50); color: #0a7a5e; }
+
+/* An order that arrived while this screen was open. It is a highlight, not a
+   state: the database has no "acknowledged" column and Phase 15 §8 says not to
+   invent one, so this lives only in the tab that saw it land and clears the
+   moment the order is opened. */
+.obadge--just { background: var(--kt-pink); color: #fff; }
+.ocard.is-justin {
+  border-color: var(--kt-pink);
+  box-shadow: 0 0 0 3px var(--kt-pink-50);
+}
+
+/* ---- Detail additions --------------------------------------------------- */
+
+.odetail__note--rider { background: var(--surface-3); border-radius: var(--r-sm); padding: 9px 11px; }
+.odetail__hidden { font-style: italic; }
+
+.octx { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.octx li {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  font-size: 0.84rem; color: var(--ink-3);
+}
+.octx__link {
+  background: none; border: 0; padding: 0; font: inherit; font-weight: 800;
+  color: var(--kt-pink); cursor: pointer;
+}
+.octx__link:hover { text-decoration: underline; }
+:root[data-theme="dark"] .octx__link,
+:root:not([data-theme="light"]) .octx__link { color: var(--kt-pink-bright); }
+.octx__link:focus-visible { outline: 3px solid var(--kt-pink-bright); outline-offset: 3px; }
+
+.mconfirm__warn {
+  background: var(--chili-50);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  color: var(--ink-2);
+  font-size: 0.86rem;
+}
+
+/* Dark: the two hard-coded spine hues and the pickup tag need their own
+   values, exactly as the status badges above do. */
+:root[data-theme="dark"] .otag--pickup { background: #10352a; color: #6fe0bd; }
+:root[data-theme="dark"] .osection--preparing .olist > .ocard { border-left-color: #f0b84a; }
+:root[data-theme="dark"] .osection--out .olist > .ocard { border-left-color: #7ab6f5; }
+:root[data-theme="dark"] .ocard.is-justin { box-shadow: 0 0 0 3px rgba(217, 44, 133, 0.35); }
+:root[data-theme="dark"] .mconfirm__warn { color: var(--ink-2); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .otag--pickup { background: #10352a; color: #6fe0bd; }
+  :root:not([data-theme="light"]) .osection--preparing .olist > .ocard { border-left-color: #f0b84a; }
+  :root:not([data-theme="light"]) .osection--out .olist > .ocard { border-left-color: #7ab6f5; }
+  :root:not([data-theme="light"]) .ocard.is-justin { box-shadow: 0 0 0 3px rgba(217, 44, 133, 0.35); }
+}
+
+/* ---- Mobile ------------------------------------------------------------- */
+
+@media (max-width: 620px) {
+  .oboard { gap: 20px; }
+  .osection__head { gap: 7px; }
+  .osection__more { margin-left: 0; flex-basis: 100%; text-align: left; }
+  /* On a phone the address is the first thing to lose: the code, status and
+     total still identify the ticket, and the drawer has the full address. */
+  .ocard__route > span:last-child { max-width: 18ch; }
+
+  /*
+     Sixteen wrapped chips filled a 375x667 screen entirely — a handler had to
+     scroll past the whole filter bar before seeing a single order, on the one
+     device most likely to be in a hand during service. Each group becomes a
+     swipeable strip instead: every filter is still reachable, and the first
+     order card is above the fold. The strips scroll inside themselves, so the
+     page still has no horizontal overflow.
+  */
+  .ochips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+    /* Chips have a focus ring; without the padding it clips against the edge. */
+    padding: 3px 1px;
+    margin: -3px -1px;
+  }
+  .ochips::-webkit-scrollbar { display: none; }
+  .ochips .chip { flex: 0 0 auto; }
+  .ofilters__row { flex-direction: column; gap: 8px; }
+
+  /* The heading and Refresh sit on one line rather than stacking: the button
+     is one word and the row above it was costing 60px of a short screen. */
+  .opage__head { flex-direction: row; align-items: flex-start; gap: 12px; }
+  .opage__head [data-orefresh] { margin-left: auto; flex: 0 0 auto; }
 }
