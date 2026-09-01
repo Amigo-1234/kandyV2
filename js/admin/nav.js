@@ -52,7 +52,11 @@
     /* Renamed from "Owner": two of these three are now admin+, so calling the
        group Owner would misdescribe it. Reconciliation is still owner-only. */
     { group: "Administration", items: [
-      { id: "reconciliation", label: "Payment reconciliation", icon: "lock", min: "owner" },
+      /* Payment reconciliation is deliberately NOT a nav entry. The findings
+         it would show already live inside Finance as a tab — same data, same
+         admin+ tier — and there is no reconciliation view module, so the
+         entry rendered "Coming in a later phase" while the dashboard tile
+         beside it carried a live count. One home for one dataset. */
       /* admin+ since Phase 11. An admin sees every setting but may only WRITE
          the operational ones — setting_tier() decides that per key, in the
          database, and admin_settings() reports it back per row. */
