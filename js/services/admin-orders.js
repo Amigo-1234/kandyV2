@@ -261,15 +261,57 @@ export const adminOrderService = {
                lineTotal: Number(l.line_total) || 0 };
     });
 
-    var hist = await supabase.from("order_status_history")
-      .select("id, status, note, created_at")
-      .eq("order_id", head.data.id)
-      .order("created_at", { ascending: true });
+    /*
+       created_by has been recorded on every handler action since Phase 5 and
+       was simply never read — the screen showed the note the trigger writes
+       ("Updated by owner."), which names the ROLE that acted rather than the
+       person.
+
+       Read through admin_order_history() rather than the table: the column
+       grant on order_status_history deliberately excludes created_by, because
+       a customer can read their own order's history and an internal staff id
+       has no business travelling with it. The function is is_admin()-gated —
+       the same boundary the direct read had — and returns the actor already
+       resolved, which is one round trip where this used to take two.
+    */
+    var hist = await supabase.rpc("admin_order_history", { p_order_id: head.data.id });
     if (hist.error) throw hist.error;
+
     order.history = (hist.data || []).map(function (h) {
       return { id: h.id, status: h.status, note: h.note || "",
-               at: h.created_at ? new Date(h.created_at) : null };
+               at: h.created_at ? new Date(h.created_at) : null,
+               actorId: h.actor_id || null,
+               actorName: h.actor_name || "",
+               actorRole: h.actor_role || null };
     });
+
+    /*
+       RESPONSIBILITY, DERIVED
+       -----------------------
+       Two different questions the brief asks to keep apart:
+
+         pickedUpBy   who took the order on — the actor of the first move
+                      away from New. This is the closest thing to "who is
+                      responsible", and it is a fact rather than a field, so
+                      it can never disagree with the history beneath it.
+         lastActionBy who acted most recently, which may well be somebody
+                      else covering.
+
+       No assigned_to column: with a two-person kitchen where eight of nine
+       orders were carried end to end by one person, allocation is not the
+       workflow. If that changes, this derivation is what a real column would
+       have to agree with anyway.
+    */
+    var moves = order.history.filter(function (h) {
+      return h.actorId && h.status !== "New";
+    });
+    order.pickedUpBy = moves.length ? moves[0] : null;
+    var acted = order.history.filter(function (h) { return h.actorId; });
+    order.lastActionBy = acted.length ? acted[acted.length - 1] : null;
+    order.handlerCount = acted.reduce(function (set, h) {
+      if (set.indexOf(h.actorId) === -1) set.push(h.actorId);
+      return set;
+    }, []).length;
 
     order.itemCount = order.items.reduce(function (n, l) { return n + l.qty; }, 0);
     order.lineCount = order.items.length;

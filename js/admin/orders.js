@@ -365,6 +365,61 @@
     return '<div class="odetail__actions">' + buttons + "</div>";
   }
 
+  /** A person's name, falling back to their role when they have not set one.
+      Several real accounts have a blank display_name, so this fallback is the
+      common case rather than a corner one — "Owner" reads as a person's
+      standing in the kitchen, where "a owner" reads as a bug. */
+  function actorLabel(h) {
+    if (!h || !h.actorId) return "system";
+    if (h.actorName) return h.actorName;
+    if (!h.actorRole) return "A handler";
+    return h.actorRole.charAt(0).toUpperCase() + h.actorRole.slice(1);
+  }
+
+  /*
+     WHO IS RESPONSIBLE vs WHO LAST ACTED — deliberately two lines.
+
+     There is no assigned_to column and this phase did not add one: with a
+     two-person kitchen, eight of nine real orders were carried end to end by
+     the same person, so allocation is not the workflow. "Picked up by" is
+     derived from the first move away from New, which is what taking an order
+     on actually looks like in the data.
+
+     The second line only appears when somebody else acted later — that is
+     the case worth pointing at, and printing it always would just repeat the
+     first line on nearly every order.
+  */
+  function responsibilityHTML(o) {
+    if (!o.pickedUpBy && !o.lastActionBy) {
+      return '<section class="odetail__sec"><h3>Responsibility</h3>' +
+        '<p class="odetail__note">Nobody has picked this order up yet.</p></section>';
+    }
+    var picked = o.pickedUpBy;
+    var last = o.lastActionBy;
+    var handedOn = picked && last && last.actorId !== picked.actorId;
+    return (
+      '<section class="odetail__sec"><h3>Responsibility</h3>' +
+        '<dl class="osum osum--readonly oresp">' +
+          '<div class="osum__row"><dt>Picked up by</dt><dd>' +
+            (picked
+              ? esc(actorLabel(picked)) +
+                ' <span class="oresp__when">' + esc(stamp(picked.at)) + "</span>"
+              : "<em>not picked up yet</em>") +
+          "</dd></div>" +
+          (handedOn
+            ? '<div class="osum__row"><dt>Last action by</dt><dd>' +
+              esc(actorLabel(last)) +
+              ' <span class="oresp__when">' + esc(stamp(last.at)) + "</span></dd></div>"
+            : "") +
+        "</dl>" +
+        (handedOn
+          ? '<p class="odetail__muted">' + o.handlerCount +
+            " people have worked on this order.</p>"
+          : "") +
+      "</section>"
+    );
+  }
+
   function deliveryHTML(o) {
     if (o.fulfilment === "pickup") {
       return '<section class="odetail__sec"><h3>Collection</h3>' +
@@ -431,10 +486,17 @@
         '<span class="oline__price">' + money(l.lineTotal) + "</span></div>";
     }).join("") || '<p class="odetail__note">No line items recorded.</p>';
 
+    /* The note the trigger writes names the ROLE ("Updated by owner."). Now
+       that created_by is read, the person is named instead, and the note is
+       kept only when it says something the actor line does not. */
     var hist = (o.history || []).map(function (h) {
+      var who = h.actorId
+        ? '<span class="ohist__by">' + esc(actorLabel(h)) + "</span>"
+        : '<span class="ohist__by ohist__by--sys">system</span>';
+      var note = /^Updated by /i.test(h.note) ? "" :
+        '<span class="ohist__note">' + esc(h.note) + "</span>";
       return '<li><span class="obadge ' + statusClass(h.status) + '">' + esc(h.status) + "</span>" +
-        '<span class="ohist__note">' + esc(h.note) + "</span>" +
-        "<time>" + esc(stamp(h.at)) + "</time></li>";
+        who + note + "<time>" + esc(stamp(h.at)) + "</time></li>";
     }).join("") || "<li><em>No history recorded.</em></li>";
 
     function row(label, value, strong) {
@@ -457,6 +519,8 @@
             " on " + o.lineCount + " line" + (o.lineCount === 1 ? "" : "s") + "</p>" +
           actionsHTML(o) +
         "</section>" +
+
+        responsibilityHTML(o) +
 
         '<section class="odetail__sec"><h3>Customer</h3>' +
           "<p>" + (esc(o.customerName) || "<em>No name</em>") + "</p>" +

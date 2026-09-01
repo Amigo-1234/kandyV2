@@ -551,6 +551,21 @@
 .ohist__note { flex: 1; min-width: 0; color: var(--ink-2); }
 .ohist time { color: var(--ink-4); font-size: 0.76rem; }
 
+/* Who acted. created_by has been recorded on every handler action since
+   Phase 5 and was never displayed — the row showed the trigger's note, which
+   names the role rather than the person. */
+.ohist__by { font-weight: 700; color: var(--ink-1); }
+.ohist__by--sys { font-weight: 500; font-style: italic; color: var(--ink-3); }
+/* The note keeps the remaining space only when there is still a note to show;
+   without one the timestamp should not be dragged to the far edge. */
+.ohist li > time:last-child { margin-left: auto; }
+
+/* Responsibility block. "Picked up by" is derived from the first move away
+   from New — there is no assigned_to column, because with a two-person
+   kitchen allocation is not the workflow. */
+.oresp dd { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.oresp__when { color: var(--ink-3); font-size: 0.78rem; font-weight: 400; }
+
 @media (max-width: 560px) {
   .ocard { align-items: flex-start; }
   .ocard__right { flex-direction: column; align-items: flex-end; gap: 2px; }
