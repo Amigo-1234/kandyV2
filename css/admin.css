@@ -2595,3 +2595,77 @@
   .crcard { flex-direction: column; gap: 8px; }
   .crcard__right { width: 100%; justify-content: space-between; }
 }
+
+/* ==========================================================================
+   Scoops sold today
+   --------------------------------------------------------------------------
+   The first component of the end-of-day business report. Built from the
+   existing panel and dsec furniture rather than a new visual language: one
+   headline figure, then the per-product list that explains it.
+
+   The list is a two- or three-column grid rather than a table — the admin has
+   no tables anywhere, which is exactly why it survives a phone screen. The
+   money column is absent entirely below manager tier, so the grid is declared
+   with auto-sized columns and adapts to whichever it gets.
+   ========================================================================== */
+
+.dscoop { padding: 16px 18px; }
+
+.dscoop__head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-bottom: 13px;
+  margin-bottom: 13px;
+  border-bottom: 1px solid var(--line);
+}
+.dscoop__figure { display: flex; align-items: baseline; gap: 7px; }
+.dscoop__n {
+  font-family: var(--font-display);
+  font-size: 2.1rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.dscoop__unit { color: var(--ink-3); font-size: 0.9rem; }
+.dscoop__rev {
+  margin-left: auto;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--kt-pink);
+}
+
+.dscoop__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.dscoop__list li {
+  display: grid;
+  /* name takes the slack; the figures stay in their own columns so they line
+     up down the list however long a product name is. */
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 0.9rem;
+}
+.dscoop__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dscoop__qty {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  min-width: 2ch;
+  text-align: right;
+}
+.dscoop__money {
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  min-width: 6ch;
+  text-align: right;
+}
+.dscoop__empty { margin: 0; color: var(--ink-3); font-size: 0.92rem; }
+
+@media (max-width: 480px) {
+  .dscoop__n { font-size: 1.8rem; }
+  .dscoop__rev { margin-left: 0; }
+  /* The money column is the first thing to go: the count is the operational
+     number and the revenue is repeated in the header above. */
+  .dscoop__money { display: none; }
+  .dscoop__list li { grid-template-columns: minmax(0, 1fr) auto; }
+}

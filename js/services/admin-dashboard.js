@@ -32,6 +32,25 @@ export const adminDashboardService = {
   },
 
   /**
+   * Scoops sold in one Africa/Lagos day.
+   *
+   * A second call rather than another key on admin_dashboard(), because this
+   * is the first piece of the end-of-day business report and that report will
+   * want to ask for a specific past day — something the dashboard RPC has no
+   * reason to learn. The two are fetched in parallel, so the extra round trip
+   * costs nothing on the wall clock.
+   *
+   * `day` is a YYYY-MM-DD string or null for today. Revenue comes back null
+   * below manager tier; the server decides that, not this file.
+   */
+  async scoops(day) {
+    const { data, error } = await supabase.rpc("admin_scoop_report",
+      { p_day: day || null });
+    if (error) throw error;
+    return data;
+  },
+
+  /**
    * Watch the tables whose movement the dashboard reflects. `onChange` is
    * debounced by the caller — a burst of order updates should cost one
    * re-read, not five.

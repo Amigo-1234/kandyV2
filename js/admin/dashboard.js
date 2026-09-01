@@ -27,7 +27,7 @@
   KT.admin.views = KT.admin.views || {};
 
   var svc = null;
-  var state = { loading: true, error: null, data: null, live: false };
+  var state = { loading: true, error: null, data: null, scoops: null, live: false };
   var stop = null;
   var refreshTimer = null;
 
@@ -68,6 +68,65 @@
         '<strong class="astat__value">' + n + "</strong>" +
         '<span class="astat__hint">' + esc(t.hint) + KT.icon("chevronRight", 14) + "</span>" +
       "</a>"
+    );
+  }
+
+  /* ---- Scoops ------------------------------------------------------------
+     The first component of the end-of-day business report. Everything here is
+     read from admin_scoop_report(); nothing is computed in the browser, and
+     no product is named in this file — marking a sixth item as sold by the
+     scoop puts it in the list with no code change.
+
+     Revenue is rendered only when the server sent it. Below manager tier the
+     key comes back null, exactly as the finance block does, so a handler sees
+     how much food went out without seeing what it was worth.
+  */
+  function scoopsSection(s) {
+    if (!s) return "";
+    var net = (s.net && Number(s.net.scoops)) || 0;
+    var rev = s.net && s.net.revenue;
+    var showRev = s.includes_revenue && rev !== null && rev !== undefined;
+    var rows = s.by_product || [];
+
+    var body;
+    if (!net && !rows.length) {
+      body = '<p class="dscoop__empty">No scoops sold yet today.</p>';
+    } else {
+      body =
+        '<div class="dscoop__head">' +
+          '<div class="dscoop__figure">' +
+            '<strong class="dscoop__n">' + net + "</strong>" +
+            '<span class="dscoop__unit">scoop' + (net === 1 ? "" : "s") + "</span>" +
+          "</div>" +
+          (showRev ? '<span class="dscoop__rev">' + KT.naira(rev) + "</span>" : "") +
+        "</div>" +
+        '<ul class="dscoop__list">' +
+          rows.map(function (r) {
+            /* The catalogue name carries the unit for humans; the card is
+               already headed "scoops", so the suffix is noise here. */
+            var label = String(r.product || "").replace(/\s*\(per scoop\)\s*/i, "");
+            return "<li><span class=\"dscoop__name\">" + esc(label) + "</span>" +
+              '<span class="dscoop__qty">' + (Number(r.net_scoops) || 0) + "</span>" +
+              (showRev
+                ? '<span class="dscoop__money">' + KT.naira(Number(r.net_revenue) || 0) + "</span>"
+                : "") + "</li>";
+          }).join("") +
+        "</ul>" +
+        ((s.cancelled && Number(s.cancelled.scoops))
+          ? '<p class="dsec__note"><strong>' + s.cancelled.scoops +
+            "</strong> scoop" + (Number(s.cancelled.scoops) === 1 ? "" : "s") +
+            " cancelled today and already excluded from this total.</p>"
+          : "");
+    }
+
+    return (
+      '<section class="dsec">' +
+        '<header class="dsec__head"><h2>' + KT.icon("flame", 17) + "Scoops sold today</h2>" +
+          '<a class="dsec__all" href="#/orders?range=today">Today\u2019s orders' +
+            KT.icon("chevronRight", 14) + "</a>" +
+        "</header>" +
+        '<div class="panel apanel dscoop">' + body + "</div>" +
+      "</section>"
     );
   }
 
@@ -312,7 +371,8 @@
     else {
       var d = state.data || {};
       body =
-        ordersSection(d) + supportSection(d) + operationsSection(d) +
+        ordersSection(d) + scoopsSection(state.scoops) +
+        supportSection(d) + operationsSection(d) +
         '<div class="dsplit">' + recentOrders(d) + activityPanel(d) + "</div>";
     }
     KT.mount(host, headHTML(ctx) + body);
@@ -327,7 +387,16 @@
     if (!opts.quiet) { state.loading = true; state.error = null; paint(ctxRef); }
     try {
       if (!svc) svc = (await import("../services/admin-dashboard.js")).adminDashboardService;
-      state.data = await svc.load();
+      /* In parallel: the scoop report is a separate RPC so the future
+         end-of-day report can ask it for any past day, but the dashboard has
+         no reason to wait for one before starting the other. A scoop failure
+         must not blank the rest of the screen, so it settles on its own. */
+      var both = await Promise.all([
+        svc.load(),
+        svc.scoops().catch(function () { return null; })
+      ]);
+      state.data = both[0];
+      state.scoops = both[1];
       state.error = null;
     } catch (error) {
       /* A refresh that fails must not blank a dashboard that is already on
@@ -371,7 +440,7 @@
 
   KT.admin.views.dashboard = function (ctx) {
     ctxRef = ctx || {};
-    state = { loading: true, error: null, data: null, live: false };
+    state = { loading: true, error: null, data: null, scoops: null, live: false };
     window.setTimeout(function () { load().then(startWatch); }, 0);
     return headHTML(ctxRef) + skeleton();
   };
