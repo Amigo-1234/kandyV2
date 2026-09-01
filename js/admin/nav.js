@@ -42,6 +42,11 @@
       { id: "customers",   label: "Customers",        icon: "user",     min: "staff" },
       { id: "announcements", label: "Announcements",  icon: "sparkle",  min: "admin" },
       { id: "finance",     label: "Finance",          icon: "wallet",   min: "admin" },
+      /* admin+, because job_applications_admin_select scopes SELECT to
+         is_manager(). A staff or supervisor account offered this screen would
+         get an empty list, not a shorter one — the nav is gated to match the
+         policy rather than to create it. */
+      { id: "careers",     label: "Careers",          icon: "user",     min: "admin" },
       { id: "exports",     label: "Exports",          icon: "arrowRight", min: "admin" }
     ]},
     /* Renamed from "Owner": two of these three are now admin+, so calling the

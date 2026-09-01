@@ -146,8 +146,13 @@
              hint: "Active and unpaid" });
 
     if (f) {
-      tiles += tile({ label: "Payment issues", value: f.critical, icon: "lock",
-                      tone: "alert", href: "#/reconciliation",
+      /* Reconciliation lives inside Finance (min: admin), which is exactly the
+       tier admin_dashboard() shows this count to. The old #/reconciliation
+       nav id has no view module, so an owner landed on "Coming in a later
+       phase" and an admin on "Not available to your role" — a live count
+       pointing at a screen that never shows it. */
+    tiles += tile({ label: "Payment issues", value: f.critical, icon: "lock",
+                      tone: "alert", href: "#/finance?tab=reconciliation",
                       hint: (Number(f.warning) || 0) + " warning" +
                             ((Number(f.warning) || 0) === 1 ? "" : "s") });
     }

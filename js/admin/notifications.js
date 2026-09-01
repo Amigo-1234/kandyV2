@@ -64,7 +64,8 @@
           ? "#/support?tab=tickets&ticket=" + encodeURIComponent(n.related_id)
           : "#/support?tab=tickets";
       case "payment":
-        return "#/reconciliation";
+        /* See the note in js/admin/dashboard.js: #/reconciliation has no view. */
+        return "#/finance?tab=reconciliation";
       default:
         return null;
     }

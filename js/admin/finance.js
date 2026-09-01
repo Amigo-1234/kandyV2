@@ -376,7 +376,17 @@
   });
 
   KT.admin.views.finance = function () {
-    state = { tab: "overview", loading: true, error: null, overview: null,
+    /*
+       #/finance?tab=reconciliation is a real entry point, not a convenience:
+       the dashboard's "Payment issues" tile and every `payment` notification
+       carry a live count, and a count that lands on the wrong tab is the same
+       broken promise as one that lands nowhere. Only the tabs this view
+       actually has are honoured, so a hand-edited hash falls back to the
+       overview rather than rendering an empty panel.
+    */
+    var qp = KT.admin.routeParams();
+    var wanted = TABS.some(function (t) { return t.id === qp.tab; }) ? qp.tab : "overview";
+    state = { tab: wanted, loading: true, error: null, overview: null,
       findings: [], events: { total: 0, rows: [] }, wallets: [],
       eventSearch: "", eventStatus: "all", confirm: null, refunding: false };
     window.setTimeout(load, 0);

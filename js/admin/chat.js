@@ -354,6 +354,26 @@
     paintList();
   }
 
+  /*
+     While a thread fills the screen on a phone it is a full-screen layer
+     (see .cinbox.is-thread in css/admin.css), so it needs the same keyboard
+     inset the customer chat does. KT.viewportInset publishes --kt-kb and
+     --kt-safe-bottom; the callback keeps the newest message in view as the
+     keyboard opens, which is the whole point of answering from a phone.
+  */
+  var stopViewport = null;
+
+  function bindViewport() {
+    if (stopViewport) return;
+    stopViewport = KT.viewportInset.start(function () {
+      var el = KT.qs("[data-cthread]");
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+  }
+  function unbindViewport() {
+    if (stopViewport) { stopViewport(); stopViewport = null; }
+  }
+
   async function openConv(id) {
     state.activeId = id;
     state.active = state.rows.filter(function (r) { return r.id === id; })[0] || null;
@@ -363,6 +383,7 @@
     state.sendError = null;
     state.mobileThread = true;
     state.context = null;
+    bindViewport();
     paint();
 
     try {
@@ -472,6 +493,7 @@
       e.preventDefault();
       state.mobileThread = false;
       stopPresence();
+      unbindViewport();
       paint();
       return;
     }
@@ -575,6 +597,7 @@
   /* The shell calls this when navigating away — the channel must not leak. */
   KT.admin.views.chatTeardown = function () {
     stopWatch();
+    unbindViewport();
     state = blank();
   };
 })(window.KT || (window.KT = {}));

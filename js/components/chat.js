@@ -187,57 +187,25 @@
                          already taken, and adding it again leaves a gap
                          under the composer.
   */
-  var vvHandler = null;
+  var stopViewport = null;   /* KT.viewportInset teardown */
 
-  function syncViewport() {
-    var root = document.documentElement;
-    var body = KT.qs("[data-chat-thread]");
-    var vv = window.visualViewport;
-    if (!vv) {
-      root.style.setProperty("--kt-kb", "0px");
-    } else {
-      /* layout height - visual height - how far the visual viewport is offset
-         = the slice the keyboard is covering. Clamped: rounding and
-         rubber-band scrolling can make this fractionally negative. */
-      var covered = Math.max(0, Math.round(
-        window.innerHeight - vv.height - vv.offsetTop));
-      root.style.setProperty("--kt-kb", covered + "px");
-      root.style.setProperty("--kt-safe-bottom",
-        covered > 0 ? "0px" : "env(safe-area-inset-bottom, 0px)");
-    }
-
-    /* Keep the newest message in view as the keyboard opens or the phone
-       rotates — but only for a reader who was already following. */
-    if (following && body) toBottom(body);
-  }
-
+  /*
+     The keyboard inset is computed by KT.viewportInset (js/core/kt.js), which
+     the admin chat uses too — one implementation, so the two full-screen chat
+     views cannot drift apart. The only chat-specific part is the callback:
+     keep the newest message in view as the keyboard opens or the phone
+     rotates, but only for a reader who was already following.
+  */
   function bindViewport() {
-    if (vvHandler) { syncViewport(); return; }
-    vvHandler = function () { syncViewport(); };
-    /* passive: this fires on every keyboard frame and must never block it. */
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", vvHandler, { passive: true });
-      window.visualViewport.addEventListener("scroll", vvHandler, { passive: true });
-    }
-    /* Rotation changes the LAYOUT viewport. visualViewport.resize covers that
-       on the browsers that have it, and this covers the ones that do not —
-       either way the reader keeps their place in the thread. */
-    window.addEventListener("resize", vvHandler, { passive: true });
-    syncViewport();
+    if (stopViewport) return;
+    stopViewport = KT.viewportInset.start(function () {
+      var body = KT.qs("[data-chat-thread]");
+      if (following && body) toBottom(body);
+    });
   }
 
   function unbindViewport() {
-    if (vvHandler) {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener("resize", vvHandler);
-        window.visualViewport.removeEventListener("scroll", vvHandler);
-      }
-      window.removeEventListener("resize", vvHandler);
-    }
-    vvHandler = null;
-    var root = document.documentElement;
-    root.style.removeProperty("--kt-kb");
-    root.style.removeProperty("--kt-safe-bottom");
+    if (stopViewport) { stopViewport(); stopViewport = null; }
   }
 
   async function open() {

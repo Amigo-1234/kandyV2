@@ -93,6 +93,66 @@
     document.body.classList.toggle("is-locked", !!on);
   };
 
+  /* ---- Keyboard inset ---------------------------------------------------
+     Both full-screen chat views — the customer's in js/components/chat.js and
+     the handler's in js/admin/chat.js — have the same problem, so the answer
+     lives here rather than twice.
+
+     On a phone the on-screen keyboard shrinks the VISUAL viewport and leaves
+     the LAYOUT viewport alone. dvh therefore does not move when the keyboard
+     opens, and a composer pinned to the bottom of a 100dvh panel ends up
+     underneath it. visualViewport reports the covered slice; publishing it as
+     --kt-kb lets CSS subtract it.
+
+     --kt-safe-bottom is the companion: the home-indicator inset should pad the
+     composer when the keyboard is DOWN, but not when it is up — the keyboard
+     already occupies that space and padding twice leaves a visible gap.
+
+     start() returns a stop function, so a caller cannot forget which one to
+     pair it with. onChange fires after the variables are written, which is
+     where a chat re-pins its scroll position. Listeners are passive: this
+     fires on every keyboard animation frame and must never block one.
+  */
+  KT.viewportInset = {
+    start: function (onChange) {
+      var root = document.documentElement;
+      function sync() {
+        var vv = window.visualViewport;
+        if (!vv) {
+          root.style.setProperty("--kt-kb", "0px");
+        } else {
+          /* Clamped: rounding and rubber-band scrolling can make this
+             fractionally negative. */
+          var covered = Math.max(0, Math.round(
+            window.innerHeight - vv.height - vv.offsetTop));
+          root.style.setProperty("--kt-kb", covered + "px");
+          root.style.setProperty("--kt-safe-bottom",
+            covered > 0 ? "0px" : "env(safe-area-inset-bottom, 0px)");
+        }
+        if (onChange) onChange();
+      }
+      var handler = function () { sync(); };
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", handler, { passive: true });
+        window.visualViewport.addEventListener("scroll", handler, { passive: true });
+      }
+      /* Rotation changes the LAYOUT viewport. visualViewport.resize covers
+         that where it exists; this covers the browsers where it does not. */
+      window.addEventListener("resize", handler, { passive: true });
+      sync();
+
+      return function stop() {
+        if (window.visualViewport) {
+          window.visualViewport.removeEventListener("resize", handler);
+          window.visualViewport.removeEventListener("scroll", handler);
+        }
+        window.removeEventListener("resize", handler);
+        root.style.removeProperty("--kt-kb");
+        root.style.removeProperty("--kt-safe-bottom");
+      };
+    }
+  };
+
   KT.prefersReducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)"
   ).matches;

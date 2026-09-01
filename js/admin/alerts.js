@@ -232,7 +232,8 @@
         ? "#/support?tab=tickets&ticket=" + encodeURIComponent(n.relatedId)
         : "#/support?tab=tickets";
     }
-    if (n.type === "payment") return "#/reconciliation";
+    /* See the note in js/admin/dashboard.js: #/reconciliation has no view. */
+    if (n.type === "payment") return "#/finance?tab=reconciliation";
     return "#/dashboard";
   }
 
