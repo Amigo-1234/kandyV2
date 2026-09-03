@@ -418,3 +418,19 @@
   transform: none;
   box-shadow: none;
 }
+
+/* The row card names its sold-out state on the meta line, because it renders
+   no overlay tags on its photo (see the variant !== "row" guard in
+   js/components/food-card.js). Same chili the cancelled/sold-out badges use
+   elsewhere, at the meta line's own size. */
+.fcard__soldout {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #ad3917;
+  font-weight: 700;
+}
+:root[data-theme="dark"] .fcard__soldout { color: #ff8a63; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .fcard__soldout { color: #ff8a63; }
+}

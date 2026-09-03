@@ -275,3 +275,86 @@
 .menu__grid.is-list {
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
 }
+
+/* ==========================================================================
+   Mobile: food sooner
+   --------------------------------------------------------------------------
+   Measured at 375x667 before this block: the hero was 310px and the sticky
+   controls 269px, so 579px of a 667px screen was spent before a single dish.
+   The first product sat at 820px — 153px below the fold — which means the
+   Menu page opened on no food at all.
+
+   Nothing is deleted. The lede still says rice is per scoop and that
+   packaging and delivery are added at checkout, because a customer pricing a
+   plate needs it. It is simply sized like a caption instead of a headline.
+   Desktop is untouched: every rule here is inside the mobile query.
+   ========================================================================== */
+
+@media (max-width: 719px) {
+  .menu-hero {
+    padding: 11px 0 7px;
+  }
+  .menu-hero__inner {
+    align-items: center;
+    gap: 10px;
+    /* The layout toggle was wrapping onto a line of its own — a whole 44px
+       row for two small buttons. Beside the heading it costs nothing. */
+    flex-wrap: nowrap;
+  }
+  /* "The full menu" above a heading that says the same thing, on the page the
+     nav already marks as Menu. It is the one line here that carries nothing. */
+  .menu-hero .eyebrow {
+    display: none;
+  }
+  .menu-hero h1 {
+    margin-top: 0;
+    /* display-lg wraps to two tall lines at this width. Sized to sit on one. */
+    font-size: 1.12rem;
+    line-height: 1.2;
+  }
+  .menu-hero p.lede {
+    margin-top: 3px;
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+  /* The layout toggle sits beside the heading rather than under it. */
+  .menu-hero__inner .section-head__text {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .menu-hero .menu__view {
+    flex: none;
+    align-self: flex-start;
+  }
+
+  /* ---- Controls ------------------------------------------------------
+     The toolbar's direction is decided in css/responsive.css, which loads
+     after this file; only padding is set here. */
+  .menu__toolbar {
+    padding: 10px 0;
+    gap: 8px;
+  }
+  .menu__catrail {
+    padding-bottom: 8px;
+  }
+  .menu__filters {
+    padding-bottom: 8px;
+    /* Scrolls sideways like the category rail above it — the project's
+       existing pattern for a row of chips that will not fit. */
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-inline: calc(var(--gutter) * -1);
+    padding-inline: var(--gutter);
+  }
+  .menu__filters::-webkit-scrollbar {
+    display: none;
+  }
+  .menu__filters .chip {
+    flex: none;
+  }
+  .menu__count {
+    margin: 6px 0;
+    font-size: 0.8rem;
+  }
+}

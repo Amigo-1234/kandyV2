@@ -13,7 +13,14 @@
     q: "",
     filters: [], // hot | veg | new | deal
     sort: "popular",
-    view: "grid"
+    /* The horizontal row card is the default. It shows the image, the full
+       name, the description, the category and the price in roughly a third of
+       the vertical space of a grid card, so a customer scanning for something
+       to eat sees several dishes per screen instead of one and a half. Grid
+       is still one tap away and .menu__grid.is-list is a responsive
+       multi-column grid, so desktop gets a denser list rather than one
+       enormous column. */
+    view: "list"
   };
 
   /* Only filters we can derive from real menu documents. */

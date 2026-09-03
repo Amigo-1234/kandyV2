@@ -90,6 +90,10 @@
         : "");
 
     var cat = KT.menu.category(item.category);
+    /* Declared here rather than beside the button that uses it: `meta` below
+       needs it too, and a `var` read before its assignment is undefined, which
+       would have marked every row card sold out. */
+    var canAdd = KT.menu.available(item);
     var meta =
       '<div class="fcard__meta">' +
         "<span>" + (cat ? cat.name : item.section || "") + "</span>" +
@@ -100,13 +104,25 @@
           ? '<span class="fcard__dot"></span><span class="rating">' +
             KT.icon("star", 14) + Number(item.rating).toFixed(1) + "</span>"
           : "") +
+        /*
+           The row card deliberately overlays no tags on its 116px photo — see
+           the `variant !== "row"` guard above — so the "Sold out" chip the
+           grid card gets never appeared here. That was harmless while grid was
+           the default. Now that the row IS the default, a sold-out dish would
+           show a greyed + and no word explaining it, so the state is named on
+           the meta line instead, where this card already puts its category and
+           preparation note.
+        */
+        (variant === "row" && !canAdd
+          ? '<span class="fcard__dot"></span>' +
+            '<span class="fcard__soldout">' + KT.icon("close", 14) + "Sold out today</span>"
+          : "") +
       "</div>";
 
     /* The round + on a card. Sold out disables it rather than leaving a
-       pink, inviting button that answers a tap with a toast. The card already
-       carries the "Sold out" tag from TAG_META, so the state is named as well
-       as shown. */
-    var canAdd = KT.menu.available(item);
+       pink, inviting button that answers a tap with a toast. The state is
+       named too — by the TAG_META chip on a grid card, and on the meta line
+       of a row card. canAdd is resolved above, before `meta` needs it. */
     var action =
       '<div class="fcard__action" data-action>' +
         '<button class="fcard__add" type="button" data-add="' + item.id + '"' +
