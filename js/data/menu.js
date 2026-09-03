@@ -284,8 +284,31 @@
       return hit ? hit.id : "specials";
     },
 
+    /*
+       The single gate every storefront surface asks before showing an item as
+       on sale: the menu grid, search, quick picks, upsells, the product page,
+       the modal, the basket and cart reconciliation all funnel through here.
+
+       IT USED TO COMPARE AGAINST "sold-out". The database emits "sold_out" —
+       menu_items.status is CHECK IN ('available','sold_out','hidden') — so the
+       comparison never matched and this returned true for every sold-out item
+       in the catalogue. Marking a dish sold out in the admin therefore changed
+       nothing a customer could see: it stayed on the menu, stayed addable to
+       the basket, survived reconcile(), and was refused only at the very end
+       by create_checkout_order(), which rejects the whole basket without
+       naming a dish.
+
+       "hidden" was never checked at all, which had the same effect on items
+       deliberately taken off the menu. Both are excluded now, and hidden items
+       are additionally dropped server-side in js/services/menu.js so they never
+       reach the browser.
+
+       Compared against the exact stored values, deliberately: accepting a
+       hyphenated spelling too would make the same class of typo silent again.
+    */
     available: function (item) {
-      return String(item && item.status || "available").toLowerCase() !== "sold-out";
+      var status = String((item && item.status) || "available").toLowerCase();
+      return status !== "sold_out" && status !== "hidden";
     },
 
     tagged: function (tag) {

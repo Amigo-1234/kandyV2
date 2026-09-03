@@ -82,6 +82,16 @@ async function fetchMenu() {
   const { data, error } = await supabase
     .from(TABLES.menuItems)
     .select(SELECT)
+    /*
+       'hidden' means taken off the menu, so it is dropped here rather than in
+       the browser: an item that never arrives cannot leak through a surface
+       that forgot to ask KT.menu.available() — menu.search(), for one, filters
+       nothing. 'sold_out' items ARE still fetched on purpose: the storefront
+       shows them with a "Sold out" badge and refuses to add them, which tells
+       a customer the dish exists and is finished today rather than pretending
+       it was never on the menu.
+    */
+    .neq("status", "hidden")
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
   if (error) throw error;
