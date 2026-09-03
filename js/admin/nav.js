@@ -33,7 +33,10 @@
       { id: "support",    label: "Support",           icon: "mail",     min: "staff", badge: "support" },
       /* staff+: every handler files their own end-of-day report, and the same
          route shows supervisors and above the whole team's. */
-      { id: "end-of-day", label: "End of day",        icon: "check",    min: "staff" }
+      { id: "end-of-day", label: "End of day",        icon: "check",    min: "staff" },
+      /* staff+: handlers record what they cooked and threw away. Adjustments
+         and physical counts inside are supervisor+, enforced in the RPCs. */
+      { id: "inventory",  label: "Inventory",         icon: "flame",    min: "staff" }
     ]},
     { group: "Management", items: [
       { id: "menu-manage", label: "Menu management",  icon: "settings", min: "admin" },
