@@ -232,6 +232,7 @@
         ? "#/support?tab=tickets&ticket=" + encodeURIComponent(n.relatedId)
         : "#/support?tab=tickets";
     }
+    if (n.type === "admin_announcement") return "#/announcements";
     /* See the note in js/admin/dashboard.js: #/reconciliation has no view. */
     if (n.type === "payment") return "#/finance?tab=reconciliation";
     return "#/dashboard";
@@ -312,7 +313,8 @@
         if (KT.admin.notifications) KT.admin.notifications.onIncoming(change);
         if (change.event !== "INSERT") return;
         var n = change.notification;
-        if (["admin_order", "admin_support", "admin_ticket"].indexOf(n.type) === -1) return;
+        if (["admin_order", "admin_support", "admin_ticket",
+             "admin_announcement"].indexOf(n.type) === -1) return;
         if (n.read) return;
         show(n);
       });

@@ -46,7 +46,11 @@
          email, spend and addresses to a staff caller — so widening the nav
          does not widen the data. */
       { id: "customers",   label: "Customers",        icon: "user",     min: "staff" },
-      { id: "announcements", label: "Announcements",  icon: "sparkle",  min: "admin" },
+      /* staff+: every handler reads operational notices. Writing one is
+         manager+, enforced in staff_announcement_save(). Note this is the
+         INTERNAL board — public.announcements, the customer promo strip, is
+         a different table with no admin screen. */
+      { id: "announcements", label: "Announcements",  icon: "sparkle",  min: "staff" },
       { id: "finance",     label: "Finance",          icon: "wallet",   min: "admin" },
       /* admin+, because job_applications_admin_select scopes SELECT to
          is_manager(). A staff or supervisor account offered this screen would

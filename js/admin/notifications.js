@@ -43,6 +43,7 @@
     admin_order:   { icon: "receipt", tone: "order",   action: "View" },
     admin_support: { icon: "mail",    tone: "support", action: "Open chat" },
     admin_ticket:  { icon: "mail",    tone: "support", action: "Open ticket" },
+    admin_announcement: { icon: "sparkle", tone: "message", action: "Read" },
     payment:       { icon: "wallet",  tone: "payment", action: "Review" },
     message:       { icon: "sparkle", tone: "message", action: null }
   };
@@ -63,6 +64,8 @@
         return n.related_id
           ? "#/support?tab=tickets&ticket=" + encodeURIComponent(n.related_id)
           : "#/support?tab=tickets";
+      case "admin_announcement":
+        return "#/announcements";
       case "payment":
         /* See the note in js/admin/dashboard.js: #/reconciliation has no view. */
         return "#/finance?tab=reconciliation";

@@ -2980,3 +2980,110 @@
   .invform__go { width: 100%; justify-content: center; }
   .invhist__who { margin-left: 0; flex-basis: 100%; }
 }
+
+/* ==========================================================================
+   Announcements + Exports
+   ========================================================================== */
+
+.anbar { margin-bottom: 16px; }
+.anlist { display: grid; gap: 11px; }
+
+.ancard {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: 14px 16px;
+}
+/* A live notice earns a coloured edge only when it is above normal. */
+.ancard--important { border-left: 3px solid #8f5a00; }
+.ancard--urgent { border-left: 3px solid #ad3917; }
+.ancard.is-dim { opacity: 0.62; }
+.ancard__top { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-bottom: 6px; }
+.ancard__top h3 { margin: 0; font-family: var(--font-display); font-size: 1.02rem; }
+.ancard__body { margin: 0 0 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ancard__foot {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  font-size: 0.78rem; color: var(--ink-3);
+}
+.ancard__acts { margin-left: auto; display: flex; gap: 10px; }
+.anlink {
+  background: none; border: 0; padding: 0; font: inherit; font-size: 0.78rem;
+  font-weight: 700; color: var(--kt-pink); cursor: pointer;
+}
+.anlink:hover { text-decoration: underline; }
+.anlink:focus-visible { outline: 3px solid var(--kt-pink-bright); outline-offset: 2px; }
+
+.anpill, .anprio {
+  font-size: 0.65rem; font-weight: 800; letter-spacing: 0.04em;
+  text-transform: uppercase; padding: 2px 8px; border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+.anpill--live  { background: var(--mint-50); color: #0a7a5e; }
+.anpill--draft { background: #fff3dd; color: #8f5a00; }
+.anpill--exp, .anpill--arch { background: var(--surface-3); color: #6d5d6a; }
+.anprio--important { background: #fff3dd; color: #8f5a00; }
+.anprio--urgent { background: var(--chili-50); color: #ad3917; }
+
+:root[data-theme="dark"] .anpill--live { color: #35d6a8; }
+:root[data-theme="dark"] .anpill--draft,
+:root[data-theme="dark"] .anprio--important { background: #3b2a08; color: #f0b84a; }
+:root[data-theme="dark"] .anprio--urgent { color: #ff8a63; }
+:root[data-theme="dark"] .anpill--exp,
+:root[data-theme="dark"] .anpill--arch { color: var(--ink-3); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .anpill--live { color: #35d6a8; }
+  :root:not([data-theme="light"]) .anpill--draft,
+  :root:not([data-theme="light"]) .anprio--important { background: #3b2a08; color: #f0b84a; }
+  :root:not([data-theme="light"]) .anprio--urgent { color: #ff8a63; }
+  :root:not([data-theme="light"]) .anpill--exp,
+  :root:not([data-theme="light"]) .anpill--arch { color: var(--ink-3); }
+}
+
+.aneditor {
+  display: grid; gap: 13px; margin-bottom: 16px;
+  /* Room for the keyboard, so the publish button stays reachable on a phone. */
+  padding-bottom: calc(20px + var(--kt-kb, 0px));
+}
+.aneditor h3 { margin: 0; font-family: var(--font-display); }
+.aneditor .field { margin: 0; }
+/* 16px or iOS zooms on focus. */
+.aneditor .input, .aneditor .select { font-size: 16px; }
+.aneditor__body { line-height: 1.5; resize: vertical; min-height: 96px; font-family: inherit; }
+.aneditor__row { display: flex; gap: 11px; flex-wrap: wrap; }
+.aneditor__row .field { flex: 1 1 190px; }
+
+/* ---- Exports ------------------------------------------------------------ */
+
+.exdates {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  padding-bottom: calc(18px + var(--kt-kb, 0px));
+}
+.exdates .field { margin: 0; flex: 1 1 150px; }
+.exdates .input { font-size: 16px; }
+
+.exlist { display: grid; gap: 10px; }
+.exrow {
+  display: flex; align-items: center; gap: 13px; flex-wrap: wrap;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: 13px 15px;
+}
+.exrow.is-locked { opacity: 0.6; }
+.exrow__text { display: grid; gap: 2px; flex: 1 1 220px; min-width: 0; }
+.exrow__note { font-size: 0.8rem; color: var(--ink-3); }
+.exrow__lock {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 0.74rem; color: var(--ink-3); font-weight: 700;
+}
+.exrow__when {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--ink-3);
+  background: var(--surface-3); padding: 3px 9px; border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+
+@media (max-width: 620px) {
+  .ancard__acts { margin-left: 0; flex-basis: 100%; }
+  .aneditor__row .field { flex: 1 1 100%; }
+  .exdates .field { flex: 1 1 100%; }
+  .exrow { gap: 9px; }
+  .exrow__when { order: 3; }
+  .exrow .btn { flex: 1 1 100%; justify-content: center; }
+}
