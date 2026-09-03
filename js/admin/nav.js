@@ -30,7 +30,10 @@
       /* badge: the shell paints an unread count on this item from
          admin_support_unread(). Cosmetic — the counter itself is
          chat_conversations.admin_unread, maintained server-side. */
-      { id: "support",    label: "Support",           icon: "mail",     min: "staff", badge: "support" }
+      { id: "support",    label: "Support",           icon: "mail",     min: "staff", badge: "support" },
+      /* staff+: every handler files their own end-of-day report, and the same
+         route shows supervisors and above the whole team's. */
+      { id: "end-of-day", label: "End of day",        icon: "check",    min: "staff" }
     ]},
     { group: "Management", items: [
       { id: "menu-manage", label: "Menu management",  icon: "settings", min: "admin" },

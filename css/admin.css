@@ -2684,3 +2684,162 @@
   .dscoop__money { display: none; }
   .dscoop__list li { grid-template-columns: minmax(0, 1fr) auto; }
 }
+
+/* ==========================================================================
+   End of day
+   --------------------------------------------------------------------------
+   Built from the existing panel, dsec, astat and chip furniture. Two ideas
+   carry the screen: derived figures are rendered as FIGURES (never inputs,
+   because there is no column behind them to write to), and a person's report
+   status is a pill that can be read without opening anything.
+   ========================================================================== */
+
+.eodtabs { margin-bottom: 18px; }
+.eodlede { margin: 0 0 14px; color: var(--ink-3); font-size: 0.9rem; }
+.dsec__hint { margin-left: auto; color: var(--ink-3); font-size: 0.82rem; }
+
+/* ---- Derived activity --------------------------------------------------- */
+
+.eodact__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 10px;
+}
+.eodm {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  background: var(--surface-3);
+  border-radius: var(--r-md);
+}
+.eodm__n {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.eodm__l { font-size: 0.76rem; color: var(--ink-3); }
+.eodact__span { margin: 12px 0 0; font-size: 0.85rem; color: var(--ink-3); }
+
+/* ---- The form ----------------------------------------------------------- */
+
+.eodform {
+  display: grid;
+  gap: 16px;
+  /* Room for the on-screen keyboard. Without it the last control sits in a
+     band the page cannot scroll to once the keyboard is up — the layout
+     viewport never shrank, so neither did the scroll range. --kt-kb is 0 on
+     desktop and whenever no keyboard is showing. */
+  padding-bottom: calc(18px + var(--kt-kb, 0px));
+}
+.eodf { display: grid; gap: 4px; }
+.eodf__label { font-weight: 700; font-size: 0.92rem; }
+.eodf__hint { font-size: 0.8rem; color: var(--ink-3); }
+.eodf__input {
+  /* 16px or iOS Safari zooms the page the moment the field is focused, which
+     on a phone throws the submit button off-screen. */
+  font-size: 16px;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 62px;
+  font-family: inherit;
+}
+.eodactions { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.eodunsaved { font-size: 0.8rem; color: var(--amber); font-weight: 700; }
+.eodreview {
+  background: var(--kt-pink-50);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+}
+.eodreview strong { display: block; font-size: 0.8rem; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--kt-pink); margin-bottom: 4px; }
+.eodreview p { margin: 0; font-size: 0.9rem; }
+
+/* ---- Status pills ------------------------------------------------------- */
+
+.eodstatus { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+.eodpill {
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.05em;
+  text-transform: uppercase; padding: 3px 9px; border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+.eodpill--done    { background: var(--mint-50); color: #0a7a5e; }
+.eodpill--draft   { background: #fff3dd; color: #8f5a00; }
+.eodpill--missing { background: var(--chili-50); color: #ad3917; }
+.eodpill--flag    { background: var(--chili-50); color: #ad3917; }
+.eodpill--seen    { background: var(--surface-3); color: #6d5d6a; }
+.eodpill--na      { background: var(--surface-3); color: #6d5d6a; }
+
+:root[data-theme="dark"] .eodpill--done  { color: #35d6a8; }
+:root[data-theme="dark"] .eodpill--draft { background: #3b2a08; color: #f0b84a; }
+:root[data-theme="dark"] .eodpill--missing,
+:root[data-theme="dark"] .eodpill--flag  { color: #ff8a63; }
+:root[data-theme="dark"] .eodpill--seen,
+:root[data-theme="dark"] .eodpill--na    { color: var(--ink-3); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .eodpill--done  { color: #35d6a8; }
+  :root:not([data-theme="light"]) .eodpill--draft { background: #3b2a08; color: #f0b84a; }
+  :root:not([data-theme="light"]) .eodpill--missing,
+  :root:not([data-theme="light"]) .eodpill--flag  { color: #ff8a63; }
+  :root:not([data-theme="light"]) .eodpill--seen,
+  :root:not([data-theme="light"]) .eodpill--na    { color: var(--ink-3); }
+}
+
+/* ---- The team list ------------------------------------------------------ */
+
+.eodsum { margin-bottom: 0; }
+.eodlist { display: grid; gap: 10px; }
+
+.eodperson {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+/* A flagged report is the one thing on this screen that needs chasing, so it
+   is the one thing given a coloured edge. */
+.eodperson.is-flagged { border-left: 3px solid #ad3917; }
+:root[data-theme="dark"] .eodperson.is-flagged { border-left-color: #ff8a63; }
+
+.eodperson__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 15px;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  flex-wrap: wrap;
+}
+.eodperson__head:hover { background: var(--surface-3); }
+.eodperson__head:focus-visible { outline: 3px solid var(--kt-pink-bright); outline-offset: -3px; }
+.eodperson__who { display: grid; gap: 1px; min-width: 0; }
+.eodperson__role { font-size: 0.74rem; color: var(--ink-3); text-transform: capitalize; }
+.eodperson__stats {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  font-size: 0.82rem; color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.eodperson__chev { margin-left: auto; color: var(--ink-4); display: grid; }
+.eodperson__head[aria-expanded="true"] .eodperson__chev { transform: rotate(180deg); }
+
+.eodperson__body { padding: 0 15px 15px; display: grid; gap: 12px; }
+.eodsaid { display: grid; gap: 2px; }
+.eodsaid dt { font-size: 0.78rem; font-weight: 800; color: var(--ink-3);
+  text-transform: uppercase; letter-spacing: 0.04em; }
+.eodsaid dd { margin: 0; font-size: 0.92rem; overflow-wrap: anywhere; }
+
+@media (max-width: 620px) {
+  .eodperson__head { gap: 8px; }
+  /* The chevron keeps its place; the stats wrap under the name rather than
+     squeezing the pill off the row. */
+  .eodperson__stats { flex-basis: 100%; order: 3; }
+  .eodact__grid { grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); }
+  .eodm { padding: 10px 11px; }
+  .eodm__n { font-size: 1.3rem; }
+  .eodactions .btn { flex: 1 1 auto; justify-content: center; }
+}
