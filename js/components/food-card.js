@@ -102,10 +102,18 @@
           : "") +
       "</div>";
 
+    /* The round + on a card. Sold out disables it rather than leaving a
+       pink, inviting button that answers a tap with a toast. The card already
+       carries the "Sold out" tag from TAG_META, so the state is named as well
+       as shown. */
+    var canAdd = KT.menu.available(item);
     var action =
       '<div class="fcard__action" data-action>' +
-        '<button class="fcard__add" type="button" data-add="' + item.id + '" aria-label="Add ' +
-          item.name + ' to cart">' + KT.icon("plus", 20) + "</button>" +
+        '<button class="fcard__add" type="button" data-add="' + item.id + '"' +
+          (canAdd ? "" : ' disabled aria-disabled="true"') +
+          ' aria-label="' + (canAdd ? "Add " + item.name + " to cart"
+                                    : item.name + " is sold out today") + '">' +
+          KT.icon(canAdd ? "plus" : "close", 20) + "</button>" +
       "</div>";
 
     if (variant === "row") {
@@ -165,10 +173,17 @@
       } else if (qty > 0) {
         KT.qs("[data-qty]", host).textContent = qty;
       } else if (hasStepper) {
+        /* Rebuilt when the last unit leaves the basket, so it has to make the
+           same availability decision the first render did — otherwise removing
+           a line would hand back an enabled + on a sold-out card. */
+        var syncItem = KT.menu.byId(id);
+        var syncCanAdd = !syncItem || KT.menu.available(syncItem);
         host.classList.remove("is-open");
         host.innerHTML =
-          '<button class="fcard__add" type="button" data-add="' + id +
-          '" aria-label="Add to cart">' + KT.icon("plus", 20) + "</button>";
+          '<button class="fcard__add" type="button" data-add="' + id + '"' +
+          (syncCanAdd ? "" : ' disabled aria-disabled="true"') +
+          ' aria-label="' + (syncCanAdd ? "Add to cart" : "Sold out today") + '">' +
+          KT.icon(syncCanAdd ? "plus" : "close", 20) + "</button>";
       }
       el.classList.toggle("in-cart", qty > 0);
     });

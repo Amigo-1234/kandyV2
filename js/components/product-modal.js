@@ -133,8 +133,11 @@
           '<span class="stepper__value" data-mqty>' + qty + "</span>" +
           '<button class="stepper__btn" type="button" data-mq="1" aria-label="Increase quantity">' + KT.icon("plus", 16) + "</button>" +
         "</div>" +
-        '<button class="btn btn--primary btn--lg modal__add" type="button" data-modal-add>' +
-          "<span>Add to basket</span><span class=\"modal__addprice\" data-mprice>" +
+        /* Same rule as the product page: disabled, not just refused. */
+        '<button class="btn btn--primary btn--lg modal__add" type="button" data-modal-add' +
+          (KT.menu.available(item) ? "" : " disabled aria-disabled=\"true\"") + ">" +
+          "<span>" + (KT.menu.available(item) ? "Add to basket" : "Sold out today") +
+          "</span><span class=\"modal__addprice\" data-mprice>" +
           KT.naira(priceOf(item, selection, qty)) + "</span></button>" +
         '<a class="modal__full" href="' + KT.url("pages/product.html?id=" + item.id) + '">Full details' +
           KT.icon("arrowRight", 15) + "</a>" +

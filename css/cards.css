@@ -401,3 +401,20 @@
   transition: transform 620ms cubic-bezier(0.5, -0.1, 0.4, 1),
     opacity 620ms ease-in, border-radius 620ms linear;
 }
+
+/* A sold-out card's + button. .btn:disabled already covers the two text
+   "Add to basket" controls on the product page and in the quick-view modal;
+   .fcard__add is not a .btn, so it needs the same treatment stated here.
+   Muted to the neutral surface rather than left pink: a disabled pink circle
+   still reads as the primary action on a card. */
+.fcard__add:disabled {
+  background: var(--surface-3);
+  color: var(--ink-4);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.fcard__add:disabled:hover {
+  background: var(--surface-3);
+  transform: none;
+  box-shadow: none;
+}

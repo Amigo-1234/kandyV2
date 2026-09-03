@@ -107,8 +107,14 @@
               '<button class="stepper__btn" type="button" data-pq="1" aria-label="Increase quantity">' +
                 KT.icon("plus", 17) + "</button>" +
             "</div>" +
-            '<button class="btn btn--primary btn--lg pdp__add" type="button" data-pdp-add>' +
-              "<span>Add to basket</span><span data-pdp-price>" + KT.naira(priceNow()) + "</span></button>" +
+            /* Sold out: the control is disabled rather than merely refusing on
+               click. The click guard below stays as defence in depth — this is
+               about not offering the press in the first place. The price stays
+               on the button so the customer still sees what the dish costs. */
+            '<button class="btn btn--primary btn--lg pdp__add" type="button" data-pdp-add' +
+              (KT.menu.available(item) ? "" : " disabled aria-disabled=\"true\"") + ">" +
+              "<span>" + (KT.menu.available(item) ? "Add to basket" : "Sold out today") +
+              "</span><span data-pdp-price>" + KT.naira(priceNow()) + "</span></button>" +
             '<button class="pdp__fav" type="button" data-fav aria-label="Save for later">' +
               KT.icon("heart", 20) + "</button>" +
           "</div>" +
