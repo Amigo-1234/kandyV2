@@ -50,7 +50,11 @@ function normalise(row) {
     uuid: row.id,
     userId: row.user_id,
     status: row.status || "New",
-    statusLabel: (KT.rules.STATUS_META[row.status] || {}).label || row.status || "New",
+    /* statusMeta(), not STATUS_META[], so a pickup order's badge says
+       "Ready for collection" rather than "Out for delivery" — the map alone
+       has no idea how the order ships. */
+    statusLabel: (KT.rules.statusMeta(row.status, row.fulfilment || "delivery") || {}).label
+      || row.status || "New",
     statusHistory: history,
     fulfilment: row.fulfilment || "delivery",
     paid: row.paid === true,

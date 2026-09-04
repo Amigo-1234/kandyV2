@@ -356,8 +356,40 @@
   border-radius: var(--r-lg);
   padding: 22px;
   display: grid;
+  /* An implicit grid column is sized to its widest item's min-content, which
+     here is a pay button whose label and blurb sit on one unbreakable line —
+     measured at 387px inside a 305px box on a 375px screen, so the buttons
+     were clipped by 47px and the last one could not be fully pressed.
+     minmax(0, 1fr) lets the column obey its container instead. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
+/*
+   The pay buttons sit in an inline display:grid wrapper built in
+   js/pages/orders.js. Like .cartpanel above it, its implicit column sized to
+   the widest button's min-content — 387px in a 305px box — so the buttons
+   were clipped on a 375px screen.
+
+   .btn is white-space: nowrap by design, which is right for a one-word
+   button but not for these: they carry a label AND a blurb ("Pay with
+   Paystack" / "Card, bank transfer or USSD") that together cannot fit one
+   line on a phone. Allowed to wrap here only.
+*/
+[data-pay-buttons] {
+  grid-template-columns: minmax(0, 1fr);
+}
+[data-pay-buttons] .btn {
+  white-space: normal;
+  flex-wrap: wrap;
+  min-width: 0;
+  height: auto;
+  padding-block: 12px;
+}
+[data-pay-buttons] .btn > span {
+  white-space: normal;
+  min-width: 0;
+}
+
 .cartpanel h3 {
   font-family: var(--font-display);
   font-size: 1.06rem;

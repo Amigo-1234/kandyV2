@@ -22,12 +22,45 @@
   /* functions/index.js: ORDER_STATUSES */
   var ORDER_STATUSES = ["New", "Preparing", "Out", "Completed"];
 
+  /*
+     What the CUSTOMER reads for each database status. The keys are the values
+     in orders.status; only the wording is ours to choose.
+
+     Cancelled is here now. It was missing, so statusLabel fell through to the
+     raw column value — which happened to read acceptably, but left a
+     cancelled order with no blurb and no icon while every other state had
+     both, and forced a special case in js/pages/orders.js.
+  */
   var STATUS_META = {
     New: { label: "Order received", blurb: "We have your order and the kitchen has been notified.", icon: "receipt" },
     Preparing: { label: "In the kitchen", blurb: "Your food is being cooked to order right now.", icon: "flame" },
     Out: { label: "Out for delivery", blurb: "A rider has picked up your order.", icon: "bike" },
-    Completed: { label: "Completed", blurb: "Delivered. Enjoy your food.", icon: "check" }
+    Completed: { label: "Completed", blurb: "Delivered. Enjoy your food.", icon: "check" },
+    Cancelled: { label: "Cancelled", blurb: "This order was cancelled. Nothing further will happen to it.", icon: "close" }
   };
+
+  /*
+     A pickup order is not delivered, and telling its customer that "a rider
+     has picked up your order" is simply untrue — nobody is bringing it
+     anywhere. Same statuses, same database values, different sentence.
+
+     This is the screen that should be telling a customer their food is ready,
+     which is worth stating plainly: when it says "Out for delivery" to
+     somebody who is walking in to collect, a global "Food is ready" banner
+     starts to look like the only way to communicate.
+  */
+  var STATUS_META_PICKUP = {
+    Out: { label: "Ready for collection", blurb: "Your order is packed and waiting at the counter.", icon: "bike" },
+    Completed: { label: "Collected", blurb: "Collected. Enjoy your food.", icon: "check" }
+  };
+
+  /** The customer-facing wording for a status, given how the order ships. */
+  function statusMeta(status, fulfilment) {
+    if (fulfilment === "pickup" && STATUS_META_PICKUP[status]) {
+      return STATUS_META_PICKUP[status];
+    }
+    return STATUS_META[status] || null;
+  }
 
   /* functions/index.js: COUPONS */
   var COUPONS = {
@@ -49,6 +82,7 @@
     PROCESSING_FEE_RATE: PROCESSING_FEE_RATE,
     ORDER_STATUSES: ORDER_STATUSES,
     STATUS_META: STATUS_META,
+    STATUS_META_PICKUP: STATUS_META_PICKUP,
     COUPONS: COUPONS,
     FULFILMENTS: FULFILMENTS,
     ETA_MINUTES: ETA_MINUTES,
@@ -231,26 +265,60 @@
       return i === -1 ? 0 : i;
     },
 
-    /** Timeline steps for an order, from its status and statusHistory. */
+    /**
+     * Timeline steps for an order, from its status and statusHistory.
+     *
+     * Two corrections live here, both found by reading a real cancelled order:
+     *
+     *   Cancellation is orders.status === 'Cancelled'. It was being read from
+     *   payment_status === 'cancelled', which is a different thing entirely —
+     *   an abandoned payment, not a cancelled order. Since 'Cancelled' is not
+     *   in ORDER_STATUSES, statusIndex() returned its -1 fallback of 0, so a
+     *   cancelled order rendered a live tracker sitting on "Order received —
+     *   the kitchen has been notified". That was reaching a real customer
+     *   whose order the owner had cancelled.
+     *
+     *   The step time read entry.atMs, but normalise() in
+     *   js/services/orders.js builds history entries with `at`. So `time` was
+     *   null for every step of every order and the timeline has never once
+     *   shown a timestamp — it silently fell back to the blurb.
+     *
+     * ORDER_STATUSES deliberately stays the four-step ladder: Cancelled is a
+     * state an order can end in, not a rung it climbs.
+     */
     timeline: function (order) {
       var history = Array.isArray(order && order.statusHistory) ? order.statusHistory : [];
       var current = rules.statusIndex(order && order.status);
-      var cancelled = String((order && order.paymentStatus) || "") === "cancelled";
+      var cancelled = rules.isCancelled(order);
+      var fulfilment = (order && order.fulfilment) || "delivery";
 
       return ORDER_STATUSES.map(function (status, index) {
         var entry = history.filter(function (h) { return h.status === status; })[0];
-        var meta = STATUS_META[status];
+        var meta = statusMeta(status, fulfilment) || STATUS_META[status];
+        var at = entry ? (entry.at || entry.atMs) : null;
         return {
           key: status,
           label: meta.label,
           blurb: meta.blurb,
           icon: meta.icon,
-          time: entry && entry.atMs ? new Date(entry.atMs) : null,
+          time: at ? new Date(at) : null,
           done: index <= current && !cancelled,
           current: index === current && !cancelled
         };
       });
     },
+
+    /**
+     * Was this ORDER cancelled? Not "was a payment abandoned" — those are
+     * separate columns with separate meanings, and conflating them is what
+     * put a progress tracker on a cancelled order.
+     */
+    isCancelled: function (order) {
+      return String((order && order.status) || "") === "Cancelled";
+    },
+
+    /** Customer-facing wording for a status, respecting pickup vs delivery. */
+    statusMeta: statusMeta,
 
     /** V1 order ids look like KD-1737052800000-482. */
     isOrderId: function (value) {

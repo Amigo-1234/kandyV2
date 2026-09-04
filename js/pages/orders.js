@@ -22,10 +22,16 @@
     });
   }
 
+  /* The badge tone. Cancellation is orders.status, not payment_status — the
+     old test read the payment column, so a cancelled order was styled
+     "on-the-way" and .status--cancelled was never once reached, despite
+     existing in css/account.css.
+
+     paymentPanel() below still tests payment_status === "cancelled", and
+     correctly: that one really is about an abandoned payment. */
   function statusClass(order) {
-    if (order.paymentStatus === "cancelled") return "cancelled";
+    if (KT.rules.isCancelled(order)) return "cancelled";
     if (order.status === "Completed") return "delivered";
-    if (order.status === "Out") return "on-the-way";
     return "on-the-way";
   }
 
@@ -228,6 +234,16 @@
     }
 
     function paymentPanel() {
+      /* A cancelled order is not waiting for money. Offering "Pay N700 to
+         send this to the kitchen" on an order the kitchen will never see is
+         the same conflation the tracker had: payment state and order state
+         are different questions. Checked before `paid` so a cancelled order
+         that WAS paid still says so rather than advertising a payment. */
+      if (KT.rules.isCancelled(order) && !order.paid) {
+        return '<div class="phasenote">' + KT.icon("close", 16) +
+          "<span>This order was cancelled, so there is nothing to pay. " +
+          "You can reorder the items whenever you like.</span></div>";
+      }
       if (order.paid) {
         return '<div class="deliverycard" style="border-color:var(--mint);background:var(--mint-50)">' +
           '<span class="deliverycard__icon" style="background:#fff;color:var(--mint)">' +
@@ -241,7 +257,13 @@
       }
       return (
         '<div class="cartpanel" style="padding:0;border:0">' +
-          '<p class="field__label">Pay ' + KT.naira(order.total) + " to send this to the kitchen</p>" +
+          /* "send this to the kitchen" is only true while the order is still
+             waiting to be started. Once a handler has moved it, the kitchen
+             has already seen it — the customer just owes for it. */
+          '<p class="field__label">Pay ' + KT.naira(order.total) +
+            (KT.rules.statusIndex(order.status) > 0
+              ? " for this order</p>"
+              : " to send this to the kitchen</p>") +
           '<div style="display:grid;gap:10px;margin-top:10px" data-pay-buttons>' +
             KT.services.payments.PROVIDERS.map(function (p) {
               return '<button class="btn btn--primary btn--block" type="button" data-pay="' + p.id + '">' +
@@ -260,7 +282,7 @@
     function render() {
       if (!order) return;
       var steps = KT.rules.timeline(order);
-      var cancelled = order.paymentStatus === "cancelled";
+      var cancelled = KT.rules.isCancelled(order);
 
       KT.mount(host,
         '<nav class="crumbs" aria-label="Breadcrumb">' +
@@ -276,9 +298,16 @@
                 "<p>" + when(order.createdAt) + " · " +
                 (order.fulfilment === "pickup" ? "Pickup" : "Delivery") + "</p></div>" +
                 '<span class="status status--' + statusClass(order) + '">' +
-                  (cancelled ? "Cancelled" : order.statusLabel) + "</span></div>" +
+                  order.statusLabel + "</span></div>" +
 
-              (order.paid && !cancelled
+              /* The tracker used to require order.paid. But the kitchen does
+                 advance unpaid orders — there are real ones in the system
+                 sitting at Preparing and Out unpaid — and those customers saw
+                 no progress at all, just a prompt to pay for food that was
+                 already made. Show it once the order has actually moved.
+                 A New unpaid order still shows only the payment prompt,
+                 which is correct: nothing has happened to it yet. */
+              ((order.paid || KT.rules.statusIndex(order.status) > 0) && !cancelled
                 ? '<div class="track">' + steps.map(function (s) {
                     return '<div class="track__step' + (s.done ? " is-done" : "") +
                       (s.current ? " is-current" : "") + '">' +
