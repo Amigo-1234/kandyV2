@@ -120,7 +120,11 @@ insert into public.quick_pick_items (quick_pick_id, menu_item_id, name, unit_pri
 insert into public.quick_pick_items (quick_pick_id, menu_item_id, name, unit_price, qty, sort_order) select qp.id, mi.id, 'Bullet', 2500, 1, 1 from public.quick_picks qp left join public.menu_items mi on mi.legacy_firestore_id = '3LAvX80nCgLhOuX3t3UH' where qp.legacy_firestore_id = 'kmd6WejkeTXMPzQxxmPM';
 insert into public.announcements (body, active) values ('burger now available', false) on conflict do nothing;
 insert into public.announcements (body, active) values ('Catfish pepper soup now available', true) on conflict do nothing;
-insert into public.announcements (body, active) values ('Food is ready', true) on conflict do nothing;
+-- Seeded inactive. "Food is ready" is one order's state, not something to
+-- broadcast to every visitor, and the customer's own order page has said it
+-- properly since Phase 06. Kept as a row so the Firestore lineage stays
+-- legible; retired in the live database by migration 0061.
+insert into public.announcements (body, active) values ('Food is ready', false) on conflict do nothing;
 insert into public.announcements (body, active) values ('We have closed for the night', false) on conflict do nothing;
 insert into public.announcements (body, active) values ('Welcome to Kandy''s Treats', true) on conflict do nothing;
 commit;
