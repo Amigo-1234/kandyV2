@@ -8,6 +8,13 @@
    amount, and there is no parameter through which one could be smuggled.
 
    Requires a valid customer JWT (verify_jwt defaults to true).
+
+   MODE. This runs against whichever key PAYSTACK_SECRET_KEY holds — test or
+   live. It used to refuse an sk_live_ key outright, as a guard against a
+   mis-pasted production key taking real money on the first click. That guard
+   was removed deliberately for launch. Nothing else about the flow changed:
+   the amount still comes from the database, the reference is still generated
+   here, and the caller still cannot reach an order they do not own.
    ========================================================================== */
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { PAYSTACK_API, toKobo, json, CORS } from "../_shared/paystack.ts";
@@ -18,12 +25,6 @@ Deno.serve(async (req) => {
 
   const secretKey = Deno.env.get("PAYSTACK_SECRET_KEY");
   if (!secretKey) return json({ error: "Payment is not configured." }, 503);
-
-  /* Refuse a live key outright: this project is test-mode only for now, and a
-     mis-pasted live key would take real money on the first click. */
-  if (secretKey.startsWith("sk_live_")) {
-    return json({ error: "Live Paystack keys are not permitted yet." }, 503);
-  }
 
   const authHeader = req.headers.get("Authorization") ?? "";
 

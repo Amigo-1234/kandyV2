@@ -11,6 +11,10 @@
 
    The amount is accepted from the client HERE (it is a request, not a price)
    but is never accepted again at settlement.
+
+   MODE. Runs against whichever key PAYSTACK_SECRET_KEY holds. The sk_live_
+   refusal that used to sit here was removed for launch; the amount bounds,
+   the server-generated reference and the recorded intent are unchanged.
    ========================================================================== */
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { PAYSTACK_API, toKobo, json, CORS } from "../_shared/paystack.ts";
@@ -24,9 +28,6 @@ Deno.serve(async (req) => {
 
   const secretKey = Deno.env.get("PAYSTACK_SECRET_KEY");
   if (!secretKey) return json({ error: "Payment is not configured." }, 503);
-  if (secretKey.startsWith("sk_live_")) {
-    return json({ error: "Live Paystack keys are not permitted yet." }, 503);
-  }
 
   const asCaller = createClient(
     Deno.env.get("SUPABASE_URL")!,
