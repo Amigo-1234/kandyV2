@@ -74,7 +74,16 @@
       /* admin+ because admin_list_team permits a manager to VIEW the roster,
          and since Phase 11 an admin may also create and manage supervisors.
          Everything above supervisor stays owner-only inside admin_set_role. */
-      { id: "team",           label: "Team & roles",           icon: "user",     min: "admin" }
+      { id: "team",           label: "Team & roles",           icon: "user",     min: "admin" },
+      /* admin+, matching every other team surface. staff_flags' only SELECT
+         policy is is_manager(), so a supervisor who edits the hash reaches an
+         empty screen and a refused request — supervisors have no team-
+         management access today and this phase does not give them any. */
+      { id: "flags",          label: "Staff flags",            icon: "user",     min: "admin" },
+      /* admin+ to LOOK, owner to act. admin_trash_list() refuses anyone below
+         is_manager() and reports can_act separately, so an admin sees what
+         was removed without gaining a deletion power they never had. */
+      { id: "trash",          label: "Trash",                  icon: "trash",    min: "admin" }
     ]}
   ];
 

@@ -3087,3 +3087,199 @@
   .exrow__when { order: 3; }
   .exrow .btn { flex: 1 1 100%; justify-content: center; }
 }
+
+/* ==========================================================================
+   Phase 10 — Trash and Staff flags
+   --------------------------------------------------------------------------
+   Both reuse the panel/card language already established by .setcard and
+   .ocard: same border, radius, surface and shadow tokens, so these screens
+   read as part of the admin rather than bolted on. Severity colour is the
+   only new signal, and it is carried by a pill rather than by the card
+   background, which would have fought the dark theme.
+   ========================================================================== */
+
+/* ---- Trash -------------------------------------------------------------- */
+
+.trashlist { display: grid; gap: 12px; }
+
+.trashcard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--sh-1);
+}
+.trashcard__main { display: flex; gap: 12px; align-items: flex-start; min-width: 0; flex: 1 1 320px; }
+.trashcard__icon {
+  display: grid; place-items: center;
+  width: 34px; height: 34px; flex: none;
+  border-radius: 10px;
+  background: var(--surface-3);
+  color: var(--ink-2);
+}
+.trashcard__name { font-family: var(--font-display); font-size: 1rem; margin: 0 0 3px; }
+.trashcard__meta { color: var(--ink-2); font-size: 0.83rem; line-height: 1.5; margin: 0; }
+.trashcard__kind {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  font-weight: 600;
+}
+.trashcard__reason {
+  margin: 7px 0 0;
+  font-size: 0.88rem;
+  font-style: italic;
+  color: var(--ink);
+}
+.trashcard__note { margin: 6px 0 0; font-size: 0.82rem; color: var(--ink-2); }
+
+.trashcard__actions {
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+}
+.trashcard__locked {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--ink-2); font-size: 0.83rem;
+}
+.trashcard__confirm {
+  display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 0.85rem; font-weight: 600; color: var(--chili);
+}
+
+/* ---- Staff flags -------------------------------------------------------- */
+
+.flaglist { display: grid; gap: 12px; }
+
+.flagcard {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--sh-1);
+  padding: 15px 17px;
+}
+.flagcard.is-closed { background: var(--surface-3); }
+.flagcard--medium   { border-left-color: #d9a441; }
+.flagcard--high     { border-left-color: #d97706; }
+.flagcard--critical { border-left-color: #c0392b; }
+
+.flagcard__head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+}
+.flagcard__title { font-family: var(--font-display); font-size: 1rem; margin: 0 0 3px; }
+.flagcard__who { color: var(--ink-2); font-size: 0.83rem; line-height: 1.55; margin: 0; }
+.flagcard__details { margin: 10px 0 0; font-size: 0.92rem; line-height: 1.55; }
+.flagcard__resolution {
+  margin: 10px 0 0; padding: 9px 11px;
+  border-radius: var(--r-md);
+  background: var(--surface-3);
+  font-size: 0.85rem; line-height: 1.5; color: var(--ink-2);
+}
+
+.flagpill {
+  flex: none;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: var(--surface-3); color: var(--ink-2);
+}
+.flagpill--medium   { background: #fdf3e0; color: #8a5a12; }
+.flagpill--high     { background: #fdeadb; color: #9a4a08; }
+.flagpill--critical { background: #fbe4e2; color: #a02a1e; }
+
+.flagcard__foot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+  margin-top: 13px; padding-top: 11px;
+  border-top: 1px solid var(--line);
+}
+.flagcard__status { font-size: 0.8rem; font-weight: 600; color: var(--ink-2); }
+.flagcard__status--open { color: var(--kt-pink); }
+.flagcard__actions { display: flex; gap: 7px; flex-wrap: wrap; }
+.flagcard__resolve {
+  display: flex; gap: 7px; align-items: center; flex-wrap: wrap; width: 100%;
+}
+.flagcard__resolve .input { flex: 1 1 180px; min-width: 0; }
+
+.flagstat { font-size: 0.88rem; font-weight: 600; color: var(--ink); }
+.flagstat__severe { color: #a02a1e; font-weight: 700; }
+.flagtoggle {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 0.86rem; color: var(--ink-2);
+}
+.flagtoggle input { width: auto; }
+
+.flagform { display: grid; gap: 13px; }
+.flagform__row { display: grid; gap: 13px; grid-template-columns: 1fr 1fr; }
+.flagform__head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; margin-bottom: 12px;
+}
+.flagform__head h3 { margin: 0; }
+
+/* The refund dialog holds one field and never outgrows the screen. This form
+   holds five and a note, so on a short viewport the panel scrolls inside
+   itself rather than centring past the top and bottom edges and putting its
+   own buttons out of reach. 36px is the .fin__modal padding, doubled. */
+.fin__modalpanel--tall {
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Dark: the severity chips above are light-mode swatches and go muddy on a
+   dark ground, so they are restated rather than tinted. */
+:root[data-theme="dark"] .flagpill--medium,
+:root[data-theme="dark"] .flagpill--high,
+:root[data-theme="dark"] .flagpill--critical { color: #fff; }
+:root[data-theme="dark"] .flagpill--medium   { background: #6b4a12; }
+:root[data-theme="dark"] .flagpill--high     { background: #7a3c0a; }
+:root[data-theme="dark"] .flagpill--critical { background: #7d2419; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .flagpill--medium,
+  :root:not([data-theme="light"]) .flagpill--high,
+  :root:not([data-theme="light"]) .flagpill--critical { color: #fff; }
+  :root:not([data-theme="light"]) .flagpill--medium   { background: #6b4a12; }
+  :root:not([data-theme="light"]) .flagpill--high     { background: #7a3c0a; }
+  :root:not([data-theme="light"]) .flagpill--critical { background: #7d2419; }
+}
+
+/* Narrow: actions go full width so nothing is clipped, and the two-up
+   category/severity pair stacks. */
+@media (max-width: 560px) {
+  .trashcard__actions { width: 100%; }
+  .trashcard__actions .btn { flex: 1 1 auto; }
+  .flagform__row { grid-template-columns: 1fr; }
+  .flagcard__actions { width: 100%; }
+  .flagcard__actions .btn { flex: 1 1 auto; }
+}
+
+/* Roster flag indicator. A count only — titles and details stay on the
+   Staff flags screen, because the person a flag is about can be standing
+   behind whoever is reading the roster. */
+.teamrow__flags {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-3);
+  color: var(--ink-2);
+  font-size: 0.76rem; font-weight: 700;
+  cursor: pointer;
+}
+.teamrow__flags:hover { border-color: var(--kt-pink-200); color: var(--kt-pink); }
+.teamrow__flags:focus-visible { outline: 3px solid var(--kt-pink-bright); outline-offset: 2px; }
+.teamrow__flags.is-severe { background: #fbe4e2; color: #a02a1e; border-color: #f2c9c4; }
+:root[data-theme="dark"] .teamrow__flags.is-severe { background: #7d2419; color: #fff; border-color: #93372b; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .teamrow__flags.is-severe {
+    background: #7d2419; color: #fff; border-color: #93372b;
+  }
+}

@@ -77,8 +77,29 @@
           "<span>last seen " + ago(m.last_sign_in_at) + "</span>" +
         "</div>" +
         (m.banned ? '<span class="teamrow__flag">suspended</span>' : "") +
+        flagBadgeHTML(m) +
       "</article>"
     );
+  }
+
+  /*
+     Open accountability flags for this person, if any. The counts come from
+     staff_flag_summary(), which is is_manager() in the database — a
+     supervisor who somehow reached this screen gets no counts rather than a
+     redacted set, because the request itself is refused.
+
+     Deliberately a COUNT and nothing more. Titles and details are private
+     management records; the roster is not the place to spill them, and the
+     subject of a flag can be standing behind whoever is looking.
+  */
+  function flagBadgeHTML(m) {
+    var c = (state.flags || {})[m.id];
+    if (!c || !c.open) return "";
+    var severe = Number(c.severe || 0);
+    return '<button class="teamrow__flags' + (severe ? " is-severe" : "") +
+      '" type="button" data-team-flags="' + esc(m.id) + '" ' +
+      'title="Open staff flags">' + KT.icon("flame", 13) + c.open +
+      (severe ? " · " + severe + " urgent" : "") + "</button>";
   }
 
   function listHTML() {
@@ -397,6 +418,12 @@
       var res = await svc.list({
         search: state.search, role: state.roleFilter,
         limit: svc.PAGE_SIZE, offset: state.offset });
+      /* Best-effort: the roster must still render if flags are unavailable
+         (not yet migrated, or the viewer is below is_manager()). */
+      try {
+        var flagSvc = (await import("../services/admin-flags.js")).adminFlagsService;
+        state.flags = await flagSvc.summary();
+      } catch (_) { state.flags = {}; }
       state.rows = res.rows || [];
       state.total = res.total || 0;
       state.canChange = !!res.can_change_roles;
@@ -578,6 +605,14 @@
     state.offset = 0;
     window.clearTimeout(searchTimer);
     searchTimer = window.setTimeout(load, 320);      /* debounced */
+  });
+
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-team-flags]");
+    if (!b) return;
+    e.preventDefault();
+    e.stopPropagation();          /* not a row click: do not open the member drawer */
+    window.location.hash = "#/flags?staff=" + b.getAttribute("data-team-flags");
   });
 
   KT.admin.views.team = function () {

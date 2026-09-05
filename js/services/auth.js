@@ -150,7 +150,11 @@ export const authService = {
   async signInWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: absolute(authService.nextUrl()) }
+      /* Back to the login page, not straight to a destination: the role is
+         unknowable at this point (no session yet), and the login page is the
+         one screen that re-routes by role once the session exists. It
+         redirects immediately, so nobody sees a form. */
+      options: { redirectTo: absolute(window.KT.url("pages/login.html")) }
     });
     if (error) throw error;
     /* The browser navigates away to Google; nothing to return. */
@@ -215,6 +219,59 @@ export const authService = {
       join: "pages/join.html"
     };
     return window.KT.url(routes[next] || "pages/account.html");
+  },
+
+  /*
+     ROLE-AWARE LANDING
+     ------------------
+     Where someone actually goes after signing in, which nextUrl() alone
+     cannot answer: it runs before anyone knows who signed in.
+
+     The role is read from public.profiles through RLS — the same row the
+     admin guard reads, protected by the same policy, with no UPDATE grant
+     for any client. There is no email list here and no role value taken
+     from the browser: a customer who forges a role in localStorage still
+     gets a customer's profile row back from Postgres.
+
+     This is a CONVENIENCE, not a boundary. js/admin/shell.js re-resolves the
+     role on arrival and gates the shell itself, so being routed to /admin
+     grants nothing — a customer who types the URL still meets the gate.
+  */
+  async landingUrl() {
+    const explicit = new URLSearchParams(window.location.search).get("next");
+    /* An explicit destination is an intent the person expressed — a staff
+       member who clicked "sign in to check out" wants the cart, not the
+       kitchen. Honour it for everyone and route by role only otherwise. */
+    if (explicit) return authService.nextUrl();
+
+    let role = "customer";
+    try {
+      const { accountService } = await import("./account.js");
+      const profile = await accountService.profile();
+      /* No profile row is a broken account, not an admin one. Fail closed. */
+      role = (profile && profile.role) || "customer";
+    } catch (_) {
+      /* Offline, RLS refusal, anything: the customer destination is the safe
+         default because the admin shell would refuse them anyway. */
+      return authService.nextUrl();
+    }
+
+    return authService.homeFor(role);
+  },
+
+  /**
+   * The landing page for a role. Mirrors js/admin/nav.js: every operational
+   * tier opens the admin app, and lands on the first screen its tier
+   * actually runs — not one it would only be refused.
+   */
+  homeFor(role) {
+    const rank = { customer: 10, staff: 20, supervisor: 25, admin: 30, owner: 40 };
+    const r = rank[role] || 0;
+    if (r >= rank.admin)      return window.KT.url("admin/#/dashboard");
+    /* Supervisor and staff both start on Orders: it is the screen the floor
+       actually works from, and the dashboard's finance tiles are manager+. */
+    if (r >= rank.staff)      return window.KT.url("admin/#/orders");
+    return authService.nextUrl();
   }
 };
 

@@ -162,7 +162,14 @@
       if (KT.auth && KT.auth.isRecovery && KT.auth.isRecovery()) return;
       /* No handoff here: arriving already-authenticated is not a fresh
          sign-in, so it must not trigger a welcome message. */
-      if (e.detail.signedIn && KT.auth) window.location.href = KT.auth.nextUrl();
+      if (!e.detail.signedIn || !KT.auth) return;
+      /* Role decides the destination, so this waits for the profile rather
+         than bouncing to the customer account page first. One redirect, no
+         flash of the wrong screen, and no loop: every destination below is a
+         different page from this one. */
+      KT.auth.landingUrl().then(function (url) {
+        window.location.href = url;
+      });
     });
   }
 

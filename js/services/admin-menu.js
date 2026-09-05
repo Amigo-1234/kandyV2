@@ -84,7 +84,10 @@ export const adminMenuService = {
   /** Server-backed list: filtering and search run in Postgres. */
   async list(opts) {
     opts = opts || {};
-    let q = supabase.from(TABLES.menuItems).select(ITEM_COLUMNS);
+    /* Trashed dishes belong on the Trash screen, not in menu management.
+       The RLS policy still returns them to staff+ — it has to, so Trash can
+       list them — so the exclusion is made here, where the screen decides. */
+    let q = supabase.from(TABLES.menuItems).select(ITEM_COLUMNS).is("deleted_at", null);
 
     if (opts.category && opts.category !== "all") q = q.eq("category_id", opts.category);
     if (opts.status && opts.status !== "all") q = q.eq("status", opts.status);
@@ -150,22 +153,29 @@ export const adminMenuService = {
     return toItem(data[0]);
   },
 
-  /** Owner only, by policy. */
-  async remove(id) {
-    const { data, error } = await supabase
-      .from(TABLES.menuItems).delete().eq("id", id).select("id");
+  /*
+     Owner only, unchanged — but this no longer destroys the row.
+
+     A hard DELETE here fired order_items.menu_item_id ON DELETE SET NULL,
+     permanently severing every historical order line from the dish, and
+     failed outright on inventory_movements' ON DELETE RESTRICT. It now goes
+     to Trash: the row stays, history keeps resolving, and the owner can put
+     it back. admin_trash_put() checks is_owner() and writes the audit log.
+  */
+  async remove(id, reason) {
+    const { data, error } = await supabase.rpc("admin_trash_put", {
+      p_kind: "menu_item", p_id: String(id), p_reason: reason || null
+    });
     if (error) throw error;
-    if (!data || !data.length) {
-      throw new Error("Only the owner can delete a menu item.");
-    }
-    return true;
+    return data;
   },
 
   async removeCategory(id) {
     const { count, error: countError } = await supabase
       .from(TABLES.menuItems)
       .select("id", { count: "exact", head: true })
-      .eq("category_id", id);
+      .eq("category_id", id)
+      .is("deleted_at", null);
     if (countError) throw countError;
     /* Refuse before the FK does, so the message is useful rather than a
        constraint dump — and so items are never orphaned. */
@@ -173,11 +183,11 @@ export const adminMenuService = {
       throw new Error("That category still holds " + count +
         " item(s). Move or delete them first.");
     }
-    const { data, error } = await supabase
-      .from("categories").delete().eq("id", id).select("id");
+    const { data, error } = await supabase.rpc("admin_trash_put", {
+      p_kind: "category", p_id: String(id), p_reason: null
+    });
     if (error) throw error;
-    if (!data || !data.length) throw new Error("Only the owner can delete a category.");
-    return true;
+    return data;
   },
 
   /** Upload a photo and return its public URL. manager+ by storage policy. */
