@@ -161,7 +161,15 @@
     try {
       if (!svc) svc = (await import("../services/admin-settings.js")).adminSettingsService;
       var res = await svc.list();
-      state.rows = res.rows || [];
+      /*
+         app_settings also holds internal markers that are not operator
+         settings — `inventory_activated_on` is written by the inventory
+         ledger and read by it to decide which dates were tracked. Those have
+         no field definition here, and rendering one as a generic input would
+         invite an edit with consequences nobody intended. The screen shows
+         the settings it actually knows how to present.
+      */
+      state.rows = (res.rows || []).filter(function (r) { return svc.knows(r.key); });
       state.viewerRole = res.viewer_role || "";
       state.isOwner = !!res.is_owner;
       state.dirty = {};

@@ -96,8 +96,22 @@ export const SETTING_FIELDS = {
 export const adminSettingsService = {
   SETTING_FIELDS,
 
+  /*
+     The fallback is what an unrecognised key gets. It has to satisfy the same
+     contract as a real entry — the screen calls unpack() on whatever comes
+     back — or one unknown row takes the whole page down with it. app_settings
+     is shared: 0054 added `inventory_activated_on` to it without this file
+     knowing, which is exactly how that happened.
+  */
   meta(key) {
-    return SETTING_FIELDS[key] || { kind: "raw", blurb: "", fields: [] };
+    return SETTING_FIELDS[key] || {
+      kind: "raw", blurb: "", fields: [], unpack: () => ({})
+    };
+  },
+
+  /** Whether this screen has a definition for a key — see settings.js load(). */
+  knows(key) {
+    return Object.prototype.hasOwnProperty.call(SETTING_FIELDS, key);
   },
 
   async list() {
