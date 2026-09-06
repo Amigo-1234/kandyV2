@@ -77,6 +77,42 @@ export const adminTeamService = {
     return data;
   },
 
+  /*
+     Suspension. The ONLY mutation path — there is deliberately no direct
+     profiles UPDATE here, and there could not be one: authenticated has no
+     UPDATE grant on suspended_at, and no SELECT grant on suspend_reason.
+     The server re-decides authority on every call, so a button this file
+     renders is a request, never a permission.
+  */
+  async setSuspended(userId, suspended, reason) {
+    const { data, error } = await supabase.rpc("admin_set_suspended", {
+      p_user_id: userId,
+      p_suspended: !!suspended,
+      /* Only ever sent when suspending. Reactivation carries no text. */
+      p_reason: suspended ? (reason || null) : null
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  /*
+     Whether THIS viewer may open or close THIS member's workspace.
+
+     can_manage on its own is not that answer and must never be used as one:
+     it reports role-change ability, and can_assign_role()'s owner branch
+     ignores is_self, so an owner's own row comes back can_manage true — the
+     same blind spot that let an owner suspend themselves. A customer row is
+     can_manage true as well, because an owner may promote one.
+
+     So the three conditions the server actually enforces are asked here too,
+     and the button simply does not appear when any fails.
+  */
+  canSuspend(member) {
+    if (!member || member.is_self) return false;
+    if (!member.can_manage) return false;
+    return (RANK[member.role] || 0) >= RANK.staff;
+  },
+
   /** The existing RPC. The server decides; this reports back. */
   async setRole(userId, role) {
     const { data, error } = await supabase.rpc("admin_set_role", {

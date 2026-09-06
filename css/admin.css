@@ -3283,3 +3283,36 @@
     background: #7d2419; color: #fff; border-color: #93372b;
   }
 }
+
+/* Team status + suspension actions. Reuses the roster row's existing rhythm;
+   the status is a word rather than a colour alone, so it survives a
+   colour-blind reader and a greyscale screenshot. */
+.teamstatus {
+  display: inline-flex; flex-direction: column; gap: 1px;
+  padding: 3px 10px; border-radius: var(--r-pill);
+  font-size: 0.74rem; font-weight: 700; letter-spacing: 0.02em;
+  text-transform: uppercase;
+  background: var(--surface-3); color: var(--ink-2);
+  white-space: nowrap;
+}
+.teamstatus--active { background: var(--mint-50); color: #1f6b4a; }
+.teamstatus--suspended { background: var(--chili-50); color: #9a3618; }
+.teamstatus__when {
+  font-size: 0.68rem; font-weight: 600; letter-spacing: 0;
+  text-transform: none; opacity: 0.85;
+}
+.teamrow__act { flex: none; }
+
+:root[data-theme="dark"] .teamstatus--active { background: #17452f; color: #b9f0d4; }
+:root[data-theme="dark"] .teamstatus--suspended { background: #5c2415; color: #ffcfc2; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .teamstatus--active { background: #17452f; color: #b9f0d4; }
+  :root:not([data-theme="light"]) .teamstatus--suspended { background: #5c2415; color: #ffcfc2; }
+}
+
+/* Narrow: the status and its action drop onto their own line rather than
+   squeezing the name column to nothing. */
+@media (max-width: 640px) {
+  .teamstatus { width: 100%; align-items: flex-start; }
+  .teamrow__act { width: 100%; }
+}

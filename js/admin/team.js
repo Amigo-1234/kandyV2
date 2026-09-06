@@ -76,10 +76,47 @@
           "<span>joined " + when(m.created_at) + "</span>" +
           "<span>last seen " + ago(m.last_sign_in_at) + "</span>" +
         "</div>" +
-        (m.banned ? '<span class="teamrow__flag">suspended</span>' : "") +
+        statusHTML(m) +
         flagBadgeHTML(m) +
+        actionHTML(m) +
       "</article>"
     );
+  }
+
+  /*
+     ACTIVE or SUSPENDED, from the project's own suspended_at.
+
+     Not m.banned: that is auth.users.banned_until, which nothing in this
+     project writes and which would therefore have rendered "active" forever.
+     admin_set_suspended() writes suspended_at and the four role gates read
+     it, so it is the only status that means anything here.
+  */
+  function statusHTML(m) {
+    if (!m.suspended_at) {
+      return '<span class="teamstatus teamstatus--active">Active</span>';
+    }
+    return (
+      '<span class="teamstatus teamstatus--suspended">Suspended' +
+        '<span class="teamstatus__when">' + esc(when(m.suspended_at)) +
+          (m.suspended_by_name ? " · by " + esc(m.suspended_by_name) : "") +
+        "</span>" +
+      "</span>"
+    );
+  }
+
+  /*
+     Suspend / Reactivate, shown only where the server would actually allow
+     it — svc.canSuspend() asks the same three questions admin_set_suspended()
+     asks. The button is a convenience; the RPC is the boundary, and an admin
+     who edits the DOM still meets a 403.
+  */
+  function actionHTML(m) {
+    if (!svc || !svc.canSuspend(m)) return "";
+    return m.suspended_at
+      ? '<button class="btn btn--soft btn--sm teamrow__act" type="button" ' +
+          'data-team-reactivate="' + esc(m.id) + '">Reactivate</button>'
+      : '<button class="btn btn--ghost btn--sm teamrow__act" type="button" ' +
+          'data-team-suspend="' + esc(m.id) + '">Suspend</button>';
   }
 
   /*
@@ -340,6 +377,53 @@
 
   /* ---- Confirmation ------------------------------------------------------ */
 
+  /*
+     Suspend / reactivate confirmation, reusing the Team dialog already used
+     for role changes rather than inventing a second one.
+
+     The reason box appears only when suspending. What is typed there goes to
+     admin_set_suspended() and nowhere else: it is not put in the URL, not
+     logged, not echoed back into the row, and not carried by the
+     notification the person receives — that text is fixed in the database
+     function and says only to contact management.
+  */
+  function suspendConfirmHTML() {
+    var c = state.suspendConfirm;
+    if (!c) return "";
+    var who = esc(c.name || c.email);
+    return (
+      '<div class="fin__modal" data-team-modal>' +
+        '<div class="fin__modalscrim" data-suspend-cancel></div>' +
+        '<div class="fin__modalpanel" role="dialog" aria-modal="true">' +
+          "<h3>" + (c.suspend ? "Suspend " : "Reactivate ") + who + "?</h3>" +
+          (c.suspend
+            ? '<p class="fin__warn">' + KT.icon("close", 16) +
+                "<span>This closes their staff workspace immediately. They keep " +
+                "their account and their history, and their role stays <strong>" +
+                esc(c.role) + "</strong> — nothing is deleted and nothing is " +
+                "demoted.</span></p>" +
+              '<label class="field"><span class="field__label">' +
+                "Reason (management only — never shown to them)</span>" +
+                '<input class="input" data-suspend-reason maxlength="200" ' +
+                  'placeholder="Why is this account being suspended?"></label>'
+            : '<p class="fin__note">' + KT.icon("sparkle", 16) +
+                "<span>Their staff workspace reopens and their role stays <strong>" +
+                esc(c.role) + "</strong>. They are told only that the account " +
+                "has been reactivated.</span></p>") +
+          '<div class="fin__modalactions">' +
+            '<button class="btn btn--ghost" type="button" data-suspend-cancel>Cancel</button>' +
+            '<button class="btn btn--primary" type="button" data-suspend-confirm' +
+              (state.suspendBusy ? " disabled" : "") + ">" +
+              (state.suspendBusy
+                ? "Working…"
+                : (c.suspend ? "Suspend account" : "Reactivate account")) +
+            "</button>" +
+          "</div>" +
+        "</div>" +
+      "</div>"
+    );
+  }
+
   function confirmHTML() {
     var c = state.confirm;
     if (!c) return "";
@@ -406,6 +490,7 @@
           : "") +
       "</div>" +
       inviteListHTML() + listHTML() + detailHTML() + confirmHTML() +
+      suspendConfirmHTML() +
       inviteFormHTML() + (state.issued ? issuedHTML() : ""));
   }
 
@@ -548,6 +633,52 @@
     if (e.target.closest("[data-team-close]")) { state.detail = null; paint(); return; }
     if (e.target.closest("[data-team-cancel]")) { state.confirm = null; paint(); return; }
 
+    var sBtn = e.target.closest("[data-team-suspend]") ||
+               e.target.closest("[data-team-reactivate]");
+    if (sBtn) {
+      e.preventDefault();
+      e.stopPropagation();          /* a row click opens the drawer; this must not */
+      var wantSuspend = sBtn.hasAttribute("data-team-suspend");
+      var tid = sBtn.getAttribute(wantSuspend ? "data-team-suspend" : "data-team-reactivate");
+      var mem = state.rows.filter(function (r) { return r.id === tid; })[0];
+      /* Re-asked at click time, not just at render time: the roster may have
+         been refreshed since the button was drawn. */
+      if (!mem || !svc.canSuspend(mem)) return;
+      state.suspendConfirm = {
+        id: mem.id, name: mem.name, email: mem.email,
+        role: mem.role, suspend: wantSuspend
+      };
+      paint();
+      return;
+    }
+
+    if (e.target.closest("[data-suspend-cancel]")) {
+      e.preventDefault();
+      state.suspendConfirm = null; state.suspendBusy = false; paint(); return;
+    }
+
+    if (e.target.closest("[data-suspend-confirm]")) {
+      e.preventDefault();
+      var sc = state.suspendConfirm;
+      if (!sc) return;
+      var reasonEl = KT.qs("[data-suspend-reason]");
+      var reason = sc.suspend && reasonEl ? reasonEl.value.trim() : null;
+      state.suspendBusy = true; paint();
+      try {
+        await svc.setSuspended(sc.id, sc.suspend, reason || null);
+        state.suspendConfirm = null; state.suspendBusy = false;
+        KT.toast(sc.suspend
+          ? (sc.name || "That account") + " has been suspended."
+          : (sc.name || "That account") + " has been reactivated.", "success");
+        /* Re-read through the same RPC. No second source of truth. */
+        await load();
+      } catch (error) {
+        state.suspendBusy = false; paint();
+        KT.toast(KT.services.errorMessage(error), "error", { duration: 7000 });
+      }
+      return;
+    }
+
     if (e.target.closest("[data-team-confirm]")) {
       var c = state.confirm;
       var done = KT.busy(e.target.closest("[data-team-confirm]"), "Saving…");
@@ -627,6 +758,9 @@
     window.clearTimeout(searchTimer);
     state.detail = null;
     state.confirm = null;
+    /* A half-typed suspension reason must not survive navigation. */
+    state.suspendConfirm = null;
+    state.suspendBusy = false;
     state.inviteOpen = false;
     /* Navigating away discards the token. It was never recoverable anyway;
        leaving it in memory would only make it recoverable by accident. */
