@@ -63,13 +63,57 @@ export const adminNotifyService = {
    * The handler's own notification centre. Reads only rows the database
    * addressed to THIS account (notifications_select_own scopes it to
    * user_id = auth.uid()), filtered to the operational types.
+   *
+   * AN UNREAD ROW MUST NEVER FALL OFF THE END
+   * -----------------------------------------
+   * The panel asks for the newest 20. On a busy account that window fills
+   * with order alerts, and an older unread notice sits behind a badge that
+   * counts it while the list it opens does not show it — a number telling
+   * someone they have a message, and a panel that appears to disagree.
+   *
+   * Phase 12 hit this with a staff_notice, but nothing about it is specific
+   * to that type and it is not fixed as if it were: any unread row missing
+   * from the page is fetched and merged. `ensureUnread` is opt-in because
+   * the badge refresh calls this with limit 1 and wants the count only —
+   * it would otherwise pay for a second round trip on every poll.
+   *
+   * The second request only happens when the page genuinely does not
+   * already hold every unread row, and it reuses the same RPC, the same
+   * type allowlist and the same RLS scoping. No new endpoint, no second
+   * notification store, no reordering: the merged list stays newest-first,
+   * exactly as the RPC returns it.
+   *
+   * @param {{limit?:number, unreadOnly?:boolean, ensureUnread?:boolean}} opts
    */
-  async centre({ limit = 20, unreadOnly = false } = {}) {
+  async centre({ limit = 20, unreadOnly = false, ensureUnread = false } = {}) {
     const { data, error } = await supabase.rpc("admin_notifications", {
       p_limit: limit, p_unread_only: unreadOnly
     });
     if (error) throw error;
-    return data || { rows: [], unread: 0, unread_orders: 0 };
+    const page = data || { rows: [], unread: 0, unread_orders: 0 };
+    if (!ensureUnread || unreadOnly) return page;
+
+    const rows = page.rows || [];
+    const shownUnread = rows.filter((r) => !r.read).length;
+    /* Everything unread is already on the page — nothing to go and get. */
+    if (shownUnread >= (page.unread || 0)) return page;
+
+    const extra = await supabase.rpc("admin_notifications", {
+      p_limit: 50, p_unread_only: true
+    });
+    /* A failure here costs the merge, not the panel: the first page is
+       still a correct, if shorter, answer. */
+    if (extra.error || !extra.data) return page;
+
+    const seen = new Set(rows.map((r) => r.id));
+    const missing = (extra.data.rows || []).filter((r) => !seen.has(r.id));
+    if (!missing.length) return page;
+
+    return Object.assign({}, page, {
+      rows: rows.concat(missing).sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+      )
+    });
   },
 
   /** Mark one. RLS allows only the caller's own rows, and only read/read_at. */

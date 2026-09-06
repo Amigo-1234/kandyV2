@@ -186,7 +186,10 @@
     state.loading = true; state.error = null;
     if (state.open) paintPanel();
     try {
-      var res = await svc.centre({ limit: 20 });
+      /* ensureUnread: the newest 20 plus any unread row that would have
+         fallen outside that window. The badge and this list then always
+         agree about what is waiting. */
+      var res = await svc.centre({ limit: 20, ensureUnread: true });
       state.rows = res.rows || [];
       state.unread = res.unread || 0;
       state.loaded = true;
