@@ -198,7 +198,15 @@
       try {
         var signedIn = await KT.auth.signIn(email, password);
         handoff("login", signedIn && signedIn.displayName);
-        if (KT.auth) goTo(KT.auth.nextUrl());
+        /*
+           landingUrl(), not nextUrl(): the destination depends on the role in
+           the profile, which only exists once there is a session. This is the
+           path an ACTUAL sign-in takes. redirectIfSignedIn() above covers only
+           the case of arriving already authenticated — which is why role
+           routing could look correct while every real login still landed on
+           the customer account page.
+        */
+        if (KT.auth) goTo(await KT.auth.landingUrl());
       } catch (error) {
         busy(form, false);
         fail(error);
@@ -308,8 +316,11 @@
           title: "Welcome to Kandy's Treats 🎉",
           body: "Your account has been created successfully. Taking you to your account…"
         });
-        window.setTimeout(function () {
-          if (KT.auth) goTo(KT.auth.nextUrl());
+        window.setTimeout(async function () {
+          /* A new signup is a customer, so this resolves to the customer
+             destination — but it is asked rather than assumed, so an invited
+             teammate who signs up lands where their role says. */
+          if (KT.auth) goTo(await KT.auth.landingUrl());
         }, 1400);
       } catch (error) {
         busy(form, false);
