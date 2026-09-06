@@ -47,6 +47,21 @@ async function resolveMenuItemId(menuId) {
 }
 
 export const accountService = {
+  /*
+     The caller's own role and whether their staff workspace is closed.
+
+     Deliberately an RPC rather than a column read: 0069 removed suspended_at
+     from the client grant, and profiles_select_own is is_admin() (staff+), so
+     granting the column back would have let every active staff member see who
+     else was suspended. my_account_status() takes no argument, so there is no
+     way to ask it about anybody but yourself.
+  */
+  async status() {
+    const { data, error } = await supabase.rpc("my_account_status");
+    if (error) throw error;
+    return data || { role: "customer", suspended: false };
+  },
+
   async profile() {
     const user = authService.user();
     if (!user) return null;

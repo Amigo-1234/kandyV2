@@ -69,6 +69,23 @@
     });
   }
 
+  /*
+     A suspended team member. Says what happened and who to talk to, and
+     nothing else: not the reason, not who did it, not which flag if any
+     prompted it. Their role is untouched and their own account still
+     works, so the way out is a conversation, not this screen.
+  */
+  function gateSuspended() {
+    renderGate({
+      icon: "lock",
+      title: "Your staff account is suspended",
+      body: "Your staff account is currently suspended. Please contact management.",
+      actions:
+        '<a class="btn btn--primary" href="' + KT.url("pages/account.html") + '">Go to my account</a>' +
+        '<a class="btn btn--ghost" href="#" data-admin-signout>Sign out</a>'
+    });
+  }
+
   function gateNotStaff() {
     renderGate({
       icon: "user",
@@ -360,6 +377,36 @@
       if (KT.admin.alerts) KT.admin.alerts.stop();
       if (KT.admin.notifications) KT.admin.notifications.stop();
       gateNotStaff();
+      return;
+    }
+
+    /*
+       The role says staff; suspension says whether that still opens
+       anything. Asked separately because a suspended member's role is
+       unchanged — that is the whole design — so the rank check above
+       cannot see it. Without this the workspace rendered in full and
+       every request inside it came back 403: a broken screen rather
+       than an explanation.
+
+       Failing closed on error would lock the whole team out the moment
+       this one RPC hiccupped, so a failure leaves the workspace open.
+       That is safe: the shell was never the boundary. Everything behind
+       it re-checks is_admin(), which is itself suspension-aware, so a
+       suspended member who slipped past this line still cannot read or
+       write anything.
+    */
+    var status = null;
+    try {
+      status = await KT.services.account.status();
+    } catch (error) { /* deliberately non-fatal — see above */ }
+
+    if (status && status.suspended) {
+      state.ready = false;
+      teardownView();
+      unwatchUnread();
+      if (KT.admin.alerts) KT.admin.alerts.stop();
+      if (KT.admin.notifications) KT.admin.notifications.stop();
+      gateSuspended();
       return;
     }
 
