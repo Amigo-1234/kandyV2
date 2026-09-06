@@ -249,16 +249,55 @@
       });
     }
 
-    /* Live announcements replace the built-in strip copy when the kitchen
-       has published any. Falls back to the standing delivery/coupon message. */
+    /*
+       Live announcements replace the built-in strip copy when the kitchen has
+       published any. Falls back to the standing delivery/coupon message.
+
+       ESCAPED, NOT INTERPOLATED. An announcement body is written by a person
+       through the admin, stored in public.announcements, and read back by
+       every visitor including signed-out ones. Dropping it into innerHTML raw
+       — which is what this did before Phase 12 — makes the strip a stored-XSS
+       sink for anyone who can write that table. The icon markup is ours; the
+       text is not, and it is escaped.
+    */
+    function escText(v) {
+      return String(v == null ? "" : v)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    /*
+       THE TICKER
+
+       A seamless marquee needs the content to exist twice: the track scrolls
+       exactly -50% and snaps back, and because the second copy is identical
+       the join is invisible. The duplicate is aria-hidden so a screen reader
+       hears each announcement once.
+
+       Everything about the motion lives in CSS, including the
+       prefers-reduced-motion opt-out and the hover/focus pause, so a visitor
+       who has asked their OS for less movement gets a static, readable strip
+       rather than a stopped animation they have to wait out.
+    */
     function paintAnnouncements(list) {
       if (!list || !list.length) return;
       var strip = KT.qs(".promostrip__inner");
       if (!strip) return;
-      strip.innerHTML = list.slice(0, 2).map(function (a, i) {
-        return '<p class="promostrip__msg' + (i ? " promostrip__msg--alt" : "") + '">' +
-          KT.icon(i ? "gift" : "sparkle", 16) + "<span>" + a.text + "</span></p>";
+
+      var msgs = list.map(function (a, i) {
+        return '<span class="promostrip__msg">' +
+          KT.icon(i % 2 ? "gift" : "sparkle", 16) +
+          "<span>" + escText(a.text) + "</span></span>";
       }).join("");
+
+      strip.classList.add("promostrip__inner--ticker");
+      strip.innerHTML =
+        '<div class="promoticker" data-promoticker>' +
+          '<div class="promoticker__track">' +
+            '<div class="promoticker__set">' + msgs + "</div>" +
+            '<div class="promoticker__set" aria-hidden="true">' + msgs + "</div>" +
+          "</div>" +
+        "</div>";
     }
 
     document.addEventListener("kt:services", function (e) {

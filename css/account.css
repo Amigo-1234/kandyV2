@@ -645,3 +645,14 @@
 .ratestars__star:active {
   transform: scale(0.9);
 }
+
+/* ---- Takeaway packs on a customer order (Phase 12) ------------------- */
+.orderpack + .orderpack { margin-top: 16px; }
+.orderpack__head {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--kt-pink);
+}

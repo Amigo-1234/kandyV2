@@ -81,13 +81,27 @@ export const adminNotifyService = {
     if (error) throw error;
   },
 
-  /** No user_id filter: RLS already scopes the statement to this account. */
+  /**
+   * No user_id filter: RLS already scopes the statement to this account.
+   *
+   * The type list is deliberately the SAME one admin_notifications() reads
+   * by, because this button says "mark all read" about the panel the user
+   * is looking at. A type the centre shows but this misses stays unread for
+   * ever; a type this covers but the centre never shows would silently
+   * clear a customer's own notification from a screen that never displayed
+   * it. Neither is acceptable, so the two lists move together.
+   *
+   * Customer-facing types — order, chat, support, wallet — are absent from
+   * both, so a handler who also shops here keeps their own bell intact.
+   */
   async markAllRead() {
     const { error } = await supabase
       .from("notifications")
       .update({ read: true, read_at: new Date().toISOString() })
       .eq("read", false)
-      .in("type", ["admin_order", "admin_support", "payment", "message"]);
+      .in("type", ["admin_order", "admin_support", "admin_ticket",
+                   "admin_announcement", "admin_flag", "staff_notice",
+                   "payment", "message"]);
     if (error) throw error;
   },
 

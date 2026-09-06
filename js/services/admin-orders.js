@@ -145,6 +145,11 @@ function toRow(r, opts) {
 function applyFilters(q, opts) {
   if (opts.payment === "paid") q = q.eq("paid", true);
   if (opts.payment === "unpaid") q = q.eq("paid", false);
+  /* Provider filters imply paid: an unpaid order has no provider yet, and
+     showing it under "Wallet" would misreport how it was settled. */
+  if (opts.payment === "wallet" || opts.payment === "paystack") {
+    q = q.eq("paid", true).eq("payment_provider", opts.payment);
+  }
   if (opts.fulfilment && opts.fulfilment !== "all") q = q.eq("fulfilment", opts.fulfilment);
 
   var from = (RANGES[opts.range] || RANGES.all)();
@@ -251,14 +256,37 @@ export const adminOrderService = {
     order.estimatedMinutes = head.data.estimated_minutes || null;
     order.userId = head.data.user_id || null;
 
+    /*
+       Ordered by pack so the kitchen ticket prints Takeaway 1 before
+       Takeaway 2. NULLS FIRST keeps an ungrouped order in its historical
+       order rather than pushing it below the packs.
+
+       THE FALLBACK IS NOT DECORATION. order_items.takeaway_group arrives in
+       migration 0071, and this file ships in the same change as the
+       migration but not necessarily at the same moment — a static frontend
+       deploys on its own clock. Asking for a column that does not exist yet
+       is a 42703 and PostgREST answers the whole request with 400, so
+       without this the order detail would be a dead screen for the entire
+       window between the two. One retry without the column costs a round
+       trip that only ever happens before the migration lands.
+    */
     var lines = await supabase.from("order_items")
-      .select("id, name, qty, unit_price, line_total")
-      .eq("order_id", head.data.id);
+      .select("id, name, qty, unit_price, line_total, takeaway_group")
+      .eq("order_id", head.data.id)
+      .order("takeaway_group", { ascending: true, nullsFirst: true });
+
+    if (lines.error && lines.error.code === "42703") {
+      lines = await supabase.from("order_items")
+        .select("id, name, qty, unit_price, line_total")
+        .eq("order_id", head.data.id);
+    }
     if (lines.error) throw lines.error;
+
     order.items = (lines.data || []).map(function (l) {
       return { id: l.id, name: l.name, qty: l.qty,
                unitPrice: Number(l.unit_price) || 0,
-               lineTotal: Number(l.line_total) || 0 };
+               lineTotal: Number(l.line_total) || 0,
+               takeawayGroup: l.takeaway_group == null ? null : Number(l.takeaway_group) };
     });
 
     /*

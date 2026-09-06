@@ -47,10 +47,16 @@
          does not widen the data. */
       { id: "customers",   label: "Customers",        icon: "user",     min: "staff" },
       /* staff+: every handler reads operational notices. Writing one is
-         manager+, enforced in staff_announcement_save(). Note this is the
-         INTERNAL board — public.announcements, the customer promo strip, is
-         a different table with no admin screen. */
+         manager+, enforced in staff_announcement_save(). This is the
+         INTERNAL board; the customer promo strip is the separate entry
+         below, on a different table with a different audience. */
       { id: "announcements", label: "Announcements",  icon: "sparkle",  min: "staff" },
+      /* admin+, matching the write policy migration 0073 puts on
+         public.announcements. A supervisor offered this screen could read
+         the list — the read policy admits everyone — but every control on
+         it would be refused, so the nav is gated to match the policy rather
+         than to create it. */
+      { id: "public-announcements", label: "Public announcements", icon: "sparkle", min: "admin" },
       { id: "finance",     label: "Finance",          icon: "wallet",   min: "admin" },
       /* admin+, because job_applications_admin_select scopes SELECT to
          is_manager(). A staff or supervisor account offered this screen would

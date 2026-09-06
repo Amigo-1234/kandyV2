@@ -73,7 +73,13 @@
      database has no "acknowledged" concept and §8 says not to invent one. */
   var justIn = Object.create(null);
 
-  var PAY_TABS = [["all", "Any payment"], ["paid", "Paid"], ["unpaid", "Unpaid"]];
+  /* Phase 12 adds the two provider chips to this row rather than opening a
+     fourth one: on a phone the filter block is already three rows deep, and
+     "how it was paid" is the same question as "whether it was paid" from the
+     handler's side. Both new values filter on orders.payment_provider, which
+     is written server-side only. */
+  var PAY_TABS = [["all", "Any payment"], ["paid", "Paid"], ["unpaid", "Unpaid"],
+                  ["wallet", "Wallet"], ["paystack", "Paystack"]];
   var TYPE_TABS = [["all", "Any type"], ["delivery", "Delivery"], ["pickup", "Pickup"]];
   var RANGE_TABS = [["today", "Today"], ["7d", "7 days"], ["30d", "30 days"], ["all", "All time"]];
 
@@ -192,6 +198,31 @@
       (to ? " · " + esc(to) : "") + "</span></span>";
   }
 
+  /*
+     Phase 12: the list said "Paid" and stopped there, so telling a wallet
+     order from a gateway order meant opening each one. orders.payment_provider
+     already carries the answer and is written server-side only — by
+     settle_wallet_funding and settle_order_payment — so this is a display
+     change over data that already exists. No new column, no new query, and
+     nothing here can alter how an order was actually paid.
+  */
+  function providerLabel(p) {
+    if (p === "wallet") return "Wallet";
+    if (p === "paystack") return "Paystack";
+    return p ? String(p) : "";
+  }
+
+  function payBadgeHTML(o) {
+    var cls = "obadge obadge--pay " + (o.paid ? "is-paid" : "is-unpaid");
+    if (!o.paid) {
+      return '<span class="' + cls + '">' + esc(o.paymentStatus || "unpaid") + "</span>";
+    }
+    var prov = providerLabel(o.paymentProvider);
+    return '<span class="' + cls + (prov ? " has-prov" : "") + '">Paid' +
+      (prov ? '<span class="obadge__prov">' + esc(prov) + "</span>" : "") +
+      "</span>";
+  }
+
   function rowHTML(o) {
     var fresh = justIn[o.code];
     return (
@@ -203,8 +234,7 @@
             '<strong class="ocard__code">' + esc(o.code) + "</strong>" +
             (fresh ? '<span class="obadge obadge--just">Just in</span>' : "") +
             '<span class="obadge ' + statusClass(o.status) + '">' + esc(o.status) + "</span>" +
-            '<span class="obadge obadge--pay ' + (o.paid ? "is-paid" : "is-unpaid") + '">' +
-              (o.paid ? "Paid" : esc(o.paymentStatus || "unpaid")) + "</span>" +
+            payBadgeHTML(o) +
           "</div>" +
           '<p class="ocard__who">' + (esc(o.customerName) || "<em>No name</em>") +
             (o.customerPhone ? ' <span class="ocard__sep">·</span> ' + esc(o.customerPhone) : "") +
@@ -480,11 +510,48 @@
         "<p>It may have been removed.</p></div></div>";
     }
 
-    var lines = (o.items || []).map(function (l) {
+    function lineHTML(l) {
       return '<div class="oline"><span class="oline__qty">' + l.qty + "×</span>" +
         '<span class="oline__name">' + esc(l.name) + "</span>" +
         '<span class="oline__price">' + money(l.lineTotal) + "</span></div>";
-    }).join("") || '<p class="odetail__note">No line items recorded.</p>';
+    }
+
+    /*
+       Grouped orders print pack by pack so the kitchen can bag straight off
+       the screen. An order with no packs — every order placed before Phase
+       12, and every ungrouped one since — takes the untouched flat path
+       below, with no heading and no visual change whatsoever.
+    */
+    var items = o.items || [];
+    var packs = [];
+    items.forEach(function (l) {
+      var g = l.takeawayGroup == null ? null : l.takeawayGroup;
+      var bucket = packs.filter(function (p) { return p.group === g; })[0];
+      if (!bucket) { bucket = { group: g, lines: [] }; packs.push(bucket); }
+      bucket.lines.push(l);
+    });
+    var grouped = packs.some(function (p) { return p.group != null; });
+
+    var lines;
+    if (!items.length) {
+      lines = '<p class="odetail__note">No line items recorded.</p>';
+    } else if (!grouped) {
+      lines = items.map(lineHTML).join("");
+    } else {
+      lines = packs.map(function (p) {
+        return '<div class="opack">' +
+          '<p class="opack__head">' +
+            (p.group == null ? "Not in a pack" : "Takeaway " + p.group) +
+            '<span class="opack__count">' +
+              p.lines.reduce(function (n, l) { return n + (Number(l.qty) || 0); }, 0) +
+              " item" +
+              (p.lines.reduce(function (n, l) { return n + (Number(l.qty) || 0); }, 0) === 1
+                ? "" : "s") +
+            "</span></p>" +
+          p.lines.map(lineHTML).join("") +
+        "</div>";
+      }).join("");
+    }
 
     /* The note the trigger writes names the ROLE ("Updated by owner."). Now
        that created_by is read, the person is named instead, and the note is
@@ -509,8 +576,7 @@
         '<section class="odetail__sec">' +
           '<div class="odetail__status">' +
             '<span class="obadge ' + statusClass(o.status) + '">' + esc(o.status) + "</span>" +
-            '<span class="obadge obadge--pay ' + (o.paid ? "is-paid" : "is-unpaid") + '">' +
-              (o.paid ? "Paid" : esc(o.paymentStatus)) + "</span>" +
+            payBadgeHTML(o) +
             '<span class="otag' + (o.fulfilment === "pickup" ? " otag--pickup" : "") + '">' +
               (o.fulfilment === "pickup" ? "Pickup" : "Delivery") + "</span>" +
           "</div>" +

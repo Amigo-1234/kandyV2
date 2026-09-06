@@ -29,6 +29,102 @@
   gap: 8px;
   white-space: nowrap;
 }
+
+/* ---- Live announcement ticker (Phase 12) ---------------------------- */
+
+/*
+   Only applied once real announcements have landed; the built-in two-message
+   strip keeps the centred flex layout above. The strip is a fixed-height
+   band above the header — it never overlays the nav or the hero, it just
+   sits on top of them in flow.
+*/
+.promostrip__inner--ticker {
+  display: block;
+  justify-content: normal;
+  gap: 0;
+  /* The wrap padding would clip the marquee mid-message at the gutter. */
+  padding-left: 0;
+  padding-right: 0;
+  max-width: none;
+}
+
+/* The clipping window. overflow hidden here is what keeps a long
+   announcement from widening the document and giving the whole page a
+   horizontal scrollbar. */
+.promoticker {
+  overflow: hidden;
+  height: 38px;
+  /* Block, not flex: as a flex item the track's max-content width became
+     shrink-to-fit, and a percentage min-width on the sets then resolved
+     against the track that the sets were supposed to be sizing. */
+  display: block;
+}
+
+.promoticker__track {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: max-content;
+  will-change: transform;
+  animation: promoticker-scroll 34s linear infinite;
+}
+
+/*
+   Two identical sets; the track travels exactly one set's width, so the
+   wrap-around lands on a pixel-identical frame and never visibly jumps.
+
+   min-width:100% is what makes that true for a SHORT strip as well as a long
+   one. With two brief announcements on a desktop the pair of sets measured
+   narrower than the window, so -50% dragged a visible empty gap across the
+   strip once per cycle. Forcing each set to at least fill the window makes
+   the track exactly two viewports wide, and the shift is exactly one.
+*/
+.promoticker__set {
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  padding-right: 34px;
+  flex: none;
+  /* vw, not %, so the measurement is against the viewport and never
+     against the track these sets are themselves sizing. */
+  min-width: 100vw;
+  justify-content: space-around;
+}
+
+@keyframes promoticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* Pause while someone is reading it, by pointer or by keyboard. */
+.promoticker:hover .promoticker__track,
+.promoticker:focus-within .promoticker__track {
+  animation-play-state: paused;
+}
+
+/*
+   Reduced motion gets a static strip, not a frozen one: the animation is
+   removed entirely and the duplicate set is hidden so the messages simply
+   sit there, centred, scrollable by touch if they overflow.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .promoticker__track {
+    animation: none;
+    width: 100%;
+    justify-content: center;
+  }
+  .promoticker__set[aria-hidden="true"] { display: none; }
+  .promoticker {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .promoticker::-webkit-scrollbar { display: none; }
+  .promoticker__set {
+    padding-right: 0;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
 .promostrip__msg svg {
   color: var(--kt-pink-bright);
   flex: none;

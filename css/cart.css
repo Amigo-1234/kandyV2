@@ -471,3 +471,110 @@
 .cartpage__suggest {
   margin-top: clamp(32px, 4vw, 56px);
 }
+
+/* ---- Takeaway packs (Phase 12) --------------------------------------- */
+
+/*
+   Mobile-first: the pack tabs are a horizontally scrolling row so twenty of
+   them cannot widen the page, and every control is at least 40px tall so it
+   is tappable without aiming.
+
+   Grouping is presentational. Nothing in this block styles a price, because
+   packs do not have one — packaging is a single order-level charge whether
+   the food goes out in one bag or five.
+*/
+
+.takeaway {
+  background: var(--surface-2, var(--surface-3));
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+.takeaway--off {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  justify-content: space-between;
+}
+.takeaway__intro { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
+.takeaway__intro strong { display: block; font-size: 0.95rem; }
+.takeaway__intro p { margin: 2px 0 0; font-size: 0.82rem; color: var(--ink-2); }
+.takeaway__icon { color: var(--kt-pink); flex: none; margin-top: 2px; }
+
+.takeaway__head { margin-bottom: 10px; }
+.takeaway__head strong { display: block; font-size: 0.95rem; }
+.takeaway__note { display: block; font-size: 0.78rem; color: var(--ink-2); margin-top: 2px; }
+
+.takeaway__tabs {
+  display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px;
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.takeaway__tabs::-webkit-scrollbar { display: none; }
+.takeaway__tab {
+  flex: none; min-height: 40px; padding: 0 14px;
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+  background: var(--surface-1, #fff); color: inherit;
+  font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.takeaway__tab.is-active {
+  background: var(--kt-pink); border-color: var(--kt-pink); color: #fff;
+}
+.takeaway__tab--add { display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; }
+.takeaway__hint { margin: 8px 0 0; font-size: 0.8rem; color: var(--ink-2); }
+
+.cpack { margin-bottom: 18px; }
+.cpack__head {
+  display: flex; align-items: center; gap: 10px;
+  padding-bottom: 6px; margin-bottom: 4px;
+  border-bottom: 2px solid var(--line);
+}
+.cpack__head h3 {
+  margin: 0; font-family: var(--font-display); font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+.cpack__count { font-size: 0.8rem; color: var(--ink-2); margin-right: auto; }
+.cpack__drop {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 0; background: transparent; color: var(--ink-2); cursor: pointer;
+}
+.cpack__drop:hover { background: var(--chili-50); color: var(--chili); }
+.cpack.is-active .cpack__head { border-bottom-color: var(--kt-pink); }
+.cpack__empty {
+  margin: 8px 0 0; font-size: 0.85rem; color: var(--ink-2);
+  padding: 12px; border: 1px dashed var(--line); border-radius: var(--r-lg);
+}
+
+.cmove {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 0 0 10px 74px; margin-top: -6px;
+  list-style: none;
+}
+.cmove__label { font-size: 0.75rem; color: var(--ink-2); }
+.cmove__chip {
+  min-width: 32px; min-height: 32px; padding: 0 8px;
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+  background: transparent; color: inherit; font: inherit;
+  font-size: 0.78rem; font-weight: 700; cursor: pointer;
+}
+.cmove__chip:hover { border-color: var(--kt-pink); color: var(--kt-pink); }
+
+/* Pre-payment recap in the summary panel. */
+.precap {
+  border: 1px solid var(--line); border-radius: var(--r-lg);
+  padding: 12px; margin-bottom: 12px;
+}
+.precap__head {
+  margin: 0 0 8px; font-size: 0.78rem; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--ink-2); font-weight: 700;
+}
+.precap__pack + .precap__pack { margin-top: 10px; }
+.precap__name { font-size: 0.85rem; }
+.precap ul { margin: 4px 0 0; padding-left: 14px; }
+.precap li { font-size: 0.82rem; color: var(--ink-2); }
+.precap__qty { font-weight: 700; color: var(--ink-1, inherit); }
+
+@media (max-width: 420px) {
+  .cmove { padding-left: 0; }
+  .takeaway--off { flex-direction: column; align-items: stretch; }
+  .takeaway--off .btn { width: 100%; justify-content: center; }
+}

@@ -11,7 +11,7 @@
 
   function line(l, compact) {
     return (
-      '<li class="cline' + (compact ? " cline--compact" : "") + '" data-line="' + l.menuId + '">' +
+      '<li class="cline' + (compact ? " cline--compact" : "") + '" data-line="' + l.key + '">' +
         '<a class="cline__media ring" href="' + KT.url("pages/product.html?id=" + l.item.id) + '">' +
           KT.images.picture(
             '<img data-food alt="" loading="lazy" decoding="async" src="' +
@@ -28,13 +28,13 @@
             "</p>" +
           '<div class="cline__controls">' +
             '<div class="stepper">' +
-              '<button class="stepper__btn" type="button" data-line-dec="' + l.menuId + '" aria-label="Decrease quantity">' +
+              '<button class="stepper__btn" type="button" data-line-dec="' + l.key + '" aria-label="Decrease quantity">' +
                 KT.icon("minus", 16) + "</button>" +
               '<span class="stepper__value">' + l.qty + "</span>" +
-              '<button class="stepper__btn" type="button" data-line-inc="' + l.menuId + '" aria-label="Increase quantity">' +
+              '<button class="stepper__btn" type="button" data-line-inc="' + l.key + '" aria-label="Increase quantity">' +
                 KT.icon("plus", 16) + "</button>" +
             "</div>" +
-            '<button class="cline__remove" type="button" data-line-remove="' + l.menuId + '">' +
+            '<button class="cline__remove" type="button" data-line-remove="' + l.key + '">' +
               KT.icon("trash", 16) + "<span>Remove</span></button>" +
           "</div>" +
         "</div>" +

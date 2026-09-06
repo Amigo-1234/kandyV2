@@ -313,8 +313,14 @@
         if (KT.admin.notifications) KT.admin.notifications.onIncoming(change);
         if (change.event !== "INSERT") return;
         var n = change.notification;
+        /* The same registration list admin_notifications() carries. A type
+           missing here is delivered by realtime and then dropped on the
+           floor: no toast, no sound, no live insert into the centre — and
+           the omission is silent, which is how staff_notice and admin_flag
+           both sat unnoticed. */
         if (["admin_order", "admin_support", "admin_ticket",
-             "admin_announcement"].indexOf(n.type) === -1) return;
+             "admin_announcement", "admin_flag",
+             "staff_notice"].indexOf(n.type) === -1) return;
         if (n.read) return;
         show(n);
       });

@@ -19,14 +19,45 @@
 import { supabase, TABLES, errorMessage } from "./supabase.js";
 import { authService } from "./auth.js";
 
-const ORDER_SELECT = `
+const ORDER_HEAD = `
   id, code, user_id, status, payment_status, payment_provider, payment_ref, paid,
   fulfilment, address_id, address_snapshot, customer, notes,
   subtotal, delivery_fee, takeaway_fee, discount, vat, processing_fee, total,
-  coupon_code, estimated_minutes, created_at,
-  order_items ( menu_item_id, name, unit_price, qty, line_total ),
+  coupon_code, estimated_minutes, created_at,`;
+const ORDER_TAIL = `
   order_status_history ( status, note, created_at )
 `;
+
+const ORDER_SELECT =
+  `${ORDER_HEAD}
+  order_items ( menu_item_id, name, unit_price, qty, line_total, takeaway_group ),
+  ${ORDER_TAIL}`;
+
+/*
+   order_items.takeaway_group arrives in migration 0071. A static frontend
+   deploys on its own clock, so between this file shipping and that migration
+   being applied the column does not exist — and PostgREST answers a request
+   naming a missing column with 42703 and a flat 400, killing the whole order
+   read rather than just the one field. This is the same query without it,
+   used once on that error and then remembered, so the retry costs a single
+   round trip and only ever before the migration lands.
+*/
+const ORDER_SELECT_LEGACY =
+  `${ORDER_HEAD}
+  order_items ( menu_item_id, name, unit_price, qty, line_total ),
+  ${ORDER_TAIL}`;
+
+let orderSelect = ORDER_SELECT;
+
+/** Runs `build(select)`, and retries once without takeaway_group on 42703. */
+async function withOrderSelect(build) {
+  let res = await build(orderSelect);
+  if (res.error && res.error.code === "42703" && orderSelect !== ORDER_SELECT_LEGACY) {
+    orderSelect = ORDER_SELECT_LEGACY;
+    res = await build(orderSelect);
+  }
+  return res;
+}
 
 /** orders row (+ children) → the shape every order page already reads. */
 function normalise(row) {
@@ -37,7 +68,11 @@ function normalise(row) {
     name: l.name,
     price: Number(l.unit_price) || 0,
     qty: Number(l.qty) || 0,
-    lineTotal: Number(l.line_total) || 0
+    lineTotal: Number(l.line_total) || 0,
+    /* Null on every order placed before Phase 12, and on every ungrouped
+       order after it. Renderers treat null as "no packs" and fall back to
+       the flat list they have always drawn. */
+    takeawayGroup: l.takeaway_group == null ? null : Number(l.takeaway_group)
   }));
 
   const history = (row.order_status_history || [])
@@ -122,7 +157,13 @@ export const orderService = {
     const { data, error } = await supabase.rpc("create_checkout_order", {
       p_items: (draft.items || []).map((i) => ({
         menu_id: i.menuId || i.id,
-        qty: Number(i.qty) || 0
+        qty: Number(i.qty) || 0,
+        /* Takeaway pack. Operational grouping only — the server clamps it,
+           refuses anything outside 1..20, and never lets it reach a price,
+           a packaging fee or an inventory movement. Omitted as null for an
+           ungrouped basket, which is every basket that existed before
+           Phase 12. */
+        group: i.group == null ? null : Number(i.group)
       })),
       p_fulfilment: draft.fulfilment || "delivery",
       p_address_id: draft.addressId || null,
@@ -145,12 +186,12 @@ export const orderService = {
     const uid = authService.uid();
     if (!uid) return [];
 
-    const { data, error } = await supabase
+    const { data, error } = await withOrderSelect((sel) => supabase
       .from(TABLES.orders)
-      .select(ORDER_SELECT)
+      .select(sel)
       .eq("user_id", uid)
       .order("created_at", { ascending: false })
-      .limit(limit);
+      .limit(limit));
     if (error) throw error;
     return (data || []).map(normalise);
   },
@@ -161,12 +202,12 @@ export const orderService = {
     if (!uid || !orderId) return null;
 
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(orderId);
-    const { data, error } = await supabase
+    const { data, error } = await withOrderSelect((sel) => supabase
       .from(TABLES.orders)
-      .select(ORDER_SELECT)
+      .select(sel)
       .eq(isUuid ? "id" : "code", orderId)
       .eq("user_id", uid)
-      .maybeSingle();
+      .maybeSingle());
     if (error) throw error;
     return data ? normalise(data) : null;
   },

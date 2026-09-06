@@ -49,6 +49,56 @@
       "</div>";
   }
 
+  /*
+     Phase 12 — an order that went out in takeaway packs is read back in
+     those packs. takeaway_group is null on every order placed before this
+     shipped and on every ungrouped one since, and that case renders the
+     flat list this page has always shown, with no heading and no change.
+
+     No price per pack: packaging is one charge for the whole order.
+  */
+  function orderItemHTML(l) {
+    var item = KT.menu.byId(l.menuId || l.id);
+    return '<div class="orderitem">' +
+      '<span class="ring">' + KT.images.picture(
+        '<img data-food alt="" loading="lazy" decoding="async" src="' +
+          KT.images.src(item || {}) + '">', item || {}, "64px") + '</span>' +
+      '<div class="orderitem__text"><strong>' + (l.name || "Item") + "</strong>" +
+      "<span>" + KT.naira(l.price) + " each</span></div>" +
+      '<span class="orderitem__qty">×' + l.qty + "</span>" +
+      '<span class="price">' + KT.naira(l.lineTotal || l.price * l.qty) + "</span></div>";
+  }
+
+  function orderItemsHTML(order) {
+    var items = order.items || [];
+    var grouped = items.some(function (l) { return l.takeawayGroup != null; });
+
+    if (!grouped) {
+      return '<div class="orderitems">' + items.map(orderItemHTML).join("") + "</div>";
+    }
+
+    var packs = [];
+    items.forEach(function (l) {
+      var g = l.takeawayGroup == null ? null : l.takeawayGroup;
+      var b = packs.filter(function (p) { return p.group === g; })[0];
+      if (!b) { b = { group: g, lines: [] }; packs.push(b); }
+      b.lines.push(l);
+    });
+    packs.sort(function (a, b) {
+      if (a.group == null) return -1;
+      if (b.group == null) return 1;
+      return a.group - b.group;
+    });
+
+    return packs.map(function (p) {
+      return '<div class="orderpack">' +
+        '<p class="orderpack__head">' +
+          (p.group == null ? "Not in a pack" : "Takeaway " + p.group) + "</p>" +
+        '<div class="orderitems">' + p.lines.map(orderItemHTML).join("") + "</div>" +
+      "</div>";
+    }).join("");
+  }
+
   function names(order) {
     return (order.items || []).map(function (l) {
       return (l.qty > 1 ? l.qty + "× " : "") + (l.name || "Item");
@@ -325,19 +375,7 @@
 
             '<div class="panel">' +
               '<div class="panel__head"><h2>What you ordered</h2></div>' +
-              '<div class="orderitems">' +
-                (order.items || []).map(function (l) {
-                  var item = KT.menu.byId(l.menuId || l.id);
-                  return '<div class="orderitem">' +
-                    '<span class="ring">' + KT.images.picture(
-                  '<img data-food alt="" loading="lazy" decoding="async" src="' +
-                    KT.images.src(item || {}) + '">', item || {}, "64px") + '</span>' +
-                    '<div class="orderitem__text"><strong>' + (l.name || "Item") + "</strong>" +
-                    "<span>" + KT.naira(l.price) + " each</span></div>" +
-                    '<span class="orderitem__qty">×' + l.qty + "</span>" +
-                    '<span class="price">' + KT.naira(l.lineTotal || l.price * l.qty) + "</span></div>";
-                }).join("") +
-              "</div>" +
+              orderItemsHTML(order)  +
               (order.notes ? '<p class="field__hint" style="margin-top:14px">Note: ' + order.notes + "</p>" : "") +
             "</div>" +
           "</div>" +
