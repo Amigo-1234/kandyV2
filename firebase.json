@@ -17,7 +17,11 @@
       "storage.rules",
       "*.local",
       "*.code-workspace",
-      "README.md"
+      "README.md",
+      "supabase/**",
+      "admin/**",
+      ".claude/**",
+      "*.md"
     ],
     "cleanUrls": true,
     "headers": [

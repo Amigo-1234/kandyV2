@@ -2,17 +2,10 @@
   "name": "kandys-treats-v2",
   "version": "2.0.0",
   "private": true,
-  "description": "Kandy's Treats V2 — customer storefront (static front end + Firebase back end)",
+  "description": "Kandy's Treats V2 — customer storefront and staff admin (static front end + Supabase back end)",
   "scripts": {
     "dev": "python3 -m http.server 5501",
-    "typecheck": "npx --yes typescript@5.6.3 --noEmit -p jsconfig.json",
-    "lint:functions": "npm --prefix functions run lint",
-    "check": "npm run typecheck && npm run lint:functions",
-    "deploy:backend": "npx --yes firebase-tools@15.26.0 deploy --only functions,firestore:rules,firestore:indexes,storage --project kandystreat-840b1",
-    "deploy:hosting": "npx --yes firebase-tools@15.26.0 deploy --only hosting --project kandystreat-840b1",
-    "deploy:all": "npx --yes firebase-tools@15.26.0 deploy --project kandystreat-840b1",
-    "secrets:paystack": "npx --yes firebase-tools@15.26.0 functions:secrets:set PAYSTACK_SECRET_KEY --project kandystreat-840b1",
-    "secrets:flutterwave": "npx --yes firebase-tools@15.26.0 functions:secrets:set FLUTTERWAVE_SECRET_KEY --project kandystreat-840b1",
-    "secrets:flutterwave-hash": "npx --yes firebase-tools@15.26.0 functions:secrets:set FLUTTERWAVE_SECRET_HASH --project kandystreat-840b1"
+    "typecheck": "npx --yes -p typescript@5.6.3 tsc --noEmit -p jsconfig.json",
+    "check": "npm run typecheck"
   }
 }
