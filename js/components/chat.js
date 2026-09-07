@@ -14,7 +14,43 @@
 
   KT.components = KT.components || {};
 
-  var state = { mounted: false, open: false, conv: null, msgs: [], busy: false, error: null };
+  var state = { mounted: false, open: false, conv: null, msgs: [], busy: false, error: null,
+                /* null until asked; true once the account is known to hold an
+                   operational role. Only ever changes the wording. */
+                staffSide: null };
+
+  /*
+     SAME THREAD, SAME TABLE, HONEST LABEL.
+
+     A member of staff opening this from the staff-flag notice is writing to
+     management, not to customer support, and the header should say so rather
+     than greeting them as a customer of the business they work for. Nothing
+     about the routing changes here — chat_message_stamp() decides that from
+     who owns the thread — this is only the words on the panel.
+
+     The role comes from my_account_status(), the same authoritative source
+     the admin shell gates on, so a promotion or demotion is reflected
+     automatically with no list to maintain.
+  */
+  var RANK = { customer: 10, staff: 20, supervisor: 25, admin: 30, owner: 40 };
+
+  async function resolveSide() {
+    if (state.staffSide !== null) return state.staffSide;
+    state.staffSide = false;
+    try {
+      var s = await KT.services.account.status();
+      state.staffSide = (RANK[s && s.role] || 0) >= RANK.staff;
+    } catch (error) { /* unknown role reads as a customer, which is the safe default */ }
+    return state.staffSide;
+  }
+
+  function paintHead() {
+    var t = KT.qs("[data-chat-title]");
+    if (!t) return;
+    t.innerHTML = state.staffSide
+      ? "<strong>Management</strong><span>Your message goes to the management team</span>"
+      : "<strong>Kandy's Treats</strong><span>We usually reply within a few minutes</span>";
+  }
   var unsubscribe = null;
 
   /* ---- Time -------------------------------------------------------------- */
@@ -151,7 +187,7 @@
       '<section class="chat__panel" role="dialog" aria-modal="true" aria-label="Live chat with Kandy\'s Treats">' +
         '<header class="chat__head">' +
           '<span class="chat__avatar">' + KT.icon("sparkle", 18) + "</span>" +
-          "<div class=\"chat__title\"><strong>Kandy's Treats</strong>" +
+          '<div class="chat__title" data-chat-title><strong>Kandy\'s Treats</strong>' +
             "<span>We usually reply within a few minutes</span></div>" +
           '<button class="icon-btn" type="button" data-chat-close aria-label="Close chat">' +
             KT.icon("close", 20) + "</button>" +
@@ -219,6 +255,9 @@
     void root.offsetHeight;
     root.classList.add("is-open");
     state.open = true;
+    /* Asked once per session and cached; the header repaints as soon as the
+       answer lands, so the panel never waits on it to appear. */
+    resolveSide().then(paintHead);
     /* Hides the storefront tab bar and locks the page behind — see the
        html.kt-chat-open rules in css/chat.css. */
     document.documentElement.classList.add("kt-chat-open");

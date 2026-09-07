@@ -771,3 +771,26 @@
 @media (min-width: 520px) {
   .sflag__actions .btn { flex: 0 0 auto; }
 }
+
+/* ---- Account page vertical rhythm ------------------------------------ */
+
+/*
+   Spacing used to come from `.panel + .panel { margin-top: 16px }`, which
+   only works while every section happens to be a .panel. The wallet card is
+   `.loyalty` and carries no margin of its own, so it broke the chain in both
+   directions: whatever sat above it touched it, and the next .panel got no
+   margin because its previous sibling was not a .panel. Adding Rewards and
+   the staff-flag card either side of the wallet made that visible as two
+   collisions.
+
+   A gap on the container is the fix, because it does not care what class a
+   child has. The adjacent-sibling margin is zeroed inside this container so
+   the two rules cannot stack; it is left alone elsewhere, where other pages
+   still rely on it.
+*/
+[data-account-main] {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+[data-account-main] > .panel + .panel { margin-top: 0; }

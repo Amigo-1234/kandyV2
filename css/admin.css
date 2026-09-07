@@ -3401,23 +3401,81 @@
 }
 
 /* ---- Referral analytics (Phase 13) ----------------------------------- */
+
+/*
+   Typography does the grouping here, not borders: a small uppercase section
+   heading, then a row of metric tiles whose LABEL is quiet and whose NUMBER
+   is loud. That inversion is the whole hierarchy — a manager scanning the
+   page reads the figures first and the words only when one of them looks
+   wrong.
+*/
+.apanel > h3 {
+  margin: 0 0 14px;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
 .rstats {
-  display: grid; gap: 10px;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  display: grid;
+  gap: 12px;
+  /* 158px holds "Points redeemed" on one line at 375, which is what stops
+     the labels wrapping into two-line tiles of different heights. */
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
 }
 .rstat {
-  background: var(--surface-3); border-radius: var(--r-lg);
-  padding: 12px 14px; min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  min-width: 0;
 }
 .rstat__label {
   margin: 0; font-size: 0.72rem; letter-spacing: 0.06em;
   text-transform: uppercase; font-weight: 700; color: var(--ink-3);
 }
 .rstat__value {
-  margin: 4px 0 0; font-family: var(--font-display); font-size: 1.5rem;
-  line-height: 1.1; word-break: break-word;
+  margin: 6px 0 0;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  line-height: 1.05;
+  word-break: break-word;
+  /* Pushes any note to the bottom so tiles in a row align on their
+     baselines even when only some of them carry one. */
+  margin-bottom: auto;
 }
-.rstat__note { margin: 4px 0 0; font-size: 0.74rem; color: var(--ink-3); }
+.rstat__note {
+  margin: 8px 0 0; font-size: 0.74rem; line-height: 1.4; color: var(--ink-3);
+}
+
+/* The settings recap is a definition list, not a metric grid — it is
+   reference material, so it reads quietly and aligns on its values. */
+.apanel .osum--readonly .osum__row {
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--line);
+  gap: 16px;
+}
+.apanel .osum--readonly .osum__row:last-child { border-bottom: 0; }
+.apanel .osum--readonly dt { color: var(--ink-3); }
+.apanel .osum--readonly dd { font-weight: 700; text-align: right; }
+
+.apanel > .invhint {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+
+@media (max-width: 400px) {
+  /* One column rather than two cramped ones — a 1.6rem figure needs room. */
+  .rstats { grid-template-columns: 1fr; }
+}
 
 /* ---- Staff flag strip (Phase 13 addendum) ----------------------------- */
 
@@ -3444,3 +3502,32 @@
   .aflag { padding: 10px 14px; }
   .aflag__cta { flex: 1 1 100%; justify-content: center; }
 }
+
+/* ---- Admin page vertical rhythm -------------------------------------- */
+
+/*
+   .apanel carries no margin, so a screen that stacks more than one — the new
+   Referrals page stacks four — rendered them touching. Nothing was wrong
+   with the panels; there was simply no rule giving a page rhythm.
+
+   Same shape as the account fix: the gap belongs to the container, so it
+   applies to every child whatever its class, and .apage__head loses its own
+   margin so the two do not stack.
+*/
+.apage {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/*
+   The container owns the rhythm now, so its direct children must stop
+   carrying their own — .apage__head had 22px, .astat__grid 24, .ofilters 18,
+   .anbar 16, .panpreview 14, and every one of those would have ADDED to the
+   gap and left each screen spaced differently from the next. Zeroing them
+   here is what makes the gap the single source of vertical spacing rather
+   than one more contributor to it.
+
+   Direct children only: spacing INSIDE a panel is still the panel's own.
+*/
+.apage > * { margin-bottom: 0; }
