@@ -63,6 +63,17 @@ function href(n) {
       return url("pages/account.html?section=support#support");
     case "wallet":
       return url("pages/account.html#wallet");
+    case "reward":
+      /* Points and referrals live in one panel on the account page. */
+      return url("pages/account.html#rewards");
+    case "staff_notice":
+      /*
+         The notice itself stays contentless — this only points at the card
+         that says a flag is open and offers the chat button. No flag id
+         travels in the link, because there is none to travel: related_id is
+         null on every staff_notice by design.
+      */
+      return url("pages/account.html#staff-flag");
     default:
       return null;
   }

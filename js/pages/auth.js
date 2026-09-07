@@ -294,7 +294,8 @@
       busy(form, true, "Creating your account…");
       try {
         var result = await KT.auth.signUp({ firstName: firstName, lastName: lastName,
-          email: email, phone: phone, password: password });
+          email: email, phone: phone, password: password,
+          referralCode: KT.referral && KT.referral.captured() });
 
         if (result && result.needsEmailConfirmation) {
           /* No session yet. Redirecting would drop a session-less visitor on

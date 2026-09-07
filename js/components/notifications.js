@@ -95,7 +95,7 @@
 
   var ICONS = {
     order: "receipt", chat: "mail", support: "mail",
-    wallet: "wallet", message: "sparkle"
+    wallet: "wallet", message: "sparkle", reward: "star"
   };
 
   /* ---- Markup ------------------------------------------------------------ */

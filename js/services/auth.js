@@ -125,7 +125,7 @@ export const authService = {
     return shape(data.user);
   },
 
-  async signUp({ firstName, lastName, email, phone, password }) {
+  async signUp({ firstName, lastName, email, phone, password, referralCode }) {
     const displayName = [firstName, lastName].filter(Boolean).join(" ").trim();
     const { data, error } = await supabase.auth.signUp({
       email: String(email).trim(),
@@ -134,7 +134,19 @@ export const authService = {
         /* handle_new_user() reads these when it creates the profile row. */
         data: {
           display_name: displayName,
-          phone: window.KT.rules.normalizePhone(phone || "")
+          phone: window.KT.rules.normalizePhone(phone || ""),
+          /*
+             The referral code travels as ordinary signup metadata, which is
+             the channel display_name and phone already use. It is NOT
+             trusted: handle_new_user() looks it up in referral_codes and
+             ignores anything that is not a real code belonging to somebody
+             else. A wrong code costs the customer nothing — the account is
+             still created, just without a referral.
+
+             Sent as an empty string rather than omitted so the shape of the
+             metadata does not depend on how the visitor arrived.
+          */
+          referral_code: String(referralCode || "").trim().toUpperCase().slice(0, 24)
         },
         emailRedirectTo: absolute(window.KT.url("pages/account.html"))
       }

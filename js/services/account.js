@@ -62,6 +62,30 @@ export const accountService = {
     return data || { role: "customer", suspended: false };
   },
 
+  /**
+   * Whether the CALLER has an unresolved staff flag, and when the oldest was
+   * raised. Nothing else: no id, no title, no detail, no category, no
+   * severity, no author, no count.
+   *
+   * The RPC takes no argument, so this cannot be pointed at another account,
+   * and staff_flags keeps its is_manager()-only SELECT policy — a staff
+   * member still reads zero rows from the table itself.
+   *
+   * Resolves to the unflagged shape on any error rather than throwing: a
+   * failure here must not be able to take down the shell or the account page
+   * it renders in.
+   */
+  async staffFlagStatus() {
+    try {
+      const { data, error } = await supabase.rpc("my_staff_flag_status");
+      if (error) throw error;
+      return { flagged: !!(data && data.flagged),
+               since: (data && data.since) ? new Date(data.since) : null };
+    } catch (error) {
+      return { flagged: false, since: null };
+    }
+  },
+
   async profile() {
     const user = authService.user();
     if (!user) return null;

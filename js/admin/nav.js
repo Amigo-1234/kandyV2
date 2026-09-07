@@ -58,6 +58,9 @@
          than to create it. */
       { id: "public-announcements", label: "Public announcements", icon: "sparkle", min: "admin" },
       { id: "finance",     label: "Finance",          icon: "wallet",   min: "admin" },
+      /* admin+, matching admin_referral_overview()'s is_manager() gate. The
+         screen shows aggregates only — no per-customer referral graph. */
+      { id: "referrals",   label: "Referrals",        icon: "star",     min: "admin" },
       /* admin+, because job_applications_admin_select scopes SELECT to
          is_manager(). A staff or supervisor account offered this screen would
          get an empty list, not a shorter one — the nav is gated to match the

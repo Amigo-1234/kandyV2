@@ -3399,3 +3399,48 @@
   .pantoggle { justify-content: flex-start; }
   .ancard__acts { margin-left: 0; width: 100%; flex-wrap: wrap; }
 }
+
+/* ---- Referral analytics (Phase 13) ----------------------------------- */
+.rstats {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.rstat {
+  background: var(--surface-3); border-radius: var(--r-lg);
+  padding: 12px 14px; min-width: 0;
+}
+.rstat__label {
+  margin: 0; font-size: 0.72rem; letter-spacing: 0.06em;
+  text-transform: uppercase; font-weight: 700; color: var(--ink-3);
+}
+.rstat__value {
+  margin: 4px 0 0; font-family: var(--font-display); font-size: 1.5rem;
+  line-height: 1.1; word-break: break-word;
+}
+.rstat__note { margin: 4px 0 0; font-size: 0.74rem; color: var(--ink-3); }
+
+/* ---- Staff flag strip (Phase 13 addendum) ----------------------------- */
+
+/*
+   Sits above every admin screen while the signed-in person has an unresolved
+   flag, because staff work here rather than on the account page. Carries the
+   same two facts the account card does and nothing more.
+*/
+.aflag {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 0 0 2px; padding: 10px 16px;
+  background: var(--chili-50);
+  border-bottom: 1px solid var(--chili);
+}
+.aflag__icon { color: var(--chili); flex: none; display: inline-flex; }
+.aflag__text {
+  margin: 0; flex: 1 1 240px; min-width: 0;
+  font-size: 0.86rem; line-height: 1.45;
+}
+.aflag__text strong { color: var(--chili); }
+.aflag__cta { flex: none; min-height: 38px; }
+
+@media (max-width: 520px) {
+  .aflag { padding: 10px 14px; }
+  .aflag__cta { flex: 1 1 100%; justify-content: center; }
+}

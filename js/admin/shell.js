@@ -21,7 +21,7 @@
 
   KT.admin = KT.admin || {};
 
-  var state = { role: null, name: "", email: "", ready: false };
+  var state = { role: null, name: "", email: "", ready: false, staffFlag: null };
   /* Unread counts for the nav badges. Read from admin_support_unread(), which
      sums counters the database already maintains — this is a mirror, never a
      second tally. */
@@ -163,6 +163,10 @@
               "</div>" +
             "</div>" +
           "</header>" +
+          /* Filled by paintFlagStrip() only when the signed-in person has an
+             unresolved flag of their own. Empty for everybody else, so the
+             slot costs nothing when there is nothing to say. */
+          '<div data-admin-flag></div>' +
           '<main class="apage" id="adminMain" data-admin-page></main>' +
         "</div>" +
       "</div>");
@@ -410,8 +414,43 @@
       return;
     }
 
+    /* Same call shape as the suspension check above and equally non-fatal:
+       a failure here must never cost somebody their workspace. */
+    try {
+      state.staffFlag = await KT.services.account.staffFlagStatus();
+    } catch (error) { state.staffFlag = null; }
+
     state.ready = true;
     renderShell();
+    paintFlagStrip();
+  }
+
+  /*
+     A staff member lands in this app, not on the account page, so a notice
+     that only lives there could go unseen for a whole shift. This strip is
+     the persistent indication: it sits above every screen for as long as the
+     flag is unresolved and disappears by itself when management closes it.
+
+     It carries the SAME two facts the account card does — that a flag exists
+     and roughly how long it has been open — and nothing else. No id, no
+     title, no detail, no severity, no author, no count. The full text lives
+     with management, and the link sends the person to the account card where
+     the existing Live Chat widget can reach them.
+  */
+  function paintFlagStrip() {
+    var host = KT.qs("[data-admin-flag]");
+    if (!host) return;
+    var f = state.staffFlag;
+    if (!f || !f.flagged) { host.innerHTML = ""; return; }
+
+    host.innerHTML =
+      '<div class="aflag" role="status">' +
+        '<span class="aflag__icon" aria-hidden="true">' + KT.icon("flame", 17) + "</span>" +
+        '<p class="aflag__text"><strong>A staff flag has been raised against ' +
+          "your account.</strong> Please speak with management to resolve it.</p>" +
+        '<a class="btn btn--soft btn--sm aflag__cta" href="' +
+          KT.url("pages/account.html#staff-flag") + '">Details &amp; chat</a>' +
+      "</div>";
   }
 
   /* ---- Wiring ---------------------------------------------------------- */

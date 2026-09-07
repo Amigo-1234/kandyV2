@@ -39,6 +39,7 @@ async function boot() {
   const { walletService } = await import("./wallet.js");
   const { notificationService } = await import("./notifications.js");
   const { pushService } = await import("./push.js");
+  const { rewardsService } = await import("./rewards.js");
 
   /* Every live service is Supabase now, so one error handler covers them. */
   const errorMessage = supaError;
@@ -58,6 +59,7 @@ async function boot() {
     wallet: walletService,
     notifications: notificationService,
     push: pushService,
+    rewards: rewardsService,
     errorMessage,
     backend: {
       auth: "supabase", profile: "supabase",
@@ -67,7 +69,8 @@ async function boot() {
       payments: "supabase+paystack", wallet: "supabase+paystack",
       chat: "supabase+realtime", careers: "supabase",
       notifications: "supabase+realtime",
-      push: "web-push+vapid"
+      push: "web-push+vapid",
+      rewards: "supabase"
     }
   };
 
