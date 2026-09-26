@@ -469,7 +469,7 @@
               '<input class="input" name="displayName" value="' + (p.displayName || "") + '"' +
               (editing ? "" : " readonly") + "></label>" +
             '<label class="field"><span class="field__label">Phone</span>' +
-              '<input class="input" name="phone" value="' + KT.rules.displayPhone(p.phone) + '"' +
+              '<input class="input" name="phone" type="tel" autocomplete="tel" value="' + KT.rules.displayPhone(p.phone) + '"' +
               (editing ? "" : " readonly") + "></label>" +
           "</div>" +
           '<label class="field" style="margin-top:16px"><span class="field__label">Email</span>' +
@@ -687,13 +687,28 @@
 
     if (!payload.reference && !payload.transactionId) return;
     try {
-      await KT.services.wallet.verifyFunding(payload);
+      /* The message comes from THIS top-up's funding intent, which only the
+         webhook settles — never from the fact that the customer came back,
+         and never from the balance. */
+      var result = await KT.services.wallet.verifyFunding(payload);
       state.wallet = await KT.services.wallet.get();
       state.transactions = await KT.services.wallet.transactions({ limit: 8 });
       render();
-      KT.toast("Wallet topped up.", "success", { duration: 4500 });
+      var status = (result && result.status) || "pending";
+      if (status === "credited") {
+        KT.toast("Wallet topped up" + (result.amount ? " with " + KT.naira(result.amount) : "") + ".",
+          "success", { duration: 4500 });
+      } else if (status === "failed" || status === "cancelled") {
+        KT.toast("Top-up was not completed. Your wallet was not credited.", "info", { duration: 6000 });
+      } else {
+        /* pending, or the intent is not visible yet: say so plainly. The live
+           balance on this page updates by itself when the webhook settles. */
+        KT.toast("Still confirming your top-up. Your balance will update here automatically — " +
+          "please do not pay again.", "info", { duration: 7000 });
+      }
     } catch (error) {
-      KT.toast(KT.services.errorMessage(error), "error", { duration: 6000 });
+      KT.toast("We could not check your top-up yet. Your balance will update here once it is " +
+        "confirmed — please do not pay again.", "info", { duration: 7000 });
     }
   }
 
@@ -798,6 +813,15 @@
         window.setTimeout(function () {
           var panel = KT.qs("#support");
           if (panel) panel.scrollIntoView({ block: "center", behavior: "smooth" });
+        }, 400);
+      }
+      /* ?section=profile opens "Your details" for editing — the basket sends a
+         pickup customer with no phone number here. */
+      if (section === "profile") {
+        state.editing = "profile";
+        window.setTimeout(function () {
+          var form = KT.qs("[data-profile-form]");
+          if (form) form.scrollIntoView({ block: "center", behavior: "smooth" });
         }, 400);
       }
     })();
@@ -1079,6 +1103,12 @@
           state.profile = await KT.services.account.profile();
           render();
           KT.toast("Details updated.", "success");
+          /* Sent here from the basket to add a phone number: go back to it. */
+          if (KT.param("next") === "cart") {
+            window.setTimeout(function () {
+              window.location.href = KT.url("pages/cart.html");
+            }, 900);
+          }
         } catch (error) {
           KT.toast(KT.services.errorMessage(error), "error");
         } finally {

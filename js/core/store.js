@@ -471,13 +471,46 @@
       var next = uid || cfg.storage.guestScope;
       if (next === scope) return;
 
-      var incoming = state.lines.slice();
-      var incomingGroups = state.groups;
+      var guest = cfg.storage.guestScope;
+      var fromGuest = scope === guest && next !== guest;
+
+      /*
+         Only a GUEST basket ever travels, and it travels exactly once. Every
+         page load starts in guest scope and re-scopes when the session is
+         restored, so if the guest key survived the merge its items were added
+         to the account basket again on every page. The guest key is deleted
+         the moment its lines are taken, which makes a second merge impossible.
+
+         Signing out (account -> guest) carries nothing across: the account
+         basket stays under its own key and the guest scope starts from
+         whatever the guest key holds, which is empty after a merge. That also
+         stops one customer's basket being left behind on a shared phone.
+      */
+      var incoming = fromGuest ? state.lines.slice() : [];
+      var incomingGroups = fromGuest ? state.groups : 0;
+      var guestMeta = fromGuest
+        ? { fulfilment: state.fulfilment, couponCode: state.couponCode, notes: state.notes }
+        : null;
+      if (fromGuest) {
+        try { localStorage.removeItem(key(cfg.storage.cart)); } catch (e) { /* private mode */ }
+      }
+
       scope = next;
       state.lines = [];
+      state.fulfilment = "delivery";
+      state.couponCode = "";
+      state.notes = "";
       state.groups = 0;
       state.activeGroup = null;
       read();
+
+      /* An empty account basket adopts the guest's choices along with the
+         guest's items; an account that already had a basket keeps its own. */
+      if (guestMeta && !state.lines.length && incoming.length) {
+        state.fulfilment = guestMeta.fulfilment;
+        state.couponCode = guestMeta.couponCode;
+        state.notes = guestMeta.notes;
+      }
 
       /* Merge the guest basket into the account basket. Pack identity is part
          of the line, so a guest's Takeaway 2 does not fall into the account's

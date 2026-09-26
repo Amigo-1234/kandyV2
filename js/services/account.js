@@ -119,6 +119,12 @@ export const accountService = {
     if (!user) throw new Error("Please sign in first.");
     const KT = window.KT;
 
+    /* Same rule signup applies. Blank is still allowed (Google accounts start
+       without one); a number that is present must be one a rider can call. */
+    if (String(phone || "").trim() && !KT.rules.isValidPhone(phone)) {
+      throw new Error("Enter a valid Nigerian phone number, e.g. 0801 234 5678.");
+    }
+
     const fields = {
       display_name: KT.rules.cleanString(displayName, 120),
       phone: KT.rules.normalizePhone(phone),

@@ -84,9 +84,20 @@ export function errorMessage(error) {
   if (lower.includes("popup") && lower.includes("closed")) return "Sign-in was cancelled.";
 
   /* ---- Postgres / RLS ------------------------------------------------ */
-  if (code === "42501" || lower.includes("row-level security") ||
-      lower.includes("permission denied")) {
+  /* Ordering paused from admin Settings (enforce_ordering_enabled). It shares
+     SQLSTATE 42501 with real permission failures, so it is told apart by its
+     own message before the generic mapping below can swallow it. */
+  if (lower.includes("ordering is paused")) {
+    return "Ordering is paused right now. Please try again shortly.";
+  }
+  if (lower.includes("row-level security") || lower.includes("permission denied")) {
     return "You do not have access to that.";
+  }
+  /* Our own RPCs raise 42501 with a sentence written for the customer
+     ("That delivery address could not be found."). A genuine RLS or grant
+     denial is caught above by its wording; anything else keeps its text. */
+  if (code === "42501") {
+    return msg || "You do not have access to that.";
   }
   if (code === "23505") return "That already exists.";
   if (code === "23503") return "That refers to something that no longer exists.";

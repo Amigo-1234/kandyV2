@@ -140,10 +140,38 @@ export const walletService = {
    * credit a balance. This re-reads the wallet and reports what the server
    * actually holds, polling briefly in case the webhook is still in flight.
    */
-  async verifyFunding() {
+  /*
+     Reads the funding intent for THIS top-up by its Paystack reference.
+     wallet_funding_intents is readable by its owner only (RLS user_id =
+     auth.uid()), and its status is written solely by settle_wallet_funding()
+     from the signed webhook — pending | paid | failed | cancelled | mismatch.
+     A balance is never used as evidence: any customer who already had money
+     would read as "credited" whether or not this payment went through.
+
+     Returns { status: "credited" | "pending" | "failed" | "cancelled" |
+               "not_found", amount? }. "mismatch" is reported as failed: the
+     gateway amount did not match the request and nothing was credited.
+  */
+  /** @param {{ reference?: string }} [opts] */
+  async verifyFunding({ reference } = {}) {
+    const uid = authService.uid();
+    const ref = String(reference || "").trim();
+    if (!uid || !ref) return { status: "not_found" };
+
     for (let attempt = 0; attempt < 8; attempt++) {
-      const wallet = await walletService.get();
-      if (wallet.balance > 0) return { status: "credited", wallet };
+      const { data, error } = await supabase
+        .from("wallet_funding_intents")
+        .select("status, amount, settled_at")
+        .eq("reference", ref)
+        .eq("user_id", uid)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return { status: "not_found" };
+
+      const s = String(data.status || "pending");
+      if (s === "paid") return { status: "credited", amount: Number(data.amount) || 0 };
+      if (s === "failed" || s === "mismatch") return { status: "failed" };
+      if (s === "cancelled") return { status: "cancelled" };
       if (attempt < 7) await new Promise((r) => setTimeout(r, 1500));
     }
     return { status: "pending" };

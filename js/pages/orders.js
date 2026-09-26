@@ -107,12 +107,15 @@
 
   function card(order) {
     var paid = order.paid;
+    /* A cancelled order owes nothing: no "payment pending", no "Pay now". */
+    var cancelled = KT.rules.isCancelled(order);
+    var owes = !paid && !cancelled;
     return (
       '<article class="ordercard">' +
         '<div class="ordercard__top">' +
           '<div><p class="ordercard__id">' + order.id + "</p>" +
             '<p class="ordercard__when">' + when(order.createdAt) +
-              (paid ? "" : " · payment pending") + "</p></div>" +
+              (owes ? " · payment pending" : "") + "</p></div>" +
           '<span class="status status--' + statusClass(order) + '">' + order.statusLabel + "</span>" +
         "</div>" +
         '<div class="ordercard__body">' +
@@ -125,7 +128,7 @@
               "</span><em>total</em></div>" +
             '<a class="btn btn--ghost btn--sm" href="' +
               KT.url("pages/order-detail.html?id=" + encodeURIComponent(order.id)) + '">' +
-              (paid ? "View details" : "Pay now") + "</a>" +
+              (owes ? "Pay now" : "View details") + "</a>" +
             (paid ? '<button class="btn btn--soft btn--sm" type="button" data-reorder="' +
               order.id + '">Reorder</button>' : "") +
           "</div>" +
@@ -168,7 +171,13 @@
 
       var list = orders.filter(function (o) {
         if (active === "all") return true;
-        if (active === "open") return o.status !== "Completed" && o.paymentStatus !== "cancelled";
+        /* In progress = neither finished nor cancelled. The status column is
+           what cancels an order; payment_status "cancelled" is an abandoned
+           payment on an order that may still be live. */
+        if (active === "open") {
+          return o.status !== "Completed" && !KT.rules.isCancelled(o) &&
+            o.paymentStatus !== "cancelled";
+        }
         return o.status === active;
       });
 
@@ -245,6 +254,58 @@
     var orderId = KT.param("id") || KT.param("code");
     var order = null;
     var myRatings = {};
+
+    /* ---- "Confirming your payment" window ------------------------------
+       Set when the customer comes back from Paystack and the order is not
+       paid yet. Kept in localStorage (per order code) rather than in memory
+       so a refresh, or the same order opened in another tab, cannot bring
+       the payment buttons back while the webhook is still settling. It only
+       hides buttons; it never pays, verifies or writes anything. */
+    var CONFIRM_KEY = "kt.payConfirming.";
+    var CONFIRM_WINDOW_MS = 10 * 60 * 1000;
+    var CONFIRM_POLL_MS = 10 * 1000;
+    var confirmTimer = null;
+
+    function confirmingSince(code) {
+      try {
+        var at = Number(window.localStorage.getItem(CONFIRM_KEY + code)) || 0;
+        if (at && Date.now() - at < CONFIRM_WINDOW_MS) return at;
+        if (at) window.localStorage.removeItem(CONFIRM_KEY + code);
+      } catch (e) { /* storage unavailable */ }
+      return 0;
+    }
+    function startConfirming(code) {
+      try { window.localStorage.setItem(CONFIRM_KEY + code, String(Date.now())); } catch (e) { /* no-op */ }
+    }
+    function stopConfirming(code) {
+      try { window.localStorage.removeItem(CONFIRM_KEY + code); } catch (e) { /* no-op */ }
+    }
+
+    /* While confirming, re-read the order (the same read the page already
+       does) so the paid state appears even if a realtime event is missed,
+       and so the buttons return on time if the window lapses. */
+    function scheduleConfirmCheck() {
+      window.clearTimeout(confirmTimer);
+      if (!order || order.paid || !confirmingSince(order.id)) return;
+      confirmTimer = window.setTimeout(async function () {
+        try {
+          var fresh = await KT.services.orders.get(orderId);
+          if (fresh) order = fresh;
+        } catch (e) { /* offline — try again on the next tick */ }
+        render();
+      }, CONFIRM_POLL_MS);
+    }
+
+    /* Drop the Paystack return parameters once they have been handled, so a
+       refresh or a later auth event cannot process the same return again. */
+    function stripReturnParams() {
+      try {
+        var u = new URL(window.location.href);
+        ["verify", "reference", "trxref", "status", "transaction_id", "tx_ref"]
+          .forEach(function (k) { u.searchParams.delete(k); });
+        history.replaceState(null, "", u.pathname + u.search + u.hash);
+      } catch (e) { /* older browser — worst case the toast repeats */ }
+    }
     var host = KT.qs("[data-order-detail]");
 
     /* Reviews are only offered on a Completed order — you can rate what you
@@ -293,6 +354,30 @@
         return '<div class="phasenote">' + KT.icon("close", 16) +
           "<span>This order was cancelled, so there is nothing to pay. " +
           "You can reorder the items whenever you like.</span></div>";
+      }
+      if (order.paid) stopConfirming(order.id);
+      /* A gateway failure recorded by the webhook ends the wait: the payment
+         did not go through, so offering it again is correct. */
+      if (!order.paid && (order.paymentStatus === "failed" || order.paymentStatus === "cancelled")) {
+        stopConfirming(order.id);
+      }
+      /*
+         Just back from Paystack and the webhook has not landed yet. The
+         payment buttons are withheld on purpose: offering "Pay" again here is
+         exactly how a customer pays twice (card, then wallet, or two cards),
+         and the second charge is not refunded automatically. Realtime and the
+         re-read in scheduleConfirmCheck() re-render this the moment the order
+         is paid; after CONFIRM_WINDOW_MS the buttons come back in case the
+         customer really did leave Paystack without paying.
+      */
+      if (!order.paid && confirmingSince(order.id)) {
+        return '<div class="deliverycard" data-pay-confirming>' +
+          '<span class="deliverycard__icon">' + KT.spinner(18) + "</span>" +
+          "<div><strong>Confirming your payment…</strong>" +
+          "<p>We are waiting for Paystack to confirm it. <strong>Please do not pay again</strong> — " +
+          "this page updates by itself as soon as it is confirmed.</p>" +
+          "<small>If you closed Paystack without paying, the payment options will come back here " +
+          "within " + Math.round(CONFIRM_WINDOW_MS / 60000) + " minutes.</small></div></div>";
       }
       if (order.paid) {
         return '<div class="deliverycard" style="border-color:var(--mint);background:var(--mint-50)">' +
@@ -410,6 +495,7 @@
         "</div>");
 
       KT.images.bindAll(document);
+      scheduleConfirmCheck();
     }
 
     /* Session still restoring — show the shape of the page, not an empty
@@ -429,22 +515,57 @@
         '<a class="btn btn--primary" href="' + KT.url("pages/login.html?next=orders") + '">Sign in</a></div></div>');
     }
 
+    /*
+       The return leg from Paystack. Coming back to this URL proves nothing —
+       a customer can reach it by cancelling, or by typing it — so the message
+       is decided ONLY by what verify() reads back from the order row, which
+       only the webhook can mark paid:
+
+         paid               -> "Payment confirmed"
+         pending            -> "still being confirmed — do not pay again",
+                               and the payment buttons are withheld
+         failed / cancelled -> "Payment was not completed"
+
+       Returns "pending" when the confirming window should be opened for this
+       order once it has loaded, otherwise null.
+    */
     async function handleGatewayReturn() {
       var ret = KT.services.payments.readReturn();
-      if (!ret || !ret.orderId) return;
+      if (!ret || !ret.orderId) return null;
 
-      if (ret.status === "cancelled" || ret.status === "canceled" || ret.status === "failed") {
-        await KT.services.payments.recordFailure(ret);
-        KT.toast("Payment was not completed.", "info");
-        return;
-      }
-      KT.toast("Confirming your payment…", "info");
+      /* First, so a refresh or an auth event during the poll below cannot
+         pick the same return up a second time. ?id= is kept. */
+      stripReturnParams();
+
+      var urlSaysFailed = /^(cancelled|canceled|failed|abandoned)$/i.test(String(ret.status || ""));
+
+      KT.toast("Checking your payment…", "info");
+      var result;
       try {
-        await KT.services.payments.verify(ret);
-        KT.toast("Payment confirmed — the kitchen has your order.", "success", { duration: 5000 });
+        result = await KT.services.payments.verify(ret);
       } catch (error) {
-        KT.toast(KT.services.errorMessage(error), "error", { duration: 6000 });
+        /* Could not read the order. Unknown is treated as "might be paid":
+           hold the buttons back rather than invite a second payment. */
+        KT.toast("We could not check your payment yet. Please do not pay again — " +
+          "this page will update when it is confirmed.", "info", { duration: 7000 });
+        return "pending";
       }
+
+      var status = (result && result.status) || "pending";
+      if (status === "paid") {
+        stopConfirming(ret.orderId);
+        KT.toast("Payment confirmed — the kitchen has your order.", "success", { duration: 5000 });
+        return null;
+      }
+      if (status === "failed" || status === "cancelled" || urlSaysFailed) {
+        stopConfirming(ret.orderId);
+        KT.toast("Payment was not completed. You have not been charged for this attempt.",
+          "info", { duration: 6000 });
+        return null;
+      }
+      KT.toast("Your payment is still being confirmed. Please do not pay again — " +
+        "this page updates by itself.", "info", { duration: 7000 });
+      return "pending";
     }
 
     async function load() {
@@ -452,12 +573,17 @@
       if (!KT.services || !KT.auth.isSignedIn()) return signedOut();
       if (!orderId) return signedOut();
 
-      await handleGatewayReturn();
+      var returned = await handleGatewayReturn();
       myRatings = await KT.services.reviews.mine();
       try {
         order = await KT.services.orders.get(orderId);
       } catch (e) {
         order = null;
+      }
+      /* Keyed on the loaded order's own code, whichever id form the URL used. */
+      if (order && returned === "pending" && !order.paid &&
+          order.paymentStatus !== "failed" && order.paymentStatus !== "cancelled") {
+        startConfirming(order.id);
       }
       if (!order) {
         KT.mount(host, '<div class="panel"><div class="empty">' +
@@ -474,8 +600,12 @@
         if (target) target.scrollIntoView({ block: "center", behavior: "smooth" });
       }
 
-      KT.services.orders.watch(orderId, function (fresh) { order = fresh; render(); });
+      /* load() re-runs on auth events; replace the subscription rather than
+         stacking another one each time. */
+      if (unwatch) unwatch();
+      unwatch = KT.services.orders.watch(orderId, function (fresh) { order = fresh; render(); });
     }
+    var unwatch = null;
 
     document.addEventListener("click", async function (e) {
       var pay = e.target.closest("[data-pay]");
@@ -498,8 +628,16 @@
         var walletDone = KT.busy(payWallet, "Paying…");
         if (!walletDone) return;
         try {
-          await KT.services.wallet.payOrder(order.id);
-          KT.toast("Paid from your wallet.", "success");
+          var paid = await KT.services.wallet.payOrder(order.id);
+          /* Only "paid" means the wallet was debited for this order.
+             "already_paid" means it was settled some other way (usually the
+             card webhook got there first) and the wallet was NOT touched. */
+          if (paid && paid.status === "paid") {
+            KT.toast("Paid from your wallet.", "success");
+          } else if (paid && paid.status === "already_paid") {
+            KT.toast("This order is already paid — your wallet was not charged.", "info",
+              { duration: 6000 });
+          }
           order = await KT.services.orders.get(orderId);
           render();
         } catch (error) {

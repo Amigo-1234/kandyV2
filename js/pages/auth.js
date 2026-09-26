@@ -110,6 +110,47 @@
     if (soc) soc.remove();
   }
 
+  /*
+     Keep ?next= when the customer switches between sign-in and sign-up. A
+     visitor sent here by "Sign in to check out" (?next=cart) who then taps
+     "Create an account" used to lose it and land on their account page
+     instead of back at the basket. Only the value is carried; nextUrl() still
+     maps it through its fixed route list, so this cannot become a redirect to
+     anywhere else.
+  */
+  var NEXT_KEY = "kt.next";
+
+  function carryNext() {
+    var next = KT.param("next");
+    if (!next) return;
+    KT.qsa(".authswap a").forEach(function (a) {
+      var u = new URL(a.getAttribute("href"), window.location.href);
+      u.searchParams.set("next", next);
+      a.setAttribute("href", u.pathname + u.search + u.hash);
+    });
+  }
+
+  /* Google sign-in leaves the site and comes back to login.html without a
+     query string, so the destination rides in sessionStorage for that trip. */
+  function stashNext() {
+    try {
+      var next = KT.param("next");
+      if (next) window.sessionStorage.setItem(NEXT_KEY, next);
+      else window.sessionStorage.removeItem(NEXT_KEY);
+    } catch (e) { /* private mode — falls back to the default destination */ }
+  }
+
+  function restoreNext() {
+    try {
+      var stored = window.sessionStorage.getItem(NEXT_KEY);
+      window.sessionStorage.removeItem(NEXT_KEY);
+      if (!stored || KT.param("next")) return;
+      var u = new URL(window.location.href);
+      u.searchParams.set("next", stored);
+      history.replaceState(null, "", u.pathname + u.search + u.hash);
+    } catch (e) { /* nothing to restore */ }
+  }
+
   function fail(error) {
     KT.toast(KT.services ? KT.services.errorMessage(error) : String(error.message || error),
       "error", { duration: 5200 });
@@ -137,6 +178,7 @@
            only knowable once we are back, so the destination decides. */
         if (KT.session) KT.session.remember();
         handoff("oauth");
+        stashNext();
 
         try {
           await KT.auth.signInWithGoogle();
@@ -163,6 +205,7 @@
       /* No handoff here: arriving already-authenticated is not a fresh
          sign-in, so it must not trigger a welcome message. */
       if (!e.detail.signedIn || !KT.auth) return;
+      restoreNext();
       /* Role decides the destination, so this waits for the profile rather
          than bouncing to the customer account page first. One redirect, no
          flash of the wrong screen, and no loop: every destination below is a
@@ -180,6 +223,7 @@
     passwordToggles(document);
     socials();
     gate("[data-login-form]");
+    carryNext();
     redirectIfSignedIn();
 
     var form = KT.qs("[data-login-form]");
@@ -239,6 +283,7 @@
     passwordToggles(document);
     socials();
     gate("[data-signup-form]");
+    carryNext();
     redirectIfSignedIn();
 
     var form = KT.qs("[data-signup-form]");

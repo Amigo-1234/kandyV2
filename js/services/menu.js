@@ -69,7 +69,12 @@ function writeCache(items, quickPicks) {
 }
 
 function announce(source) {
-  window.KT.cart.reconcile();
+  /* Never reconcile against the bundled snapshot. Its ids are slugs while a
+     real basket holds live uuids, so every line would look "gone" and the
+     whole basket would be deleted and saved that way on a flaky connection.
+     Offline, the basket is left exactly as it was; checkout is blocked by
+     KT.menu.live until the live menu arrives and a real reconcile runs. */
+  if (source !== "snapshot") window.KT.cart.reconcile();
   document.dispatchEvent(new CustomEvent("kt:menu", {
     detail: { live: window.KT.menu.live, count: window.KT.menu.items.length, source }
   }));

@@ -380,6 +380,16 @@
     try {
       var profile = await KT.services.account.profile();
       var address = addresses.filter(function (a) { return a.id === selectedAddressId; })[0];
+
+      /* Pickup has no address, so the profile phone is the only way the
+         kitchen can reach the customer ("we will call when it is ready").
+         Accounts created with Google have none, so ask for it here — through
+         the existing profile form — rather than sending an unreachable order. */
+      if (sum.fulfilment === "pickup" && !KT.rules.isValidPhone(profile && profile.phone)) {
+        done();
+        pickupPhoneNeeded();
+        return;
+      }
       var draft = KT.cart.toDraft(selectedAddressId, {
         name: (profile && profile.displayName) || (address && address.recipientName) || user.displayName || "",
         phone: (profile && profile.phone) || (address && address.phone) || "",
@@ -391,12 +401,39 @@
       window.location.href = KT.url("pages/order-detail.html?id=" + encodeURIComponent(order.orderId) + "&pay=1");
     } catch (error) {
       done();
-      if (error && error.code === "kt/ordering-unavailable") {
-        orderingUnavailable(error.message);
+      /* Ordering paused from admin Settings. The database raises it with its
+         own sentence (enforce_ordering_enabled); the old Firebase code
+         "kt/ordering-unavailable" is kept only in case anything still sends it. */
+      if (error && (error.code === "kt/ordering-unavailable" ||
+          /ordering is paused/i.test(String(error.message || "")))) {
+        orderingUnavailable(KT.services.errorMessage(error));
         return;
       }
       KT.toast(KT.services.errorMessage(error), "error", { duration: 5200 });
     }
+  }
+
+  /** Pickup without a usable phone: explain, and link to the profile form. */
+  function pickupPhoneNeeded() {
+    var message = "Add your phone number so we can call you when your pickup order is ready.";
+    var target = KT.url("pages/account.html?section=profile&next=cart");
+    /* The toast carries the action too: on a small screen it sits over the
+       inline note for a few seconds, so whichever one is visible is tappable. */
+    KT.toast(message, "info", {
+      duration: 7000,
+      action: "Add phone",
+      onAction: function () { window.location.href = target; }
+    });
+
+    var btn = KT.qs("[data-checkout]");
+    if (!btn || KT.qs("[data-pickup-phone-note]")) return;
+    var note = KT.el("div.phasenote", {
+      "data-pickup-phone-note": true,
+      html: KT.icon("phone", 16) + "<span>" + message + ' <a href="' + target +
+        '">Add a phone number</a>.</span>'
+    });
+    note.style.marginTop = "12px";
+    btn.parentNode.insertBefore(note, btn.nextSibling);
   }
 
   /**

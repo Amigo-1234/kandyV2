@@ -129,7 +129,7 @@
     limits: {
       maxDrafts: 10,
       maxItems: 60,
-      maxQty: 99,
+      maxQty: 50,          /* create_checkout_order refuses anything above 50 */
       minAddressLength: 8
     }
   };

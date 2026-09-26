@@ -148,7 +148,10 @@ export const authService = {
           */
           referral_code: String(referralCode || "").trim().toUpperCase().slice(0, 24)
         },
-        emailRedirectTo: absolute(window.KT.url("pages/account.html"))
+        /* Back to where the customer was heading (?next=cart from "Sign in
+           to check out"), falling back to the account page as before.
+           nextUrl() maps next through a fixed route list. */
+        emailRedirectTo: absolute(authService.nextUrl())
       }
     });
     if (error) throw error;
