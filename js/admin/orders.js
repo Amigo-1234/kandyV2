@@ -212,10 +212,24 @@
     return p ? String(p) : "";
   }
 
+  /* An unpaid order still on the floor is not kitchen work. It is labelled so
+     that nobody can mistake it for one; a cancelled or finished unpaid order
+     just says Unpaid. The database refuses to move an unpaid order forward
+     either way (enforce_order_status_tier, migration 0077). */
+  function unpaidActive(o) {
+    return !o.paid && o.status !== "Cancelled" && o.status !== "Completed";
+  }
+
   function payBadgeHTML(o) {
     var cls = "obadge obadge--pay " + (o.paid ? "is-paid" : "is-unpaid");
     if (!o.paid) {
-      return '<span class="' + cls + '">' + esc(o.paymentStatus || "unpaid") + "</span>";
+      if (unpaidActive(o)) {
+        return '<span class="' + cls + ' is-donotprep" ' +
+          'style="background:#c62828;color:#fff;font-weight:800;letter-spacing:.02em" ' +
+          'title="Payment status: ' + esc(o.paymentStatus || "pending") + '">' +
+          "UNPAID — DO NOT PREPARE</span>";
+      }
+      return '<span class="' + cls + '">Unpaid</span>';
     }
     var prov = providerLabel(o.paymentProvider);
     return '<span class="' + cls + (prov ? " has-prov" : "") + '">Paid' +
@@ -373,6 +387,20 @@
 
   function actionsHTML(o) {
     var moves = svc ? svc.nextStatuses(o.status) : [];
+    /* Unpaid: nothing that moves the order toward the kitchen or the door.
+       Cancelling an abandoned checkout stays available to the tiers that
+       could always cancel. When the payment lands, realtime re-renders this
+       and the normal buttons appear. */
+    if (!o.paid) {
+      moves = moves.filter(function (m) { return m === "Cancelled"; });
+    }
+    var waiting = unpaidActive(o)
+      ? '<p class="odetail__note odetail__unpaid" role="alert" ' +
+          'style="border:2px solid #c62828;color:#8e1b1b;font-weight:700">' +
+          "Waiting for payment — do not prepare this order. " +
+          '<span style="font-weight:500">Payment status: ' + esc(o.paymentStatus || "pending") +
+          ". The preparation controls appear here by themselves once the payment is confirmed.</span></p>"
+      : "";
     var buttons = moves.filter(function (m) {
       /* Cancelling is supervisor+ since Phase 11 — enforce_order_status_tier()
          moved from is_manager() to is_supervisor(). Everything else is staff+.
@@ -387,12 +415,13 @@
     }).join("");
 
     if (!buttons) {
+      if (waiting) return waiting;
       return '<p class="odetail__note">' +
         (o.status === "Completed" || o.status === "Cancelled"
           ? "This order is finished — its status can no longer change."
           : "Your role cannot change this order's status.") + "</p>";
     }
-    return '<div class="odetail__actions">' + buttons + "</div>";
+    return waiting + '<div class="odetail__actions">' + buttons + "</div>";
   }
 
   /** A person's name, falling back to their role when they have not set one.
@@ -845,17 +874,43 @@
 
   /* ---- Realtime -------------------------------------------------------- */
 
+  /* Re-read the whole board from the database. Used when events may have been
+     missed: the channel came back after a drop, or the phone/tab woke up.
+     Realtime does not replay what happened while it was away. */
+  function resync() {
+    if (!unwatch || !svc) return;          /* the Orders view is not mounted */
+    load({ refresh: true });
+    if (state.open) openDetail(state.open);
+  }
+
+  /* One listener for the life of the page (this file runs once), acting only
+     while the Orders view is mounted — so re-entering the view never stacks
+     another one. */
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") resync();
+  });
+
   function startWatch() {
     if (unwatch || !svc) return;
     var gen = mountGen;
+    /* The first SUBSCRIBED is the initial join — the board was just loaded.
+       Any later SUBSCRIBED is a rejoin after a drop, and gets a resync. */
+    var everLive = false;
     unwatch = svc.adminOrderService.watch(
       function (payload) {
         /* A brand-new order gets a highlight so a handler can tell what
            landed while they were looking at the screen. Status changes do not
            — those are usually their own doing. */
         if (gen !== mountGen) return;
-        if (payload && payload.eventType === "INSERT" && payload.new && payload.new.code) {
-          justIn[payload.new.code] = true;
+        /* "Just in" means kitchen-ready, i.e. PAID — an unpaid checkout is
+           not news for the kitchen. Realtime's old row carries only the key,
+           so "just became paid" is read against what this board last showed. */
+        var n = payload && payload.new;
+        if (n && n.code && n.paid) {
+          var wasUnpaid = state.sections.some(function (sec) {
+            return sec.rows.some(function (r) { return r.code === n.code && !r.paid; });
+          });
+          if (payload.eventType === "INSERT" || wasUnpaid) justIn[n.code] = true;
         }
         load({ refresh: true });
         if (state.open) openDetail(state.open);
@@ -863,7 +918,10 @@
       function (status) {
         if (gen !== mountGen) return;
         var live = status === "SUBSCRIBED";
+        var rejoined = live && everLive && !state.live;
+        if (live) everLive = true;
         if (live !== state.live) { state.live = live; render(); }
+        if (rejoined) resync();
       }
     );
   }

@@ -21,7 +21,9 @@
 
   KT.admin = KT.admin || {};
 
-  var state = { role: null, name: "", email: "", ready: false, staffFlag: null };
+  /* uid: whose session the rendered shell belongs to. Lets a routine token
+     refresh for the SAME person leave the open screen alone. */
+  var state = { role: null, name: "", email: "", ready: false, staffFlag: null, uid: null };
   /* Unread counts for the nav badges. Read from admin_support_unread(), which
      sums counters the database already maintains — this is a mirror, never a
      second tally. */
@@ -370,6 +372,11 @@
     }
 
     var user = KT.auth.user() || {};
+    /* Captured before anything below changes them: what the CURRENTLY
+       rendered shell was built for. */
+    var wasReady = state.ready;
+    var prevUid  = state.uid;
+    var prevRole = state.role;
     state.role  = (profile && profile.role) || "customer";
     state.name  = (profile && profile.displayName) || user.displayName || "";
     state.email = (profile && profile.email) || user.email || "";
@@ -416,10 +423,33 @@
 
     /* Same call shape as the suspension check above and equally non-fatal:
        a failure here must never cost somebody their workspace. */
+    var flag = null;
     try {
-      state.staffFlag = await KT.services.account.staffFlagStatus();
-    } catch (error) { state.staffFlag = null; }
+      flag = await KT.services.account.staffFlagStatus();
+    } catch (error) { flag = null; }
 
+    /*
+       SAME PERSON, SAME ACCESS: keep the screen.
+       Supabase re-announces the session on every token refresh (about hourly,
+       and whenever a phone wakes), and each announcement used to rebuild the
+       whole shell — closing an open order, dropping a cancel confirmation or
+       a half-typed chat reply. When the user, role and suspension state are
+       exactly what the rendered shell was built for, only the pieces that
+       can legitimately change in place are refreshed. Sign-out, a different
+       user, a role change or a suspension all fall through to the full path
+       above/below, as before.
+    */
+    if (wasReady && prevUid && prevUid === user.uid && prevRole === state.role) {
+      var nameEl = KT.qs(".auser__meta strong");
+      if (nameEl) nameEl.textContent = state.name || state.email;
+      var flagChanged = JSON.stringify(flag) !== JSON.stringify(state.staffFlag);
+      state.staffFlag = flag;
+      if (flagChanged) paintFlagStrip();
+      return;
+    }
+
+    state.staffFlag = flag;
+    state.uid = user.uid || null;
     state.ready = true;
     renderShell();
     paintFlagStrip();

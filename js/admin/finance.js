@@ -70,7 +70,13 @@
         stat("Cancelled", o.collected.events_cancelled, "customer abandoned") +
         stat("Amount rejected", o.collected.events_mismatch,
              "refused: amount mismatch", o.collected.events_mismatch ? "bad" : "") +
-        stat("Replays ignored", o.collected.events_ignored, "duplicate webhooks") +
+        /* An "ignored" event is a payment that arrived for an order that was
+           ALREADY paid. A true webhook replay reuses the same reference and
+           is de-duplicated before it is ever recorded, so a row here is a
+           separate charge until proven otherwise — flag it, never shrug it. */
+        stat("Needs review", o.collected.events_ignored,
+             "payments on already-paid orders — possible duplicate charge; check and refund",
+             o.collected.events_ignored ? "bad" : "") +
       "</div>" +
       '<p class="fin__note">' + KT.icon("lock", 15) +
         "<span>Order value and collected value are counted separately and never added " +
@@ -158,7 +164,10 @@
               var agree = e.order_total == null || e.amount === e.order_total;
               return '<article class="finrow">' +
                 '<div class="finrow__top">' +
-                  '<span class="paybadge paybadge--' + esc(e.status) + '">' + esc(e.status) + "</span>" +
+                  '<span class="paybadge paybadge--' + esc(e.status) + '">' +
+                    (e.status === "ignored"
+                      ? "needs review — order was already paid"
+                      : esc(e.status)) + "</span>" +
                   '<code class="finrow__issue">' + esc(e.reference) + "</code>" +
                   '<span class="finrow__when">' + when(e.created_at) + "</span>" +
                 "</div>" +

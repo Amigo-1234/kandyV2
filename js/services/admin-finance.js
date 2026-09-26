@@ -22,7 +22,9 @@ export const EVENT_STATUSES = [
   { value: "failed",    label: "Failed" },
   { value: "cancelled", label: "Cancelled" },
   { value: "mismatch",  label: "Amount rejected" },
-  { value: "ignored",   label: "Ignored (replay)" }
+  /* A payment for an order that was already paid. Not a harmless replay:
+     same-reference replays never reach this table. Review for a refund. */
+  { value: "ignored",   label: "Needs review — possible duplicate payment" }
 ];
 
 export const adminFinanceService = {

@@ -83,10 +83,16 @@ export const notificationService = {
   href,
 
   async list({ limit = 20 } = {}) {
-    if (!authService.uid()) return [];
+    const uid = authService.uid();
+    if (!uid) return [];
+    /* Scoped to the caller explicitly. For a customer RLS already returns
+       only their rows, but notifications_select_own also admits managers to
+       EVERY row (for support), so without this an admin or owner using the
+       storefront saw other customers' notifications in their own bell. */
     const { data, error } = await supabase
       .from(TABLE)
       .select("id, type, title, message, related_id, read, read_at, created_at")
+      .eq("user_id", uid)
       .order("created_at", { ascending: false })
       .limit(limit);
     if (error) throw error;
@@ -95,10 +101,13 @@ export const notificationService = {
 
   /** Count only — used by the bell so a badge costs no rows. */
   async unreadCount() {
-    if (!authService.uid()) return 0;
+    const uid = authService.uid();
+    if (!uid) return 0;
+    /* Same reason as list(): a manager's count must be their own. */
     const { count, error } = await supabase
       .from(TABLE)
       .select("id", { count: "exact", head: true })
+      .eq("user_id", uid)
       .eq("read", false);
     if (error) throw error;
     return count || 0;
