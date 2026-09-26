@@ -125,6 +125,27 @@ export const adminTeamService = {
   /* ---- Invitations ----------------------------------------------------- */
 
   /** Returns the raw token EXACTLY ONCE. It is not stored and cannot be re-read. */
+  /**
+   * Direct account creation through the admin-create-staff Edge Function.
+   * The browser sends only the details; the function re-checks the caller's
+   * tier and the role matrix as the caller, creates the auth user with a key
+   * that never reaches this file, assigns the role through admin_set_role,
+   * and emails the person a link to choose their own password.
+   * A 409 carries `existing` so the UI can open that person instead.
+   */
+  async createStaff({ email, name, phone, role }) {
+    const { data, error } = await supabase.functions.invoke("admin-create-staff", {
+      body: { email, name, phone, role }
+    });
+    if (error) {
+      let body = null;
+      try { body = await error.context?.json?.(); } catch { /* keep the default */ }
+      throw Object.assign(new Error((body && body.error) || "Could not create the account."),
+                          { existing: (body && body.existing) || null });
+    }
+    return data;
+  },
+
   async invite({ email, role, name = "", phone = "" }) {
     const { data, error } = await supabase.rpc("admin_invite_teammate", {
       p_email: email, p_role: role, p_name: name, p_phone: phone

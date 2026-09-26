@@ -33,7 +33,8 @@
       canChange: false, assignable: [], ownerCount: 0, viewerRole: "",
       detail: null, detailLoading: false,
       confirm: null,
-      invites: [], inviteOpen: false, inviteBusy: false, issued: null
+      invites: [], inviteOpen: false, inviteBusy: false, issued: null,
+      createOpen: false, created: null
     };
   }
   var state = blank();
@@ -342,7 +343,7 @@
     return (
       '<div class="fin__modal" data-invite-form-modal>' +
         '<div class="fin__modalscrim" data-invite-cancel></div>' +
-        '<form class="fin__modalpanel" data-invite-form role="dialog" aria-modal="true">' +
+        '<form class="fin__modalpanel fin__modalpanel--tall" data-invite-form role="dialog" aria-modal="true">' +
           "<h3>Invite a teammate</h3>" +
           '<p class="fin__note">' + KT.icon("sparkle", 16) +
             "<span>No account is created here and no password is set. They receive a " +
@@ -373,6 +374,111 @@
         "</form>" +
       "</div>"
     );
+  }
+
+  /* ---- Direct account creation ------------------------------------------ */
+
+  /*
+     The primary way to add a colleague. The account exists the moment this is
+     submitted; the person receives the standard password-setup email and
+     chooses their own password. Roles offered are the same server-computed
+     list the invitation form uses (assignable_roles minus customer/owner) —
+     the Edge Function and admin_set_role re-check it regardless.
+  */
+  function createFormHTML() {
+    var roles = invitableRoles();
+    if (!state.createOpen) return "";
+    var def = roles.indexOf("staff") >= 0 ? "staff" : roles[0];
+    return (
+      '<div class="fin__modal" data-create-form-modal>' +
+        '<div class="fin__modalscrim" data-create-cancel></div>' +
+        '<form class="fin__modalpanel fin__modalpanel--tall" data-create-form role="dialog" aria-modal="true" ' +
+          'aria-label="Create staff account" novalidate>' +
+          "<h3>Create staff account</h3>" +
+          '<p class="fin__note">' + KT.icon("lock", 16) +
+            "<span>The account is created now and appears in the team list. " +
+            "They get an email to choose their own password — nobody else ever sees it.</span></p>" +
+          '<label class="field"><span class="field__label">Full name</span>' +
+            '<input class="input" name="name" type="text" required autocomplete="off" ' +
+              'autocapitalize="words" placeholder="e.g. Bola Adeyemi"></label>' +
+          '<label class="field"><span class="field__label">Email</span>' +
+            '<input class="input" name="email" type="email" required autocomplete="off" ' +
+              'inputmode="email" autocapitalize="off" placeholder="name@example.com"></label>' +
+          '<label class="field"><span class="field__label">Phone</span>' +
+            '<input class="input" name="phone" type="tel" required autocomplete="off" ' +
+              'inputmode="tel" placeholder="0801 234 5678"></label>' +
+          '<label class="field"><span class="field__label">Role</span>' +
+            '<select class="select" name="role" data-create-role>' +
+              roles.map(function (r) {
+                return '<option value="' + esc(r) + '"' + (r === def ? " selected" : "") + ">" +
+                  esc(svc.roleMeta(r).label) + "</option>";
+              }).join("") +
+            "</select>" +
+            '<span class="field__hint" data-create-blurb>' + esc(svc.roleMeta(def).blurb) + "</span></label>" +
+          '<div class="team__createmsg" data-create-msg role="alert" aria-live="assertive"></div>' +
+          '<div class="fin__modalactions">' +
+            '<button class="btn btn--ghost" type="button" data-create-cancel>Cancel</button>' +
+            '<button class="btn btn--primary" type="submit">Create account</button>' +
+          "</div>" +
+        "</form>" +
+      "</div>"
+    );
+  }
+
+  function createdHTML() {
+    var c = state.created;
+    if (!c || !c.user) return "";
+    var u = c.user;
+    var sent = c.setup_email === "sent";
+    return (
+      '<div class="fin__modal" data-created-modal>' +
+        '<div class="fin__modalscrim" data-created-done></div>' +
+        '<div class="fin__modalpanel" role="dialog" aria-modal="true" aria-label="Account created">' +
+          "<h3>Account created</h3>" +
+          "<p><strong>" + esc(u.name || u.email) + "</strong> is now " +
+            (u.role === "admin" ? "an " : "a ") + esc(svc.roleMeta(u.role).label.toLowerCase()) + ".</p>" +
+          (sent
+            ? '<p class="fin__note">' + KT.icon("mail", 16) + "<span>A password-setup email was sent to <strong>" +
+                esc(u.email) + "</strong>. They open it, choose a password, then sign in.</span></p>"
+            : '<p class="fin__note" style="border-color:var(--chili);color:var(--chili)">' + KT.icon("close", 16) +
+                "<span>" + esc(c.setup_error || "The password-setup email could not be sent.") + "</span></p>") +
+          '<div class="fin__modalactions">' +
+            '<button class="btn btn--ghost" type="button" data-created-open="' + esc(u.id) + '">Open their account</button>' +
+            '<button class="btn btn--primary" type="button" data-created-done>Done</button>' +
+          "</div>" +
+        "</div>" +
+      "</div>"
+    );
+  }
+
+  async function createStaff(form) {
+    var data = Object.fromEntries(new FormData(form).entries());
+    var msg = KT.qs("[data-create-msg]", form);
+    if (msg) msg.innerHTML = "";
+    var done = KT.busy(KT.qs("[type=submit]", form), "Creating…");
+    if (!done) return;
+    try {
+      var out = await svc.createStaff({
+        name: data.name || "", email: data.email || "",
+        phone: data.phone || "", role: data.role || ""
+      });
+      state.createOpen = false;
+      state.created = out;
+      /* Straight back to the roster so the new colleague is visible now. */
+      state.roleFilter = "team"; state.search = ""; state.offset = 0;
+      await load();
+    } catch (error) {
+      done();
+      if (!msg) { KT.toast(error.message, "error", { duration: 6500 }); return; }
+      /* Rendered in place so what was typed survives. An existing account
+         is never duplicated: management is sent to the normal role change. */
+      msg.innerHTML = '<p class="field__error">' + esc(error.message) + "</p>" +
+        (error.existing
+          ? '<button class="btn btn--soft btn--sm" type="button" data-created-open="' +
+              esc(error.existing.id) + '">Open ' + esc(error.existing.name || error.existing.email) +
+              " (" + esc(error.existing.role) + ")</button>"
+          : "");
+    }
   }
 
   /* ---- Confirmation ------------------------------------------------------ */
@@ -484,14 +590,19 @@
             }).join("") +
           "</select></label>" +
         '<button class="btn btn--ghost btn--sm" type="button" data-team-reload>Refresh</button>' +
+        /* Two ways to add a colleague: create the account now (primary), or
+           send a link they redeem themselves (the existing invitation flow). */
         (invitableRoles().length
-          ? '<button class="btn btn--primary btn--sm team__invitebtn" type="button" ' +
-            'data-invite-open>' + KT.icon("plus", 16) + "Invite teammate</button>"
+          ? '<button class="btn btn--primary btn--sm team__createbtn" type="button" ' +
+              'data-create-open>' + KT.icon("plus", 16) + "Create staff account</button>" +
+            '<button class="btn btn--ghost btn--sm team__invitebtn" type="button" ' +
+              'data-invite-open>' + KT.icon("mail", 16) + "Invite teammate</button>"
           : "") +
       "</div>" +
       inviteListHTML() + listHTML() + detailHTML() + confirmHTML() +
       suspendConfirmHTML() +
-      inviteFormHTML() + (state.issued ? issuedHTML() : ""));
+      inviteFormHTML() + (state.issued ? issuedHTML() : "") +
+      createFormHTML() + createdHTML());
   }
 
   /* ---- Data -------------------------------------------------------------- */
@@ -576,6 +687,27 @@
 
   document.addEventListener("click", async function (e) {
     if (e.target.closest("[data-team-reload]")) { e.preventDefault(); load(); return; }
+
+    var ct = /** @type {Element} */ (e.target);
+    if (ct.closest("[data-create-open]")) {
+      e.preventDefault(); state.createOpen = true; paint();
+      var firstField = KT.qs("[data-create-form] input[name=name]");
+      if (firstField) firstField.focus();
+      return;
+    }
+    if (ct.closest("[data-create-cancel]")) {
+      e.preventDefault(); state.createOpen = false; paint(); return;
+    }
+    if (ct.closest("[data-created-done]")) {
+      e.preventDefault(); state.created = null; paint(); return;
+    }
+    var openNew = ct.closest("[data-created-open]");
+    if (openNew) {
+      e.preventDefault();
+      state.created = null; state.createOpen = false;
+      openMember(openNew.getAttribute("data-created-open"));
+      return;
+    }
 
     if (e.target.closest("[data-invite-open]")) {
       e.preventDefault(); state.inviteOpen = true; paint();
@@ -702,6 +834,12 @@
   });
 
   document.addEventListener("change", function (e) {
+    var createRole = /** @type {HTMLSelectElement|null} */ (/** @type {Element} */ (e.target).closest("[data-create-role]"));
+    if (createRole) {
+      var cHint = KT.qs("[data-create-blurb]");
+      if (cHint) cHint.textContent = svc.roleMeta(createRole.value).blurb;
+      return;
+    }
     var inviteRole = e.target.closest("[data-invite-form] select[name=role]");
     if (inviteRole) {
       var hint = KT.qs("[data-invite-blurb]");
@@ -723,6 +861,8 @@
   });
 
   document.addEventListener("submit", function (e) {
+    var createForm = /** @type {Element} */ (e.target).closest("[data-create-form]");
+    if (createForm) { e.preventDefault(); createStaff(createForm); return; }
     var form = e.target.closest("[data-invite-form]");
     if (!form) return;
     e.preventDefault();

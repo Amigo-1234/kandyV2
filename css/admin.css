@@ -1300,11 +1300,18 @@
    Invitations
    ========================================================================== */
 
-.team__invitebtn {
+.team__invitebtn,
+.team__createbtn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
+
+/* Inline result of a failed "Create staff account" — kept inside the form so
+   what was typed survives the error. */
+.team__createmsg:empty { display: none; }
+.team__createmsg { display: grid; gap: 8px; margin-top: 4px; }
+.team__createmsg .field__error { margin: 0; color: var(--chili); font-weight: 600; }
 
 .team__invites {
   margin-bottom: 20px;

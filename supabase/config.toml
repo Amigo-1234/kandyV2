@@ -427,3 +427,8 @@ verify_jwt = true
 # Owner-only; the tier is verified inside using the caller's own JWT.
 [functions.admin-delete-customer]
 verify_jwt = true
+
+# Admin/owner only; tier and role matrix are verified inside using the caller's
+# own JWT. The service_role key is used only to create/roll back the auth user.
+[functions.admin-create-staff]
+verify_jwt = true
