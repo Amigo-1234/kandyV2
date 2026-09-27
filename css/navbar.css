@@ -9,6 +9,18 @@
   display: contents;
 }
 
+/* Until navbar.js fills the host, hold the exact height of the promo strip
+   plus the header, so the page does not drop when they arrive. */
+[data-navbar]:empty {
+  display: block;
+  height: 115px;
+}
+@media (max-width: 768px) {
+  [data-navbar]:empty {
+    height: 97px;
+  }
+}
+
 /* ---- Promo strip ---------------------------------------------------- */
 
 .promostrip {
@@ -160,9 +172,8 @@
   height: var(--nav-h);
   transition: height var(--t-mid) var(--ease-out);
 }
-.nav.is-stuck .nav__inner {
-  height: 66px;
-}
+/* The header keeps one height when it sticks: it sits in the page flow, so
+   shrinking it here would jerk everything beneath it by the difference. */
 
 .nav__left {
   display: flex;
@@ -185,10 +196,6 @@
 }
 .logo:hover {
   transform: rotate(-4deg) scale(1.04);
-}
-.nav.is-stuck .logo img {
-  width: 44px;
-  height: 44px;
 }
 .logo--sm img {
   width: 44px;
@@ -553,7 +560,8 @@
   font-weight: 700;
   box-shadow: var(--sh-pink-lg);
   transform: translateY(140%);
-  transition: transform var(--t-slow) var(--ease-spring);
+  /* Eases in without the spring overshoot: a fixed bar should not bounce. */
+  transition: transform var(--t-slow) var(--ease-out);
 }
 .stickycart.is-visible {
   transform: none;

@@ -15,7 +15,7 @@
         '<a class="cline__media ring" href="' + KT.url("pages/product.html?id=" + l.item.id) + '">' +
           KT.images.picture(
             '<img data-food alt="" loading="lazy" decoding="async" src="' +
-              KT.images.src(l.item.image) + '">', l.item.image, "64px") +
+              KT.images.src(l.item) + '">', l.item, "64px") +
         "</a>" +
         '<div class="cline__body">' +
           '<div class="cline__top">' +

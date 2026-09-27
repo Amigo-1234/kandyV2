@@ -111,8 +111,8 @@
       '<div class="modal__media">' +
         KT.images.picture(
           '<img data-food alt="" decoding="async" src="' +
-            KT.images.src(item.image) + '">',
-          item.image, "(max-width: 720px) 92vw, 420px") +
+            KT.images.src(item) + '">',
+          item, "(max-width: 720px) 92vw, 420px") +
         '<span class="modal__tags">' + KT.components.tags(item, 3) + "</span>" +
       "</div>" +
       '<div class="modal__content">' +

@@ -81,6 +81,17 @@
     },
 
     /**
+     * The bundled photo to use when an item's remote imageUrl cannot load, or
+     * null when there is none (no remote URL, or no local photo behind it).
+     * @param {string|object|null} keyOrItem
+     */
+    fallback: function (keyOrItem) {
+      if (!keyOrItem || typeof keyOrItem !== "object" || !keyOrItem.imageUrl) return null;
+      var key = images.keyOf(keyOrItem.image);
+      return key ? KT.base + LOCAL_BASE + key + ".jpg" : null;
+    },
+
+    /**
      * A WebP srcset for the widths that actually exist, or "" when there are
      * none. Pair it with <source type="image/webp"> so browsers without WebP
      * fall through to the original JPEG in <img src>.
@@ -104,6 +115,10 @@
      * @param {string} sizes    the CSS `sizes` attribute for this slot
      */
     picture: function (imgHTML, keyOrItem, sizes) {
+      /* A remote photo that fails falls back to the dish's bundled photo
+         first, and only then to the placeholder (see onError below). */
+      var backup = images.fallback(keyOrItem);
+      if (backup) imgHTML = imgHTML.replace("<img ", '<img data-fallback="' + backup + '" ');
       var set = images.srcset(keyOrItem);
       if (!set) return imgHTML;
       return '<picture><source type="image/webp" srcset="' + set + '"' +
@@ -115,21 +130,39 @@
       return images.src(keyOrItem).indexOf(PLACEHOLDER) > -1;
     },
 
-    /** Attach a fallback so a dead URL never shows a broken-image icon. */
-    bind: function (img) {
-      img.addEventListener("error", function () {
-        if (img.dataset.fellBack) return;
-        img.dataset.fellBack = "1";
-        img.removeAttribute("srcset");
-        img.src = KT.base + PLACEHOLDER;
-        img.classList.add("is-placeholder");
-      }, { once: true });
-    },
-
-    bindAll: function (root) {
-      (root || document).querySelectorAll("img[data-food]").forEach(images.bind);
-    }
+    /**
+     * Kept for existing callers. Failures are now handled by one capturing
+     * listener on the document (below), which also covers images that fail
+     * before a caller gets round to binding them.
+     */
+    bind: function () {},
+    bindAll: function () {}
   };
+
+  /* A dead photo never shows as a broken image: first the dish's bundled
+     photo (when a remote URL failed), then the branded placeholder. The
+     <source> siblings go too, or a <picture> would keep choosing the WebP
+     that just failed. The slot's size is fixed by CSS, so nothing moves. */
+  function onError(e) {
+    var img = e.target;
+    if (!img || img.tagName !== "IMG" || !img.hasAttribute("data-food")) return;
+    var pic = img.parentNode;
+    if (pic && pic.tagName === "PICTURE") {
+      Array.prototype.slice.call(pic.querySelectorAll("source")).forEach(function (s) { pic.removeChild(s); });
+    }
+    img.removeAttribute("srcset");
+    var backup = img.getAttribute("data-fallback");
+    if (backup && !img.dataset.triedFallback) {
+      img.dataset.triedFallback = "1";
+      img.src = backup;
+      return;
+    }
+    if (img.dataset.fellBack) return;
+    img.dataset.fellBack = "1";
+    img.src = KT.base + PLACEHOLDER;
+    img.classList.add("is-placeholder");
+  }
+  document.addEventListener("error", onError, true);
 
   KT.images = images;
 })(window.KT || (window.KT = {}));

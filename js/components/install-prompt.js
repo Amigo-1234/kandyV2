@@ -1,8 +1,8 @@
 /* ==========================================================================
    Kandy's Treats — "Install Kandy's" / Add to Home Screen
    --------------------------------------------------------------------------
-   One small card, shown inline at the top of the page content on the
-   browsing pages only (home, menu, product). Never an overlay: it cannot sit
+   One small card, shown inline in the page content on the browsing pages
+   only (home, menu, product). Never an overlay: it cannot sit
    over the basket, checkout, sign-in, a modal, the tab bar or the
    notification permission flow, because it is never on those pages and is
    never on top of anything.
@@ -18,6 +18,16 @@
                   button that opens the browser's own install dialog. The
                   browser's mini-infobar is suppressed so it cannot appear
                   over checkout; our card is the only prompt.
+
+   Layout stability: the card must never push content the customer is
+   already looking at. On home, menu and product this file is loaded
+   synchronously right after <main> opens, so the iOS card is inserted
+   before any of the page's content has been parsed, let alone painted.
+   That is also why it uses nothing else from KT (its own url() and icons):
+   kt.js has not loaded yet at that point. Every other page loads it at the
+   end of <body>, only to suppress the browser's install banner.
+   The Chromium event arrives later, at an unknown moment, so that card goes
+   at the END of the page content, where it moves nothing on screen.
 
    Nothing is shown when the site is already running as the installed app
    (display-mode standalone / navigator.standalone), in in-app browsers
@@ -35,10 +45,18 @@
   var SNOOZE_MS = 14 * 24 * 60 * 60 * 1000;
   var DONE_MS = 180 * 24 * 60 * 60 * 1000;
   var PAGES = ["home", "menu", "product"];
-  var SHOW_DELAY_MS = 2500;
+
+  function url(path) { return ((/** @type {any} */ (window)).KT_BASE || "") + path; }
+  function svg(d, size) {
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" ' +
+      'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" ' +
+      'aria-hidden="true">' + d + "</svg>";
+  }
+  var CLOSE_SVG = svg('<path d="M6 6l12 12M18 6L6 18"/>', 18);
+  var PLUS_SVG = svg('<path d="M12 5.5v13M5.5 12h13"/>', 16);
 
   var deferred = null;        /* the saved beforeinstallprompt event */
-  var ready = false;          /* the delay has passed */
+  var ready = false;          /* start() has run */
   var card = null;
 
   /* ---- Environment ------------------------------------------------------ */
@@ -108,7 +126,7 @@
   function html(m) {
     var head =
       '<div class="ktinstall__head">' +
-        '<img class="ktinstall__icon" src="' + KT.url("assets/logo/apple-touch-icon.png") + '" ' +
+        '<img class="ktinstall__icon" src="' + url("assets/logo/apple-touch-icon.png") + '" ' +
           'width="52" height="52" alt="">' +
         '<div class="ktinstall__intro">' +
           '<h2 class="ktinstall__title" id="ktinstall-title">Get the Kandy\'s app</h2>' +
@@ -117,7 +135,7 @@
                          : " — one tap to reopen, and order notifications that reach you.") + "</p>" +
         "</div>" +
         '<button class="ktinstall__close" type="button" data-install-later aria-label="Not now">' +
-          KT.icon("close", 18) + "</button>" +
+          CLOSE_SVG + "</button>" +
       "</div>";
 
     if (m === "ios") {
@@ -138,7 +156,7 @@
       '<div class="ktinstall__actions">' +
         '<button class="btn btn--ghost btn--sm" type="button" data-install-later>Not now</button>' +
         '<button class="btn btn--primary btn--sm" type="button" data-install-native>' +
-          KT.icon("plus", 16) + "<span>Install app</span></button>" +
+          PLUS_SVG + "<span>Install app</span></button>" +
       "</div>";
   }
 
@@ -156,8 +174,9 @@
 
     if (!card) {
       card = document.createElement("div");
-      card.className = "wrap ktinstall-wrap";
-      main.insertBefore(card, main.firstChild);
+      card.className = "wrap ktinstall-wrap ktinstall-wrap--" + (m === "native" ? "end" : "top");
+      if (m === "native") main.appendChild(card);
+      else main.insertBefore(card, main.firstChild);
     }
     card.innerHTML =
       '<aside class="ktinstall ktinstall--' + m + '" data-install-card="' + m + '" ' +
@@ -210,11 +229,15 @@
 
   function start() {
     if (isStandalone()) return;     /* already the installed app: nothing, ever */
-    window.setTimeout(function () { ready = true; render(); }, SHOW_DELAY_MS);
+    ready = true;
+    render();
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
-  else start();
+  /* #main already exists wherever this script is loaded (see the header),
+     so render now rather than after DOMContentLoaded, which waits for the
+     module scripts and so lands after first paint. */
+  if (document.getElementById("main")) start();
+  else document.addEventListener("DOMContentLoaded", start);
 
   /* Read-only view of the decision, for support and for tests. */
   KT.installPrompt = {

@@ -160,6 +160,18 @@
   body {
     padding-bottom: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom));
   }
+  /* With the View basket bar showing, the page ends above it too. */
+  body:has(.stickycart.is-visible) {
+    padding-bottom: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom) + 76px);
+  }
+  /* On the basket page itself the bar only reopened the same basket, and sat
+     over the totals and the checkout button. */
+  body[data-page="cart"] .stickycart {
+    display: none;
+  }
+  body[data-page="cart"]:has(.stickycart.is-visible) {
+    padding-bottom: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom));
+  }
   .tabbar {
     display: grid;
   }

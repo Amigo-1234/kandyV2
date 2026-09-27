@@ -19,8 +19,8 @@
       var item = picks[i];
       if (!item) return;
       node.innerHTML =
-        '<span class="ring herocard__ring"><img data-food alt="" src="' +
-          KT.images.src(item.image) + '"></span>' +
+        '<span class="ring herocard__ring">' + KT.images.picture(
+          '<img data-food alt="" src="' + KT.images.src(item) + '">', item, "46px") + "</span>" +
         '<span class="herocard__text"><strong>' + item.name + "</strong>" +
         "<em>" + KT.naira(item.price) + "</em></span>";
       node.setAttribute("href", KT.url("pages/product.html?id=" + item.id));
@@ -39,14 +39,17 @@
 
     /* Rotating word in the headline — subtle, pauses on reduced motion. */
     var rotator = KT.qs("[data-rotate]");
-    if (rotator && !KT.prefersReducedMotion) {
-      var words = ["jollof", "shawarma", "peppered gizzard", "chicken & chips", "parfait"];
+    /* index.html lays every word out in the same spot (hero.css), so the slot
+       is sized by the longest before any script runs and the headline never
+       re-wraps; rotating only changes which one is visible. */
+    var slots = rotator ? KT.qsa(".hero__word", rotator) : [];
+    if (rotator && slots.length > 1 && !KT.prefersReducedMotion) {
       var i = 0;
       var swap = null;
 
       function show() {
         window.clearTimeout(swap);
-        rotator.textContent = words[i];
+        slots.forEach(function (s, n) { s.classList.toggle("is-on", n === i); });
         rotator.classList.remove("is-out");
       }
 
@@ -57,7 +60,7 @@
            "Craving ?" with a blank gap. Skip the animation while hidden
            rather than starting one we cannot reliably finish. */
         if (document.hidden) return;
-        i = (i + 1) % words.length;
+        i = (i + 1) % slots.length;
         rotator.classList.add("is-out");
         window.clearTimeout(swap);
         swap = window.setTimeout(show, 260);
@@ -182,8 +185,8 @@
               '<a class="drow__media ring" href="' + KT.url("pages/product.html?id=" + item.id) + '">' +
                 KT.images.picture(
                   '<img data-food alt="" loading="lazy" decoding="async" src="' +
-                    KT.images.src(item.image) + '">',
-                  item.image, "(max-width: 640px) 40vw, 200px") + "</a>" +
+                    KT.images.src(item) + '">',
+                  item, "(max-width: 640px) 40vw, 200px") + "</a>" +
               '<div class="drow__text">' +
                 '<h4><a href="' + KT.url("pages/product.html?id=" + item.id) + '">' + item.name + "</a></h4>" +
                 "<p>" + item.blurb + "</p>" +

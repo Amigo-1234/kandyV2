@@ -994,6 +994,10 @@ picture {
   padding-top: 14px;
   padding-bottom: 4px;
 }
+.ktinstall-wrap--end {
+  padding-top: 8px;
+  padding-bottom: 32px;
+}
 
 .ktinstall {
   position: relative;

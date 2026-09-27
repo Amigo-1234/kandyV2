@@ -43,6 +43,11 @@
 
 /* ---- Side nav --------------------------------------------------------- */
 
+/* Filled by script after first paint. On one-column layouts it sits above
+   the orders list, so hold its rendered height rather than let the list drop. */
+[data-account-nav]:empty {
+  min-height: 391px;
+}
 .account__nav {
   position: sticky;
   top: calc(var(--nav-h) + 20px);

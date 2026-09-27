@@ -54,8 +54,8 @@
           '<div class="pdp__hero">' +
             KT.images.picture(
               '<img data-food data-pdp-hero decoding="async" alt="' + item.name +
-                '" src="' + KT.images.src(item.image) + '">',
-              item.image, "(max-width: 900px) 94vw, 560px") +
+                '" src="' + KT.images.src(item) + '">',
+              item, "(max-width: 900px) 94vw, 560px") +
             '<span class="pdp__herotags">' + KT.components.tags(item, 3) + "</span>" +
           "</div>" +
           '<div class="pdp__gallery">' + galleryHTML() + "</div>" +
@@ -258,7 +258,7 @@
           else notFound();
         });
         KT.mount(KT.qs("[data-pdp]") || KT.qs("main") || document.body,
-          KT.loadingLabel("Loading this dish…") + KT.skeleton.panel(5));
+          '<div class="sk-hold">' + KT.loadingLabel("Loading this dish…") + KT.skeleton.panel(5) + "</div>");
         return;
       }
       notFound();

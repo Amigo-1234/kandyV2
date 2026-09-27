@@ -323,8 +323,8 @@
               var item = KT.menu.byId(menuId);
               return (
                 '<div class="orderitem">' +
-                  '<span class="ring"><img data-food alt="" src="' +
-                    KT.images.src(item || {}) + '"></span>' +
+                  '<span class="ring">' + KT.images.picture('<img data-food alt="" src="' +
+                    KT.images.src(item || {}) + '">', item || {}, "48px") + "</span>" +
                   '<div class="orderitem__text"><strong>' + (l.name || "Item") + "</strong>" +
                     "<span>" + (mine ? "You rated this " + mine + "/5" : "Not rated yet") +
                     "</span></div>" +
@@ -502,7 +502,7 @@
        "sign in" screen we are about to replace. */
     function loadingState() {
       KT.mount(host, KT.loadingLabel("Loading your order…") +
-        '<div class="orderdetail__grid">' +
+        '<div class="orderdetail__grid sk-hold">' +
           "<div>" + KT.skeleton.panel(4) + KT.skeleton.panel(3) + "</div>" +
           "<aside>" + KT.skeleton.panel(5) + "</aside>" +
         "</div>");

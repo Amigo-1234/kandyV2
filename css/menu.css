@@ -137,6 +137,14 @@
   font-size: 0.8rem;
   padding: 0 13px;
 }
+/* Both rows are filled by script after first paint; hold one row of chips
+   (chip height + the row's bottom padding) so the menu below never drops. */
+[data-menu-cats]:empty {
+  min-height: 52px;
+}
+[data-menu-filters]:empty {
+  min-height: 46px;
+}
 
 /* ---- Layout ----------------------------------------------------------- */
 
@@ -352,6 +360,12 @@
   }
   .menu__filters .chip {
     flex: none;
+  }
+  [data-menu-cats]:empty {
+    min-height: 48px;
+  }
+  [data-menu-filters]:empty {
+    min-height: 42px;
   }
   .menu__count {
     margin: 6px 0;

@@ -59,9 +59,21 @@
 }
 
 .hero__rotate {
-  display: inline-block;
+  display: inline-grid;
   color: var(--kt-pink);
   transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out);
+}
+/* Every word shares one grid cell, so the slot is always as wide as the
+   longest word: the headline never re-wraps as the words rotate. */
+.hero__word {
+  grid-area: 1 / 1;
+  visibility: hidden;
+}
+.hero__word.is-on {
+  visibility: visible;
+}
+.hero__q {
+  color: var(--ink);
 }
 .hero__rotate.is-out {
   opacity: 0;
@@ -226,6 +238,11 @@
 }
 .herocard:hover {
   box-shadow: var(--sh-3);
+}
+/* Filled by script; until then (or if the dish is missing) show nothing
+   rather than an empty pill that grows once its content arrives. */
+.herocard:empty {
+  visibility: hidden;
 }
 .herocard--a {
   left: -6%;

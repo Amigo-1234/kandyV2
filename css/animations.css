@@ -194,6 +194,21 @@
   display: block;
 }
 
+/* Page bodies filled by script: until their content lands, hold at least a
+   screen's height, so the footer and related rows below never appear in view
+   only to be pushed down a moment later. */
+[data-pdp]:empty,
+[data-order-detail]:empty,
+[data-cart-main]:empty,
+.sk-hold {
+  min-height: 100vh;
+  min-height: 100svh;
+}
+.sk-cline .cline__top,
+.sk-cline .cline__controls {
+  align-items: center;
+}
+
 .sk-lines {
   display: grid;
   gap: 9px;
