@@ -90,7 +90,7 @@
             "</em></dt><dd>−" + KT.naira(sum.discount) + "</dd></div>"
           : "") +
         (sum.processingFee
-          ? "<div><dt>Card processing (2%)</dt><dd>" + KT.naira(sum.processingFee) + "</dd></div>"
+          ? "<div><dt>Card processing</dt><dd>" + KT.naira(sum.processingFee) + "</dd></div>"
           : "") +
         '<div class="csum__total"><dt>Total</dt><dd class="price price--lg">' +
           KT.naira(sum.total) + "</dd></div>" +

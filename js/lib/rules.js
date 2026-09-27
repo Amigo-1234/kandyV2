@@ -15,10 +15,6 @@
   /* functions/index.js: DELIVERY_FEE = 500 — flat, Ado-Ekiti/Iworoko only. */
   var DELIVERY_FEE = 500;
 
-  /* functions/index.js: PROCESSING_FEE_RATE = 0.02 — gateway payments only.
-     Wallet payments carry no processing fee. */
-  var PROCESSING_FEE_RATE = 0.02;
-
   /* functions/index.js: ORDER_STATUSES */
   var ORDER_STATUSES = ["New", "Preparing", "Out", "Completed"];
 
@@ -79,7 +75,6 @@
 
   var rules = {
     DELIVERY_FEE: DELIVERY_FEE,
-    PROCESSING_FEE_RATE: PROCESSING_FEE_RATE,
     ORDER_STATUSES: ORDER_STATUSES,
     STATUS_META: STATUS_META,
     STATUS_META_PICKUP: STATUS_META_PICKUP,
@@ -136,9 +131,9 @@
      * returns 0 and the "Card processing" line disappears on its own (every
      * render site is already guarded on a truthy fee).
      *
-     * PROCESSING_FEE_RATE is kept so re-enabling is a one-line change, but it
-     * must be turned on in create_checkout_order FIRST — the server total is
-     * the authority, and the basket only ever mirrors it.
+     * There is no client-side rate. A fee would have to be turned on in
+     * create_checkout_order FIRST — the server total is the authority, and
+     * the basket only ever mirrors it.
      */
     processingFee: function () {
       return 0;

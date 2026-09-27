@@ -436,6 +436,19 @@
     width: 56px;
     height: 56px;
   }
+  /* Account → recent orders: status and total move to a second line, lined
+     up under the text, so the date and item count are not squeezed into a
+     one-word-wide column. */
+  [data-account-main] .orderitem {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  [data-account-main] .orderitem__text {
+    flex: 1 1 calc(100% - 68px);
+  }
+  [data-account-main] .orderitem .status {
+    margin-left: 68px;
+  }
 }
 
 /* ---- Very small ------------------------------------------------------- */
@@ -448,6 +461,27 @@
 @media (max-width: 430px) {
   .locpill__text small {
     display: none;
+  }
+
+  /* Basket page lines: the card already pads its content, so the line's own
+     side inset only pushed the price past the card edge at 375–390px. When
+     the quantity control and Remove cannot share a row, Remove wraps under. */
+  .cartpage__main .cline {
+    padding: 16px 0;
+  }
+  .cartpage__main .cline__media {
+    width: 72px;
+    height: 72px;
+  }
+  .cartpage__main .cline__controls {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  /* Two fields side by side are ~147px each here, too narrow for a phone
+     number; stack them. */
+  .authrow {
+    grid-template-columns: 1fr;
   }
 }
 
