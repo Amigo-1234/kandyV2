@@ -13,7 +13,7 @@
    verify_jwt = false: Paystack has no Supabase JWT. The HMAC IS the auth.
    ========================================================================== */
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { hmacSha512Hex, timingSafeEqualHex, toNaira, json } from "../_shared/paystack.ts";
+import { hmacSha512Hex, timingSafeEqualHex, toNaira, json, orderSettlementNaira } from "../_shared/paystack.ts";
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -74,11 +74,17 @@ Deno.serve(async (req) => {
     return json({ received: true, ...funded }, 200);
   }
 
+  /* Gross charge normally; Paystack's signed requested_amount only when the
+     extra is provably Paystack's own fee on a payment for this order (see
+     orderSettlementNaira). The exact orders.total check inside the RPC, and
+     its reference/order/owner binding (0079), still decide. */
+  const settle = orderSettlementNaira(event, orderCode);
+
   const { data: result, error } = await admin.rpc("settle_order_payment", {
     p_order_code: orderCode,
     p_provider: "paystack",
     p_reference: reference,
-    p_amount: toNaira(data?.amount ?? 0),     // verified against orders.total inside
+    p_amount: settle.amount,                  // verified against orders.total inside
     p_currency: String(data?.currency ?? "NGN"),
     p_gateway_status: gatewayStatus,
     p_source: "webhook",
@@ -89,7 +95,7 @@ Deno.serve(async (req) => {
     /* An amount mismatch raises here. 200 on purpose: the payload is
        authentic and retrying cannot fix it, and the attempt is already
        recorded in payment_events with status 'mismatch'. */
-    console.error("settlement refused", { orderCode, reference, message: error.message });
+    console.error("settlement refused", { orderCode, reference, basis: settle.basis, message: error.message });
     return json({ received: true, settled: false, reason: error.message }, 200);
   }
 

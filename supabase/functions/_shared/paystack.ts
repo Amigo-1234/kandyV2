@@ -52,3 +52,57 @@ export const json = (body: unknown, status = 200) =>
     status,
     headers: { "Content-Type": "application/json", ...CORS },
   });
+
+/**
+ * The amount, in naira, to settle an ORDER payment against.
+ *
+ * Default: the gross `data.amount` Paystack charged — today's behaviour, and
+ * all that is ever needed while Kandy's absorbs Paystack's fee.
+ *
+ * When the Paystack account passes its transaction fee to the customer, the
+ * signed `amount` is the order total PLUS Paystack's fee, and the signed
+ * `requested_amount` is exactly what paystack-initialize asked for (the
+ * server-priced order total). Only then is `requested_amount` used — and
+ * only when every one of these holds on the HMAC-verified payload:
+ *
+ *   - event charge.success, status success, currency NGN
+ *   - metadata.order_code is this order, the reference is KT-<that code>-…,
+ *     and metadata.user_id is present (the database then requires it to be
+ *     the order's owner — migration 0079)
+ *   - amount, requested_amount and fees are whole kobo; requested_amount is
+ *     positive and whole naira (initialize only ever asks for whole naira)
+ *   - amount > requested_amount            (never an underpayment)
+ *   - amount − requested_amount ≤ fees     (the extra is Paystack's own
+ *                                            signed fee — never an arbitrary
+ *                                            overpayment)
+ *
+ * Anything else falls back to the gross amount, which settle_order_payment
+ * refuses unless it equals the order total exactly. That exact check stays
+ * the final authority in every case: this function can only choose which of
+ * Paystack's two signed figures is offered to it.
+ */
+export function orderSettlementNaira(
+  event: any,
+  orderCode: string,
+): { amount: number; basis: "charged" | "requested" } {
+  const d = event?.data ?? {};
+  const gross = { amount: toNaira(d?.amount ?? 0), basis: "charged" as const };
+
+  const charged = Number(d?.amount);
+  const requested = Number(d?.requested_amount);
+  const fees = Number(d?.fees);
+  if (d?.requested_amount == null || d?.fees == null) return gross;
+  if (!Number.isSafeInteger(charged) || !Number.isSafeInteger(requested) || !Number.isSafeInteger(fees)) return gross;
+  if (requested <= 0 || requested % 100 !== 0 || fees < 0) return gross;
+  if (charged <= requested) return gross;
+  if (charged - requested > fees) return gross;
+
+  if (event?.event !== "charge.success" || d?.status !== "success") return gross;
+  if (String(d?.currency ?? "").toUpperCase() !== "NGN") return gross;
+  const code = String(orderCode ?? "");
+  if (!code || String(d?.metadata?.order_code ?? "") !== code) return gross;
+  if (!String(d?.reference ?? "").startsWith(`KT-${code}-`)) return gross;
+  if (!String(d?.metadata?.user_id ?? "")) return gross;
+
+  return { amount: requested / 100, basis: "requested" };
+}
