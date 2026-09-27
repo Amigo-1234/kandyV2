@@ -99,6 +99,67 @@
     }).join("");
   }
 
+  /* ---- Google review prompt -------------------------------------------
+     One card, used on Order Detail and at the top of the Orders list. The
+     server decides whether it appears (migration 0078: Completed + paid,
+     45 minutes to 14 days after completion, per-customer cadence) and
+     supplies the link from app_settings. It is deliberately independent of
+     the dish star ratings above it: every eligible customer gets the same
+     link whatever they rated, and nothing is offered in return. */
+  var grvDismissed = false;   /* acted on during this page's life */
+  var grvSeen = {};           /* "shown" already reported this page load */
+
+  function escAttr(v) {
+    return String(v == null ? "" : v)
+      .replace(/&/g, "&amp;").replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function reviewPromptHTML(state) {
+    if (!state || !state.show || grvDismissed) return "";
+    return (
+      '<section class="panel grv" data-grv="' + escAttr(state.orderUuid) + '" aria-labelledby="grvTitle">' +
+        '<h2 class="grv__title" id="grvTitle">Enjoyed your order? <span aria-hidden="true">⭐</span></h2>' +
+        "<p class=\"grv__text\">Help others discover Kandy's by leaving us an honest Google review.</p>" +
+        '<div class="grv__actions">' +
+          '<a class="btn btn--primary btn--sm" href="' + escAttr(state.url) + '" target="_blank" ' +
+            'rel="noopener noreferrer" data-grv-go>Leave a Google review</a>' +
+          '<button class="btn btn--ghost btn--sm" type="button" data-grv-later>Maybe later</button>' +
+        "</div>" +
+      "</section>"
+    );
+  }
+
+  /* Report "shown" once per page load; the server keeps one per day. */
+  function reviewPromptShown(root) {
+    var el = KT.qs("[data-grv]", root || document);
+    if (!el || !KT.services || !KT.services.reviewPrompt) return;
+    var id = el.getAttribute("data-grv");
+    if (grvSeen[id]) return;
+    grvSeen[id] = true;
+    KT.services.reviewPrompt.record(id, "shown");
+  }
+
+  document.addEventListener("click", function (e) {
+    var t = /** @type {Element} */ (e.target);
+    if (!t || !t.closest) return;
+    var go = t.closest("[data-grv-go]");
+    var later = t.closest("[data-grv-later]");
+    if (!go && !later) return;
+    var box = t.closest("[data-grv]");
+    if (!box) return;
+    var id = box.getAttribute("data-grv");
+    grvDismissed = true;
+    if (KT.services && KT.services.reviewPrompt) {
+      KT.services.reviewPrompt.record(id, go ? "clicked" : "later");
+    }
+    /* The link opens in a new tab or the Maps app; this page stays, so the
+       card can simply go. Nothing here claims a review was written. */
+    if (later) e.preventDefault();
+    window.setTimeout(function () { if (box.parentNode) box.parentNode.removeChild(box); }, go ? 150 : 0);
+    if (later) KT.toast("No problem — we won't ask again for a while.", "info");
+  });
+
   function names(order) {
     return (order.items || []).map(function (l) {
       return (l.qty > 1 ? l.qty + "× " : "") + (l.name || "Item");
@@ -144,6 +205,7 @@
     var orders = [];
     var tabsHost = KT.qs("[data-order-tabs]");
     var listHost = KT.qs("[data-order-list]");
+    var listPrompt = null;
 
     function paintNav() {
       if (KT.pages.accountNav) KT.mount("[data-account-nav]", KT.pages.accountNav("orders"));
@@ -181,12 +243,13 @@
         return o.status === active;
       });
 
-      listHost.innerHTML = list.length
+      listHost.innerHTML = reviewPromptHTML(listPrompt) + (list.length
         ? list.map(card).join("")
         : '<div class="empty"><div class="empty__art">' + KT.icon("receipt", 38) +
           "</div><h3>Nothing here yet</h3><p>Orders with this status will show up here.</p>" +
-          '<a class="btn btn--soft" href="' + KT.url("pages/menu.html") + '">Browse the menu</a></div>';
+          '<a class="btn btn--soft" href="' + KT.url("pages/menu.html") + '">Browse the menu</a></div>');
       KT.images.bindAll(listHost);
+      reviewPromptShown(listHost);
     }
 
     async function load() {
@@ -197,6 +260,11 @@
       } catch (e) {
         orders = [];
       }
+      /* Only asked when there is a completed order to be asked about; the
+         server picks the latest eligible one, so several completed orders
+         still make one card. */
+      listPrompt = orders.some(function (o) { return o.paid && o.status === "Completed"; }) &&
+        KT.services.reviewPrompt ? await KT.services.reviewPrompt.state(null) : null;
       paint();
     }
 
@@ -254,6 +322,7 @@
     var orderId = KT.param("id") || KT.param("code");
     var order = null;
     var myRatings = {};
+    var detailPrompt = null;
 
     /* ---- "Confirming your payment" window ------------------------------
        Set when the customer comes back from Paystack and the order is not
@@ -457,6 +526,7 @@
             "</div>" +
 
             ratingPanel() +
+            reviewPromptHTML(detailPrompt) +
 
             '<div class="panel">' +
               '<div class="panel__head"><h2>What you ordered</h2></div>' +
@@ -495,6 +565,7 @@
         "</div>");
 
       KT.images.bindAll(document);
+      reviewPromptShown(host);
       scheduleConfirmCheck();
     }
 
@@ -585,6 +656,10 @@
           order.paymentStatus !== "failed" && order.paymentStatus !== "cancelled") {
         startConfirming(order.id);
       }
+      /* Asked before the first paint of a finished order so the card is part
+         of that layout rather than arriving afterwards and pushing content. */
+      detailPrompt = order && order.paid && order.status === "Completed" && order.uuid &&
+        KT.services.reviewPrompt ? await KT.services.reviewPrompt.state(order.uuid) : null;
       if (!order) {
         KT.mount(host, '<div class="panel"><div class="empty">' +
           '<div class="empty__art">' + KT.icon("receipt", 38) + "</div>" +

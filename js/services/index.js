@@ -40,6 +40,7 @@ async function boot() {
   const { notificationService } = await import("./notifications.js");
   const { pushService } = await import("./push.js");
   const { rewardsService } = await import("./rewards.js");
+  const { reviewPromptService } = await import("./review-prompt.js");
 
   /* Every live service is Supabase now, so one error handler covers them. */
   const errorMessage = supaError;
@@ -60,6 +61,7 @@ async function boot() {
     notifications: notificationService,
     push: pushService,
     rewards: rewardsService,
+    reviewPrompt: reviewPromptService,
     errorMessage,
     backend: {
       auth: "supabase", profile: "supabase",
@@ -70,7 +72,8 @@ async function boot() {
       chat: "supabase+realtime", careers: "supabase",
       notifications: "supabase+realtime",
       push: "web-push+vapid",
-      rewards: "supabase"
+      rewards: "supabase",
+      reviewPrompt: "supabase"
     }
   };
 
