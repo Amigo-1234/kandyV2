@@ -45,6 +45,9 @@
   var ctx = { role: "staff" };
 
   function canAdjust() { return KT.admin.rank(ctx.role) >= KT.admin.rank("supervisor"); }
+  /* Creating a menu item is a manager act — the same rank Menu management
+     requires, and the same one RLS enforces on insert (is_manager()). */
+  function canAddItem() { return KT.admin.rank(ctx.role) >= KT.admin.rank("admin"); }
 
   function esc(v) {
     return String(v == null ? "" : v)
@@ -288,10 +291,18 @@
            Observed exactly that crossing 2026-09-03 into 09-04 during
            testing, which is why there is a way to re-ask.
         */
-        '<button class="btn btn--soft btn--sm" type="button" data-invretry' +
-          (state.loading ? " disabled" : "") + ">" +
-          (state.loading ? KT.spinner(15) + "<span>Refreshing…</span>" : "Refresh") +
-        "</button>" +
+        '<div class="mhead__actions">' +
+          '<button class="btn btn--soft btn--sm" type="button" data-invretry' +
+            (state.loading ? " disabled" : "") + ">" +
+            (state.loading ? KT.spinner(15) + "<span>Refreshing…</span>" : "Refresh") +
+          "</button>" +
+          /* Opens the Menu management editor (one create form, one set of
+             rules); saving returns here and reloads the board. */
+          (canAddItem()
+            ? '<a class="btn btn--primary btn--sm" href="#/menu-manage?new=1&amp;from=inventory" data-invadd>' +
+                KT.icon("plus", 15) + "<span>Add item</span></a>"
+            : "") +
+        "</div>" +
       "</header>" + body);
 
     if (key) {

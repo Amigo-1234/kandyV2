@@ -19,6 +19,13 @@ const ITEM_COLUMNS =
   "id, name, blurb, description, price, category_id, section, status, " +
   "image_key, image_url, is_featured, sort_order, created_at, updated_at";
 
+/* How an item is sold — the existing menu_items.sale_unit CHECK vocabulary. */
+export const SALE_UNITS = [
+  { id: "unit",  label: "Per item" },
+  { id: "scoop", label: "Per scoop" },
+  { id: "cup",   label: "Per cup" }
+];
+
 export const STATUSES = [
   { id: "available", label: "Available" },
   { id: "sold_out",  label: "Sold out" },
@@ -65,11 +72,15 @@ export function validate(form) {
   if (form.status && !STATUSES.some((s) => s.id === form.status)) {
     errors.status = "Unknown availability.";
   }
+  if (form.saleUnit && !SALE_UNITS.some((u) => u.id === form.saleUnit)) {
+    errors.saleUnit = "Choose how it is sold.";
+  }
   return { valid: Object.keys(errors).length === 0, errors };
 }
 
 export const adminMenuService = {
   STATUSES,
+  SALE_UNITS,
   validate,
 
   async categories() {
@@ -140,10 +151,17 @@ export const adminMenuService = {
     };
     if (form.imageUrl !== undefined) payload.image_url = form.imageUrl || null;
 
+    /* On CREATE only, the two existing inventory columns may be set: an item
+       added from the Inventory screen is stock-tracked from the start (the
+       inventory board lists tracks_stock items only). Edits never send them,
+       so this cannot reclassify an existing product. */
+    const created = { section: form.categoryId };
+    if (form.saleUnit) created.sale_unit = form.saleUnit;
+    if (form.tracksStock === true) created.tracks_stock = true;
+
     const query = id
       ? supabase.from(TABLES.menuItems).update(payload).eq("id", id)
-      : supabase.from(TABLES.menuItems).insert(
-          Object.assign({ section: form.categoryId }, payload));
+      : supabase.from(TABLES.menuItems).insert(Object.assign(created, payload));
 
     const { data, error } = await query.select(ITEM_COLUMNS);
     if (error) throw error;

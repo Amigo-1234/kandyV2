@@ -24,7 +24,8 @@
     search: "", category: "all", status: "all", live: false,
     editing: null,        /* null | {} for new | item object */
     form: null, formErrors: {}, saving: false, uploading: false,
-    confirm: null         /* {kind:'item'|'category', id, name} */
+    confirm: null,        /* {kind:'item'|'category', id, name} */
+    returnTo: null        /* "inventory" when opened by Inventory's Add item */
   };
 
   function can(what) {
@@ -205,6 +206,15 @@
                   return '<option value="' + esc(c.id) + '"' +
                     (f.categoryId === c.id ? " selected" : "") + ">" + esc(c.name) + "</option>";
                 }).join("") + "</select>") +
+            (isNew && state.returnTo === "inventory"
+              ? field("saleUnit", "Sold",
+                  '<select class="input" name="saleUnit">' +
+                    (svc ? svc.SALE_UNITS : []).map(function (u) {
+                      return '<option value="' + u.id + '"' +
+                        ((f.saleUnit || "unit") === u.id ? " selected" : "") + ">" + u.label + "</option>";
+                    }).join("") + "</select>",
+                  "Added from Inventory, so it is stock-tracked and appears on the inventory board.")
+              : "") +
             field("status", "Availability",
               '<select class="input" name="status">' +
                 (svc ? svc.STATUSES : []).map(function (s) {
@@ -225,7 +235,8 @@
               '<span class="field__hint">JPEG, PNG or WebP up to 5&nbsp;MB. Leaving this blank keeps the bundled photo.</span>' +
             "</div>" +
             '<div class="mform__actions">' +
-              '<button class="btn btn--primary" type="submit" data-msave>' +
+              '<button class="btn btn--primary" type="submit" data-msave' +
+                (state.saving || state.uploading ? " disabled" : "") + ">" +
                 (state.saving ? KT.spinner(15) + "<span>Saving…</span>" : (isNew ? "Create item" : "Save changes")) +
               "</button>" +
               '<button class="btn btn--ghost" type="button" data-mclose>Cancel</button>' +
@@ -311,13 +322,15 @@
     }
   }
 
-  function openForm(item) {
+  function openForm(item, opts) {
+    opts = opts || {};
     state.editing = item || {};
     state.form = item
       ? { name: item.name, blurb: item.blurb, description: item.description,
           price: item.price, categoryId: item.categoryId, status: item.status,
           imageUrl: item.imageUrl }
-      : { name: "", blurb: "", description: "", price: "", categoryId: "", status: "available", imageUrl: "" };
+      : { name: "", blurb: "", description: "", price: "", categoryId: "", status: "available", imageUrl: "",
+          saleUnit: opts.fromInventory ? "unit" : "", tracksStock: opts.fromInventory === true };
     state.formErrors = {};
     render();
   }
@@ -326,31 +339,41 @@
     var form = KT.qs("[data-mform]");
     if (!form) return state.form;
     var f = {};
-    ["name", "blurb", "description", "price", "categoryId", "status"].forEach(function (k) {
+    ["name", "blurb", "description", "price", "categoryId", "status", "saleUnit"].forEach(function (k) {
       var el = form.querySelector('[name="' + k + '"]');
       if (el) f[k] = el.value;
     });
     f.imageUrl = state.form.imageUrl;
+    f.tracksStock = state.form.tracksStock === true;
     return f;
   }
 
   async function save() {
+    /* One create per click: a second submit while the first is in flight (or
+       while a photo is still uploading) is ignored rather than inserting a
+       duplicate item. */
+    if (state.saving || state.uploading) return;
     state.form = readForm();
     var check = svc.validate(state.form);
     state.formErrors = check.errors;
     if (!check.valid) { render(); return; }
 
     state.saving = true; render();
+    var left = false;
     try {
       var saved = await svc.adminMenuService.save(state.editing.id || null, state.form);
       KT.toast(state.editing.id ? "Item updated." : "Item created.", "success");
       state.editing = null; state.form = null;
+      /* Opened from Inventory: go back there; it reloads, so the new item is
+         on the board straight away. Nothing more is drawn here. */
+      if (state.returnTo) { var back = state.returnTo; state.returnTo = null; left = true; go(back); return saved; }
       await load({ refresh: true });
       return saved;
     } catch (error) {
       KT.toast(KT.services.errorMessage(error), "error", { duration: 6000 });
     } finally {
-      state.saving = false; render();
+      state.saving = false;
+      if (!left) render();
     }
   }
 
@@ -386,6 +409,15 @@
     }
   }
 
+  function go(view) { window.location.hash = "#/" + view; }
+
+  /* Closing the editor: back to Inventory if that is where it was opened. */
+  function closeForm() {
+    state.editing = null; state.form = null;
+    if (state.returnTo) { var back = state.returnTo; state.returnTo = null; go(back); return; }
+    render();
+  }
+
   /* ---- Realtime -------------------------------------------------------- */
 
   function startWatch() {
@@ -413,6 +445,13 @@
       }
       await load();
       startWatch();
+      /* #/menu-manage?new=1&from=inventory — Inventory's "Add item". The
+         editor is the same one "New item" opens; permission is still decided
+         by can("edit") here and by RLS on insert. */
+      if (qp.new === "1" && can("edit") && !state.editing) {
+        state.returnTo = qp.from === "inventory" ? "inventory" : null;
+        openForm(null, { fromInventory: state.returnTo === "inventory" });
+      }
     }, 0);
     return '<div data-menu-mount>' + KT.loadingLabel("Loading menu…") + KT.skeleton.orders(4) + "</div>";
   }
@@ -422,7 +461,7 @@
 
   function teardown() {
     if (unwatch) { unwatch(); unwatch = null; }
-    state.live = false; state.editing = null; state.form = null; state.confirm = null;
+    state.live = false; state.editing = null; state.form = null; state.confirm = null; state.returnTo = null;
   }
   KT.admin.views.menuTeardown = teardown;
   KT.admin.views["menu-manageTeardown"] = teardown;
@@ -455,7 +494,7 @@
       if (d) { state.confirm = { kind: "item", id: d.id, name: d.name }; render(); }
       return;
     }
-    if (t.closest("[data-mclose]"))   { state.editing = null; state.form = null; render(); return; }
+    if (t.closest("[data-mclose]"))   { closeForm(); return; }
     if (t.closest("[data-mcancel]"))  { state.confirm = null; render(); return; }
     if (t.closest("[data-mconfirmdel]")) { doDelete(); return; }
     if (t.closest("[data-mimgclear]")) {
@@ -484,6 +523,6 @@
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
     if (state.confirm) { state.confirm = null; render(); }
-    else if (state.editing) { state.editing = null; state.form = null; render(); }
+    else if (state.editing) { closeForm(); }
   });
 })(window.KT || (window.KT = {}));
