@@ -13,9 +13,11 @@
    whatever amount the caller passes. On the success path only, a top-up is
    credited only when
 
-     - the reference is KTW-... and equals the reference inside the signed
-       payload, metadata.purpose is wallet_funding and metadata.user_id is
-       the intent's owner (reason 'binding' otherwise), and
+     - the signed payload is event charge.success with data.status success,
+       the reference is exactly KTW-<18 uppercase hex> and equals the
+       reference inside the signed payload, metadata.purpose is
+       wallet_funding and metadata.user_id is the intent's owner (reason
+       'binding' otherwise), and
      - the signed kobo figures prove the charge is the intent exactly, or the
        intent plus no more than Paystack's signed fee (reason 'amount').
 
@@ -90,12 +92,16 @@ begin
     return jsonb_build_object('status','not_credited','gateway_status',p_gateway_status);
   end if;
 
-  -- Binding (0080): a successful payment credits a wallet only if it was
-  -- started FOR this intent by this intent's owner. wallet-fund-initialize
-  -- always generates the reference as KTW-<18 hex> and signs metadata
+  -- Binding (0080): a successful payment credits a wallet only if the signed
+  -- payload is itself a successful charge and it was started FOR this intent
+  -- by this intent's owner. wallet-fund-initialize always generates the
+  -- reference as KTW-<18 uppercase hex> and signs metadata
   -- {purpose: 'wallet_funding', user_id}; anything else is recorded as a
-  -- mismatch and never credited. Exact string comparisons (no LIKE).
-  if left(p_reference, 4) is distinct from 'KTW-'
+  -- mismatch and never credited. Exact comparisons (no LIKE); the reference
+  -- regex is anchored and case-sensitive.
+  if coalesce(p_raw ->> 'event', '') is distinct from 'charge.success'
+     or coalesce(p_raw -> 'data' ->> 'status', '') is distinct from 'success'
+     or p_reference !~ '^KTW-[0-9A-F]{18}$'
      or coalesce(p_raw -> 'data' ->> 'reference', '') is distinct from p_reference
      or coalesce(p_raw -> 'data' -> 'metadata' ->> 'purpose', '') is distinct from 'wallet_funding'
      or coalesce(p_raw -> 'data' -> 'metadata' ->> 'user_id', '') is distinct from v_intent.user_id::text then
