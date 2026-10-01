@@ -256,8 +256,12 @@ export const authService = {
     const explicit = new URLSearchParams(window.location.search).get("next");
     /* An explicit destination is an intent the person expressed — a staff
        member who clicked "sign in to check out" wants the cart, not the
-       kitchen. Honour it for everyone and route by role only otherwise. */
-    if (explicit) return authService.nextUrl();
+       kitchen. Honour it for everyone and route by role only otherwise.
+       next=account is NOT such an intent: it is just the generic "Sign in"
+       button on the account page (and chat / product), i.e. "my home". Treating it
+       as explicit sent every admin who signed in that way to the customer
+       account page, so it routes by role like no next at all. */
+    if (explicit && explicit !== "account") return authService.nextUrl();
 
     let role = "customer";
     try {
