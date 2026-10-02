@@ -26,9 +26,8 @@
   "use strict";
 
   var KEY = "kt.referral";
-  /* The alphabet generate_referral_code() uses, and the same length. Anything
-     that cannot be one of our codes is discarded here rather than sent. */
-  var SHAPE = /^KANDY[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/;
+  /* Generated and customized codes share the database-validated shape. */
+  var SHAPE = /^[A-Z0-9]{4,20}$/;
 
   function clean(value) {
     var v = String(value == null ? "" : value).trim().toUpperCase();

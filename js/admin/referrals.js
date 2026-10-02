@@ -1,19 +1,4 @@
-/* ==========================================================================
-   Kandy's Treats — Referral analytics
-   --------------------------------------------------------------------------
-   How the referral programme is doing, in aggregate. Manager+ only, and
-   enforced by admin_referral_overview() rather than by this file — a
-   supervisor who edits the hash reaches a refusal from Postgres, not an
-   empty screen that looks like a bug.
-
-   AGGREGATES ONLY, ON PURPOSE
-   ---------------------------
-   There is no per-customer list here and no way to ask for one. A manager
-   needs to know whether the programme converts and what it is costing, not
-   who invited whom — and a referral graph is exactly the kind of social data
-   that should not be casually browsable by staff. The RPC returns counts and
-   sums; it never returns a name, an email, a phone number or a user id.
-   ========================================================================== */
+/* Referral aggregates and admin/owner-only partner controls. RPCs enforce access. */
 (function (KT) {
   "use strict";
 
@@ -37,6 +22,26 @@
       '<p class="rstat__value">' + esc(String(value)) + "</p>" +
       (note ? '<p class="rstat__note">' + esc(note) + "</p>" : "") +
     "</div>";
+  }
+
+  function partnerHTML() {
+    var d = state.data && state.data.partners;
+    if (!d) return "";
+    return '<div class="panel apanel"><h3>Celebrity / Partner referrers</h3>' +
+      '<label for="partnerSearch">Find customer</label><input id="partnerSearch" type="search" data-partner-search placeholder="Search by name or promo code">' +
+      '<select data-partner-user><option value="">Select customer</option>' + d.users.map(function (u) {
+        return '<option value="' + esc(u.id) + '">' + esc(u.name || u.id) + ' — ' +
+          (u.enabled ? 'Partner' : 'Normal') + ' — ' + esc(u.code || 'No code') + '</option>';
+      }).join('') + '</select><div data-partner-account-detail aria-live="polite"></div>' +
+      '<label for="partnerCode">Custom promo code</label><input id="partnerCode" data-partner-code placeholder="Optional; preserves previous aliases" maxlength="20">' +
+      '<button class="btn btn--soft" data-partner-enable>Enable Partner</button>' +
+      '<button class="btn btn--soft" data-partner-disable>Disable Partner</button>' +
+      '<div style="overflow:auto"><table><thead><tr><th>Referrer</th><th>Customer</th><th>Mode at signup</th><th>Code used</th><th>Order</th><th>10% base</th><th>Commission</th><th>Credited</th></tr></thead><tbody>' +
+      d.referrals.map(function (r) {
+        return '<tr><td>' + esc((d.users.find(function (u) { return u.id === r.referrer_id; }) || {}).name || r.referrer_id) + '</td><td>' + esc(r.customer_name || r.customer_id) + '</td><td>' + (r.partner_reward ? 'Partner' : 'Normal') + '</td><td>' + esc(r.code_used || 'Unknown (legacy)') +
+          '</td><td>' + esc(r.order_id || 'Pending') + '</td><td>' + esc(r.base == null ? '—' : KT.naira(r.base)) +
+          '</td><td>' + esc(r.commission == null ? '—' : KT.naira(r.commission)) + '</td><td>' + (r.credited ? 'Yes' : 'No') + '</td></tr>';
+      }).join('') + '</tbody></table></div></div>';
   }
 
   function bodyHTML() {
@@ -107,7 +112,7 @@
   function head() {
     return '<header class="apage__head"><div><h1>Referrals</h1>' +
       '<p class="apage__lede">How Kandy Rewards is performing. Aggregates ' +
-      "only — no individual customer data.</p></div></header>";
+      "with admin-only partner controls.</p></div></header>";
   }
 
   function render() {
@@ -122,7 +127,7 @@
         "<h3>We could not load referral analytics</h3><p>" + esc(state.error) + "</p>" +
         '<button class="btn btn--primary" type="button" data-rretry>Try again</button>' +
         "</div></div>";
-    } else body = bodyHTML();
+    } else body = bodyHTML() + partnerHTML();
     KT.mount(host, head() + body);
   }
 
@@ -132,6 +137,7 @@
     try {
       if (!svc) svc = (await import("../services/rewards.js")).rewardsService;
       var d = await svc.adminOverview();
+      d.partners = await svc.partners();
       if (gen !== mountGen) return;
       state.data = d;
     } catch (error) {
@@ -153,7 +159,54 @@
 
   KT.admin.views.referralsTeardown = function () { mountGen += 1; };
 
-  document.addEventListener("click", function (e) {
+  function selectedPartnerDetail() {
+    var d = state.data && state.data.partners;
+    var select = KT.qs("[data-partner-user]");
+    var host = KT.qs("[data-partner-account-detail]");
+    if (!d || !select || !host) return;
+    var user = d.users.find(function (u) { return u.id === select.value; });
+    if (!user) { host.innerHTML = ""; return; }
+    host.innerHTML = '<p><strong>Mode:</strong> ' + (user.enabled ? 'Celebrity / Partner' : 'Normal') +
+      ' · <strong>Current code:</strong> ' + esc(user.code || 'No code yet') +
+      ' · <strong>Old aliases:</strong> ' + esc((user.aliases || []).join(', ') || 'None') + '</p>';
+  }
+
+  document.addEventListener("input", function (e) {
+    var target = /** @type {HTMLInputElement} */ (e.target);
+    if (!target.matches("[data-partner-search]")) return;
+    var select = KT.qs("[data-partner-user]");
+    var d = state.data && state.data.partners;
+    if (!select || !d) return;
+    var term = String(target.value || "").trim().toLowerCase();
+    var selected = select.value;
+    select.innerHTML = '<option value="">Select customer</option>' + d.users.filter(function (u) {
+      return !term || [u.name, u.code].concat(u.aliases || []).join(" ").toLowerCase().includes(term);
+    }).map(function (u) {
+      return '<option value="' + esc(u.id) + '">' + esc(u.name || u.id) + ' — ' +
+        (u.enabled ? 'Partner' : 'Normal') + ' — ' + esc(u.code || 'No code') + '</option>';
+    }).join('');
+    if (d.users.some(function (u) { return u.id === selected && (!term || [u.name,u.code].concat(u.aliases||[]).join(' ').toLowerCase().includes(term)); })) select.value = selected;
+    selectedPartnerDetail();
+  });
+
+  document.addEventListener("change", function (e) {
+    if ((/** @type {Element} */ (e.target)).matches("[data-partner-user]")) selectedPartnerDetail();
+  });
+
+  document.addEventListener("click", async function (e) {
+    var target = /** @type {Element} */ (e.target);
+    var enable = target.closest("[data-partner-enable]");
+    var disable = target.closest("[data-partner-disable]");
+    if (enable || disable) {
+      var select = /** @type {HTMLSelectElement} */ (document.querySelector("[data-partner-user]"));
+      var input = /** @type {HTMLInputElement} */ (document.querySelector("[data-partner-code]"));
+      if (!select.value) { KT.toast("Select a customer first.", "info"); return; }
+      try {
+        await svc.setPartner(select.value, !!enable, input.value);
+        await load();
+      } catch (error) { KT.toast(String(error.message || error), "error"); }
+      return;
+    }
     if (e.target.closest("[data-rretry]")) load();
   });
 })(window.KT || (window.KT = {}));

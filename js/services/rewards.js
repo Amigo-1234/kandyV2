@@ -63,6 +63,20 @@ export const rewardsService = {
    * NO ARGUMENTS, deliberately — see the header. The server decides the cost,
    * the payout and the recipient. All this can do is ask.
    */
+  async customizeCode(code) {
+    const { data, error } = await supabase.rpc("customize_referral_code", { p_code: code });
+    if (error) throw error;
+    return data;
+  },
+  async partners() {
+    const { data, error } = await supabase.rpc("admin_partner_referrals");
+    if (error) throw error;
+    return data;
+  },
+  async setPartner(userId, enabled, code) {
+    const { error } = await supabase.rpc("admin_set_partner_referrer", { p_user_id: userId, p_enabled: enabled, p_code: code || null });
+    if (error) throw error;
+  },
   async redeem() {
     const { data, error } = await supabase.rpc("redeem_reward_points");
     if (error) throw error;

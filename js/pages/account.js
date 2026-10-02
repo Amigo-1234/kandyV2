@@ -280,6 +280,7 @@
         /* ---- sharing ---- */
         '<div class="rewards__share">' +
           '<p class="rewards__label" id="refCodeLabel">Your referral code</p>' +
+          '<button class="btn btn--soft btn--sm" type="button" data-customize-code>Edit / Customize code</button>' +
           '<div class="rewards__codeRow">' +
             '<code class="rewards__code" aria-labelledby="refCodeLabel">' +
               esc(code || "…") + "</code>" +
@@ -964,6 +965,15 @@
         }
       }
 
+      if ((/** @type {Element} */ (t)).closest("[data-customize-code]")) {
+        var custom = window.prompt("Choose 4–20 letters or numbers. Old links will still work.", state.rewards.code || "");
+        if (custom === null) return;
+        try {
+          state.rewards.code = await KT.services.rewards.customizeCode(custom);
+          render(); KT.toast("Promo code saved.", "success");
+        } catch (error) { KT.toast(String(error.message || error), "error"); }
+        return;
+      }
       if (t.closest("[data-copy-code]")) {
         e.preventDefault();
         await copy(state.rewards && state.rewards.code, "Referral code copied.");
