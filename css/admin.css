@@ -3538,3 +3538,73 @@
    Direct children only: spacing INSIDE a panel is still the panel's own.
 */
 .apage > * { margin-bottom: 0; }
+
+/* Admin Referrals: scoped partner controls and reward settings. */
+.refpartner, .refsettings { border-radius: var(--r-lg); }
+.refsection-head, .refresults-head, .refselected-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+}
+.refsection-head { margin-bottom: 22px; }
+.refsection-head h2 { margin: 4px 0 8px; font-size: 1.2rem; line-height: 1.35; }
+.refsection-head p, .refresults-head p { margin: 0; font-size: .86rem; line-height: 1.5; }
+.refeyebrow { font-size: .7rem !important; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3) !important; }
+.refcontrols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+.refcontrol-card { min-width: 0; padding: 20px; background: var(--surface-3); border: 1px solid var(--line); border-radius: var(--r-lg); }
+.refcontrol-card h3, .refresults-head h3 { margin: 0 0 16px; font-size: .98rem; }
+.refcontrol-card .field { margin: 0 0 16px; }
+.refcontrol-card .field__hint { line-height: 1.5; margin-bottom: 0; }
+.refcontrol-card .select { text-overflow: ellipsis; padding-right: 32px; }
+.refcode-input { text-transform: uppercase; letter-spacing: .07em; }
+.refcode-input::placeholder { text-transform: none; letter-spacing: normal; }
+.refselected { padding: 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface); }
+.refselected-head strong { display: block; margin-top: 4px; overflow-wrap: anywhere; }
+.refselected dl { margin: 16px 0 0; }
+.refselected dl > div + div { margin-top: 14px; }
+.refselected dt { font-size: .74rem; color: var(--ink-3); margin-bottom: 6px; }
+.refselected dd { margin: 0; }
+.refaliases { display: flex; flex-wrap: wrap; gap: 6px; }
+.refcode { display: inline-block; background: var(--surface-3); border: 1px solid var(--line); border-radius: 6px; padding: 3px 7px; font-size: .78rem; overflow-wrap: anywhere; }
+.refalias-note { margin: 12px 0 0; font-size: .78rem; line-height: 1.5; color: var(--ink-3) !important; }
+.refmode-actions { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 20px; }
+.refmode-actions p { margin: 6px 0 14px; font-size: .8rem; line-height: 1.5; }
+.refbuttons { display: flex; flex-wrap: wrap; gap: 10px; }
+.refbuttons .btn { flex: 1 1 150px; justify-content: center; min-height: 44px; }
+.refdisable { --btn-fg: var(--chili); border-color: var(--line-2); }
+.refdisable:hover { --btn-fg: var(--chili); }
+.refbadge { display: inline-flex; align-items: center; flex: none; border: 1px solid var(--line); border-radius: var(--r-pill); padding: 4px 9px; font-size: .72rem; line-height: 1.4; font-weight: 700; white-space: nowrap; }
+.refbadge--partner { color: var(--ink-on-pink-pill); background: var(--kt-pink-50); border-color: var(--kt-pink-200); }
+.refbadge--neutral { color: var(--ink-3); background: var(--surface-3); }
+.refbadge--credited { color: var(--ink); background: var(--surface-3); }
+.refbadge--credited::before { content: '✓'; margin-right: 5px; color: var(--ink); }
+.refbadge--pending { color: var(--ink-2); border-style: dashed; background: var(--surface); }
+.refresults-head { margin: 28px 0 16px; align-items: center; }
+.refresults-head h3 { margin-bottom: 5px; }
+.refcount { font-size: .78rem; color: var(--ink-3); white-space: nowrap; }
+.reftable-wrap { max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r-md); }
+.reftable { width: 100%; border-collapse: collapse; min-width: 980px; font-size: .82rem; }
+.reftable th { text-align: left; font-size: .7rem; letter-spacing: .03em; color: var(--ink-3); background: var(--surface-3); white-space: nowrap; }
+.reftable th, .reftable td { padding: 14px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.reftable td { color: var(--ink-2); max-width: 200px; overflow-wrap: anywhere; }
+.reftable tr:last-child td { border-bottom: 0; }
+.reftable tbody tr:hover { background: var(--surface-3); }
+.reftable .refmoney { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.reftable .reforder { min-width: 150px; font-family: monospace; font-size: .72rem; }
+.reftable .refempty { padding: 28px; max-width: none; text-align: center; }
+.refmuted { color: var(--ink-3); font-size: .8rem; line-height: 1.5; }
+.refscroll-hint { display: none; margin: 0 0 10px; font-size: .75rem; color: var(--ink-3) !important; }
+.refsettings-list { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; margin: 0; }
+.refsettings-list .osum__row { display: block; padding: 16px; border: 1px solid var(--line); background: var(--surface-3); border-radius: var(--r-md); }
+.refsettings-list dt { color: var(--ink-3); font-size: .78rem; }
+.refsettings-list dd { margin: 8px 0 0; font-weight: 700; font-size: 1rem; }
+@media (max-width: 1100px) { .refscroll-hint { display: block; } }
+@media (max-width: 800px) { .refcontrols { grid-template-columns: minmax(0,1fr); } }
+@media (max-width: 520px) {
+  .refpartner, .refsettings { padding: 16px; }
+  .refsection-head { flex-wrap: wrap; gap: 10px; }
+  .refcontrol-card { padding: 16px; }
+  .refsettings-list { grid-template-columns: minmax(0,1fr); }
+  .refcontrol-card > .btn { width: 100%; justify-content: center; }
+  .refbuttons { flex-direction: column; }
+  .refbuttons .btn { flex: auto; width: 100%; }
+  .refresults-head { flex-wrap: wrap; gap: 8px; }
+}
