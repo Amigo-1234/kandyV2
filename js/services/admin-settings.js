@@ -1,8 +1,9 @@
 /* ==========================================================================
    Kandy's Treats — App settings data access
    --------------------------------------------------------------------------
-   Six keys, all of which already existed in public.app_settings. Nothing here
-   invents a setting, and nothing here duplicates data that lives elsewhere —
+   Six keys that already existed in public.app_settings, plus
+   google_review_url (migration 0078, owner-only, empty = review prompt off).
+   Nothing here duplicates data that lives elsewhere —
    the menu, coupons and announcements have their own modules.
 
    READ  admin_settings() — one RPC, manager+, which returns each row together
@@ -72,6 +73,15 @@ export const SETTING_FIELDS = {
     fields: [{ name: "rate", label: "Rate", step: "0.001", min: 0, max: 0.2 }],
     pack: (v) => Number(v.rate),
     unpack: (value) => ({ rate: value })
+  },
+  google_review_url: {
+    kind: "fields",
+    blurb: "The official Google review link from your Google Business Profile " +
+           "(\"Ask for reviews\"). Leave it empty to switch the review prompt off. " +
+           "Customers see it only after a paid order is completed.",
+    fields: [{ name: "url", label: "Review link", type: "url" }],
+    pack: (v) => String(v.url || "").trim(),
+    unpack: (value) => ({ url: typeof value === "string" ? value : "" })
   },
   service_area: {
     kind: "fields",
