@@ -37,6 +37,17 @@ export const adminFinanceService = {
     return data;
   },
 
+  /**
+   * Paid, non-refunded order value per Lagos day / week / month
+   * (admin_sales_series, 0082). Read-only; manager+ server-side.
+   * @param {"day"|"week"|"month"} grain
+   */
+  async salesSeries(grain = "day") {
+    const { data, error } = await supabase.rpc("admin_sales_series", { p_grain: grain });
+    if (error) throw error;
+    return data;
+  },
+
   async reconciliation({ limit = 200 } = {}) {
     const { data, error } = await supabase.rpc("admin_reconciliation", { p_limit: limit });
     if (error) throw error;

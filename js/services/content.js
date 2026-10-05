@@ -19,6 +19,24 @@ import { authService } from "./auth.js";
 
 export const contentService = {
   /**
+   * Whether delivery is on (app_settings.delivery_enabled, 0082). Public
+   * read. Advisory only — the orders trigger refuses a delivery order when
+   * it is off, whatever this returned. Unknown (network, missing row) reads
+   * as ON so a flaky connection never hides delivery; the server decides.
+   * @returns {Promise<boolean>}
+   */
+  async deliveryEnabled() {
+    try {
+      const { data, error } = await supabase
+        .from("app_settings").select("value").eq("key", "delivery_enabled").maybeSingle();
+      if (error || !data) return true;
+      return data.value !== false;
+    } catch {
+      return true;
+    }
+  },
+
+  /**
    * Live announcements, newest first. Public read, so this works for guests.
    * @returns {Promise<Array<{id:string,text:string}>>}
    */
