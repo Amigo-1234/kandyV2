@@ -115,7 +115,24 @@ export const adminMenuService = {
       .order("name", { ascending: true })
       .limit(opts.limit || 300);
     if (error) throw error;
-    return (data || []).map(toItem);
+    const items = (data || []).map(toItem);
+
+    /* Remaining portions for stock-tracked dishes (admin_stock_status, 0082),
+       so the screen can say WHY a dish shows sold out to customers. A failure
+       here only drops the badge; the list itself still loads. */
+    try {
+      const { data: st, error: stErr } = await supabase.rpc("admin_stock_status");
+      if (!stErr && st) {
+        const left = new Map((st.items || []).map((r) => [String(r.menu_item_id), Number(r.remaining)]));
+        items.forEach((i) => {
+          if (left.has(String(i.id))) {
+            i.stockRemaining = left.get(String(i.id));
+            i.stockRulesOn = st.enabled !== false;
+          }
+        });
+      }
+    } catch { /* badge only */ }
+    return items;
   },
 
   /**

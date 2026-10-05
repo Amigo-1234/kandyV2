@@ -929,6 +929,76 @@
 .fin__section span { font-family: var(--font-ui); font-size: 0.78rem; font-weight: 600; color: var(--ink-3); }
 .fin__section:first-child { margin-top: 0; }
 
+/* ---- Finance: sales trend (single series, bars) ---------------------------
+   Bars carry the brand pink (validated >= 3:1 on both surfaces); every text
+   stays in ink tokens. Hairline solid gridlines, 4px rounded data-ends
+   square at the baseline, bar width capped at 24px. */
+.salesc__grains { margin: 0 0 12px; }
+.salesc__tiles { margin-bottom: 12px; }
+.salesc { padding: 16px 16px 12px; }
+.salesc__peak { margin: 0 0 12px; font-size: 0.86rem; color: var(--ink-2); }
+.salesc__plot {
+  position: relative; height: 220px; margin: 0 0 8px;
+  padding-left: 48px;                 /* y-axis labels */
+}
+.salesc__grid { position: absolute; inset: 0 0 26px 48px; pointer-events: none; }
+.salesc__tick {
+  position: absolute; left: 0; right: 0; height: 0;
+  border-top: 1px solid var(--line);
+}
+.salesc__tick span {
+  position: absolute; right: calc(100% + 8px); top: -0.6em;
+  font-size: 0.7rem; color: var(--ink-3); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.salesc__bars {
+  position: absolute; inset: 0 0 0 48px;
+  display: flex; align-items: stretch; gap: 2px;
+}
+.salesc__col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+.salesc__hit {
+  flex: 1 1 auto; display: flex; align-items: flex-end; justify-content: center;
+  margin: 0; padding: 0; border: 0; background: none; cursor: pointer;
+  border-radius: 6px 6px 0 0; margin-bottom: 26px;
+}
+.salesc__hit:hover, .salesc__hit:focus-visible { background: var(--surface-3); outline: none; }
+.salesc__hit:focus-visible { box-shadow: inset 0 0 0 2px var(--kt-pink); }
+.salesc__bar {
+  display: block; width: 100%; max-width: 24px; min-height: 0;
+  background: var(--kt-pink); border-radius: 4px 4px 0 0;
+}
+.salesc__bar.is-zero { min-height: 2px; background: var(--line-2); }
+.salesc__x {
+  position: absolute; bottom: 0; transform: translateX(-50%);
+  font-size: 0.68rem; color: var(--ink-3); white-space: nowrap;
+}
+.salesc__col { position: relative; }
+.salesc__x { left: 50%; }
+.salesc__tip {
+  position: absolute; top: 0; z-index: 3; pointer-events: none;
+  display: grid; gap: 2px; padding: 8px 10px; min-width: 120px;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line-2); border-radius: var(--r-sm);
+  box-shadow: 0 6px 18px rgba(28, 16, 23, 0.12); font-size: 0.78rem;
+}
+.salesc__tip strong { font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+.salesc__tip span { color: var(--ink-3); }
+.salesc__table { margin-top: 6px; font-size: 0.84rem; }
+.salesc__table summary { cursor: pointer; color: var(--ink-2); font-weight: 600; padding: 4px 0; }
+.salesc__scroll { overflow-x: auto; margin-top: 8px; }
+.salesc__table table { width: 100%; border-collapse: collapse; }
+.salesc__table th, .salesc__table td {
+  text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+.salesc__table th { color: var(--ink-3); font-weight: 600; font-size: 0.76rem; }
+@media (max-width: 560px) {
+  .salesc__plot { height: 190px; padding-left: 40px; }
+  .salesc__grid { left: 40px; }
+  .salesc__bars { left: 40px; }
+  .salesc__x.is-odd { visibility: hidden; }   /* every other label on phones */
+}
+
 .fin__note {
   display: flex; gap: 9px; align-items: flex-start;
   margin: 16px 0; padding: 11px 13px;

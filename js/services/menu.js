@@ -83,7 +83,26 @@ function announce(source) {
 const SELECT = "id, legacy_firestore_id, slug, name, blurb, description, price, " +
                "category_id, section, status, image_key, image_url, rating, tags, is_quick_pick";
 
+/*
+   Dishes the inventory board says are finished (menu_stock_out(), 0082).
+   Ids only — never quantities. They are shown exactly like a manual
+   "Sold out", so every surface that already asks KT.menu.available() — the
+   card, the product sheet, the basket — refuses them with no change of its
+   own. Advisory: checkout re-checks stock on the server regardless, so a
+   failure here just means the storefront falls back to manual status.
+*/
+async function fetchStockOut() {
+  try {
+    const { data, error } = await supabase.rpc("menu_stock_out");
+    if (error || !Array.isArray(data)) return new Set();
+    return new Set(data.map(String));
+  } catch {
+    return new Set();
+  }
+}
+
 async function fetchMenu() {
+  const stockOut = fetchStockOut();
   const { data, error } = await supabase
     .from(TABLES.menuItems)
     .select(SELECT)
@@ -102,7 +121,11 @@ async function fetchMenu() {
   if (error) throw error;
 
   const rows = data || [];
+  const out = await stockOut;
   const items = rows.map(normalise).filter((i) => i.name && i.price > 0);
+  items.forEach((i) => {
+    if (i.status === "available" && out.has(String(i.id))) { i.status = "sold_out"; i.stockOut = true; }
+  });
   const quickPicks = rows.filter((r) => r.is_quick_pick).map((r) => r.id);
   return { items, quickPicks };
 }
@@ -133,24 +156,41 @@ export const menuService = {
     }
   },
 
+  /** Re-read the menu now (also used after checkout refuses a dish). */
+  async refresh() {
+    try {
+      const { items, quickPicks } = await fetchMenu();
+      if (!items.length) return;
+      window.KT.menu.hydrate(items, quickPicks);
+      writeCache(items, quickPicks);
+      announce("live");
+    } catch { /* network drop — keep whatever we have */ }
+  },
+
   /** Live updates while the customer browses (sold-out flips, price changes). */
   watch() {
+    const refresh = () => menuService.refresh();
     const channel = supabase
       .channel("kt-menu")
       .on("postgres_changes",
         { event: "*", schema: "public", table: TABLES.menuItems },
-        async () => {
-          try {
-            const { items, quickPicks } = await fetchMenu();
-            if (!items.length) return;
-            window.KT.menu.hydrate(items, quickPicks);
-            writeCache(items, quickPicks);
-            announce("live");
-          } catch { /* network drop — keep whatever we have */ }
-        })
+        refresh)
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    /* Stock runs out through orders and the inventory board, neither of
+       which touches menu_items, so realtime alone would never say so. A
+       light re-read while the page is visible keeps the badges honest. */
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") refresh();
+    }, 120000);
+    const onVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   },
 
   /** Categories, for the storefront rails. Public read. */

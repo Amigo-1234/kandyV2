@@ -38,6 +38,24 @@ export const SETTING_FIELDS = {
     pack: (v) => !!v.enabled,
     unpack: (value) => ({ enabled: value === true })
   },
+  delivery_enabled: {
+    kind: "toggle",
+    blurb: "Switch delivery off (for example at night) while pickup keeps working. " +
+           "No new delivery order is accepted while it is off — from customers or " +
+           "from staff. Orders already placed are not changed. Switch it back on to " +
+           "resume delivery.",
+    pack: (v) => !!v.enabled,
+    unpack: (value) => ({ enabled: value === true })
+  },
+  stock_availability_enabled: {
+    kind: "toggle",
+    blurb: "Off until you turn it on. When on, a stock-tracked dish goes sold out by itself once the inventory " +
+           "board shows none left, and comes back when a preparation is recorded. " +
+           "Dishes with no stock count yet follow their manual status. A manual " +
+           "\"Sold out\" always wins. Turn off if the stock figures are wrong.",
+    pack: (v) => !!v.enabled,
+    unpack: (value) => ({ enabled: value === true })
+  },
   eta_minutes: {
     kind: "fields",
     blurb: "The times quoted to customers at checkout.",

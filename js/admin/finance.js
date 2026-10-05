@@ -19,7 +19,8 @@
     tab: "overview", loading: true, error: null,
     overview: null, findings: [], events: { total: 0, rows: [] }, wallets: [],
     eventSearch: "", eventStatus: "all",
-    confirm: null, refunding: false
+    confirm: null, refunding: false,
+    salesGrain: "day", sales: null, salesError: null, salesLoading: false
   };
   var searchTimer = null;
 
@@ -49,11 +50,173 @@
       (hint ? '<span class="astat__hint">' + hint + "</span>" : "") + "</div>";
   }
 
+  /* ---- Sales trend --------------------------------------------------------
+
+     One series (paid, non-refunded order value per period), so one colour and
+     no legend — the heading names it. Bars, because the periods are discrete
+     buckets. Hover or focus a bar for its exact figures; the same numbers are
+     in the table underneath, so nothing is hover-only. */
+
+  var GRAINS = [
+    { id: "day",   label: "Daily",   span: "last 14 days",   prev: "previous 14 days" },
+    { id: "week",  label: "Weekly",  span: "last 12 weeks",  prev: "previous 12 weeks" },
+    { id: "month", label: "Monthly", span: "last 12 months", prev: "previous 12 months" }
+  ];
+  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  function grainMeta() {
+    return GRAINS.filter(function (g) { return g.id === state.salesGrain; })[0] || GRAINS[0];
+  }
+
+  /* "2026-10-05" -> "5 Oct" / "Oct" / "Oct 2026" — no Date parsing, so no
+     timezone can shift a Lagos bucket onto the neighbouring day. */
+  function bucketLabel(start, long) {
+    var p = String(start).split("-");
+    var m = MONTHS[(Number(p[1]) || 1) - 1];
+    if (state.salesGrain === "month") return long ? m + " " + p[0] : m;
+    var d = String(Number(p[2]) || "");
+    if (state.salesGrain === "week") return long ? "Week of " + d + " " + m : d + " " + m;
+    return d + " " + m;
+  }
+
+  function compact(v) {
+    v = Number(v) || 0;
+    if (v >= 1e6) return "₦" + (Math.round(v / 1e5) / 10) + "M";
+    if (v >= 1e3) return "₦" + (Math.round(v / 100) / 10) + "k";
+    return "₦" + v;
+  }
+
+  /* Clean y-axis ceiling: 1, 2, 2.5 or 5 x 10^n, so ticks read as round naira. */
+  function niceMax(v) {
+    if (v <= 0) return 1000;
+    var p = Math.pow(10, Math.floor(Math.log10(v)));
+    var steps = [1, 2, 2.5, 5, 10];
+    for (var i = 0; i < steps.length; i++) if (steps[i] * p >= v) return steps[i] * p;
+    return 10 * p;
+  }
+
+  function salesHTML() {
+    var g = grainMeta();
+    var chips = '<div class="fin__tabs salesc__grains" role="group" aria-label="Sales period">' +
+      GRAINS.map(function (x) {
+        return '<button class="chip' + (x.id === state.salesGrain ? " is-active" : "") +
+          '" type="button" data-fin-grain="' + x.id + '" aria-pressed="' +
+          (x.id === state.salesGrain) + '">' + x.label + "</button>";
+      }).join("") + "</div>";
+
+    var head = '<h3 class="fin__section">Sales <span>paid orders, refunds excluded · ' +
+      g.span + "</span></h3>";
+
+    if (state.salesError) {
+      return head + chips + '<div class="panel apanel salesc"><p class="fin__note is-bad">' +
+        KT.icon("close", 15) + "<span>Could not load the sales trend: " + esc(state.salesError) +
+        "</span></p></div>";
+    }
+    var d = state.sales;
+    if (!d || state.salesLoading) {
+      return head + chips + '<div class="panel apanel salesc" aria-busy="true">' +
+        KT.skeleton.lines(4) + "</div>";
+    }
+
+    var series = d.series || [];
+    var cur = d.current || {}, prev = d.previous || {};
+    var revenue = Number(cur.revenue) || 0, orders = Number(cur.orders) || 0;
+    var prevRev = Number(prev.revenue) || 0;
+    var delta = prevRev > 0 ? Math.round(((revenue - prevRev) / prevRev) * 100) : null;
+    var max = niceMax(series.reduce(function (m, b) { return Math.max(m, Number(b.revenue) || 0); }, 0));
+    var ticks = [0, 0.25, 0.5, 0.75, 1].map(function (f) { return max * f; });
+    var best = series.reduce(function (a, b) { return (Number(b.revenue) || 0) > (Number(a.revenue) || 0) ? b : a; },
+      series[0] || {});
+
+    var tiles = '<div class="astat__grid salesc__tiles">' +
+      stat("Sales", naira(revenue), orders + " paid order" + (orders === 1 ? "" : "s")) +
+      stat("Average order", orders ? naira(Math.round(revenue / orders)) : "—", g.span) +
+      stat("Vs " + g.prev, delta == null ? "—" : (delta > 0 ? "+" : "") + delta + "%",
+           naira(prevRev) + " before", delta == null ? "" : delta >= 0 ? "good" : "warn") +
+      "</div>";
+
+    var bars = series.map(function (b, i) {
+      var v = Number(b.revenue) || 0;
+      var h = max ? (v / max) * 100 : 0;
+      var label = bucketLabel(b.start, true) + ": " + naira(v) + ", " + (b.orders || 0) +
+        " order" + (b.orders === 1 ? "" : "s");
+      return '<div class="salesc__col">' +
+        '<button class="salesc__hit" type="button" data-sbar="' + i + '" aria-label="' + esc(label) + '">' +
+          '<span class="salesc__bar' + (v ? "" : " is-zero") + '" style="height:' + h.toFixed(2) + '%"></span>' +
+        "</button>" +
+        '<span class="salesc__x' + (i % 2 ? " is-odd" : "") + '">' + esc(bucketLabel(b.start)) + "</span>" +
+      "</div>";
+    }).join("");
+
+    var grid = ticks.map(function (t) {
+      return '<div class="salesc__tick" style="bottom:' + ((t / max) * 100).toFixed(2) + '%">' +
+        "<span>" + compact(t) + "</span></div>";
+    }).join("");
+
+    var table = '<details class="salesc__table"><summary>Show as table</summary>' +
+      '<div class="salesc__scroll"><table><thead><tr><th scope="col">Period</th>' +
+      '<th scope="col">Sales</th><th scope="col">Orders</th></tr></thead><tbody>' +
+      series.slice().reverse().map(function (b) {
+        return "<tr><td>" + esc(bucketLabel(b.start, true)) + "</td><td>" + naira(b.revenue) +
+          "</td><td>" + (b.orders || 0) + "</td></tr>";
+      }).join("") + "</tbody></table></div></details>";
+
+    return head + chips + tiles +
+      '<div class="panel apanel salesc">' +
+        (revenue
+          ? '<p class="salesc__peak">Best ' + (state.salesGrain === "day" ? "day" : state.salesGrain) +
+            ": <strong>" + esc(bucketLabel(best.start, true)) + "</strong> · " + naira(best.revenue) + "</p>"
+          : '<p class="salesc__peak">No paid sales in this period yet.</p>') +
+        '<div class="salesc__plot" data-sales-plot>' +
+          '<div class="salesc__grid" aria-hidden="true">' + grid + "</div>" +
+          '<div class="salesc__bars" role="group" aria-label="Sales by ' +
+            (state.salesGrain === "day" ? "day" : state.salesGrain) + '">' + bars + "</div>" +
+          '<div class="salesc__tip" data-sales-tip hidden></div>' +
+        "</div>" +
+        table +
+      "</div>";
+  }
+
+  function showTip(btn) {
+    var tip = KT.qs("[data-sales-tip]");
+    var plot = KT.qs("[data-sales-plot]");
+    if (!tip || !plot || !state.sales) return;
+    var b = (state.sales.series || [])[Number(btn.getAttribute("data-sbar"))];
+    if (!b) return;
+    tip.textContent = "";
+    var v = document.createElement("strong");
+    v.textContent = naira(b.revenue);
+    var l = document.createElement("span");
+    l.textContent = bucketLabel(b.start, true) + " · " + (b.orders || 0) + " order" + (b.orders === 1 ? "" : "s");
+    tip.appendChild(v); tip.appendChild(l);
+    tip.hidden = false;
+    var pr = plot.getBoundingClientRect(), br = btn.getBoundingClientRect();
+    var x = br.left + br.width / 2 - pr.left;
+    var w = tip.offsetWidth;
+    tip.style.left = Math.max(0, Math.min(pr.width - w, x - w / 2)) + "px";
+  }
+  function hideTip() { var tip = KT.qs("[data-sales-tip]"); if (tip) tip.hidden = true; }
+
+  async function loadSales() {
+    state.salesLoading = true; state.salesError = null;
+    if (state.tab === "overview" && !state.loading) paint();
+    try {
+      state.sales = await svc.salesSeries(state.salesGrain);
+    } catch (error) {
+      state.salesError = (KT.services && KT.services.errorMessage)
+        ? KT.services.errorMessage(error) : String(error.message || error);
+    } finally {
+      state.salesLoading = false;
+      if (state.tab === "overview" && !state.loading) paint();
+    }
+  }
+
   function overviewHTML() {
     var o = state.overview;
     if (!o) return "";
     return (
       '<p class="fin__asof">Figures as at ' + when(o.generated_at) + "</p>" +
+      salesHTML() +
 
       '<h3 class="fin__section">Order value <span>what was asked for</span></h3>' +
       '<div class="astat__grid">' +
@@ -302,6 +465,7 @@
       state.wallets = res[3];
       state.loading = false;
       paint();
+      loadSales();   /* its own failure must not take the rest of Finance down */
       svc.logAction("finance.view_sensitive", "Opened the finance overview",
         { findings: state.findings.length });
     } catch (error) {
@@ -343,6 +507,13 @@
     }
     if (e.target.closest("[data-fin-reload]")) { e.preventDefault(); load(); return; }
 
+    var grain = e.target.closest("[data-fin-grain]");
+    if (grain) {
+      var want = grain.getAttribute("data-fin-grain");
+      if (want !== state.salesGrain && svc) { state.salesGrain = want; loadSales(); }
+      return;
+    }
+
     var refund = e.target.closest("[data-fin-refund]");
     if (refund) {
       state.confirm = { orderCode: refund.getAttribute("data-fin-refund") };
@@ -367,6 +538,23 @@
         KT.toast(KT.services.errorMessage(error), "error", { duration: 6000 });
       }
     }
+  });
+
+  /* One tooltip for the sales chart: pointer and keyboard focus alike. */
+  document.addEventListener("pointerover", function (e) {
+    var b = e.target.closest && e.target.closest("[data-sbar]");
+    if (b) showTip(b);
+  });
+  document.addEventListener("focusin", function (e) {
+    var b = e.target.closest && e.target.closest("[data-sbar]");
+    if (b) showTip(b);
+  });
+  document.addEventListener("pointerout", function (e) {
+    if (e.target.closest && e.target.closest("[data-sales-plot]") &&
+        !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest("[data-sbar]"))) hideTip();
+  });
+  document.addEventListener("focusout", function (e) {
+    if (e.target.closest && e.target.closest("[data-sbar]")) hideTip();
   });
 
   document.addEventListener("input", function (e) {
@@ -397,7 +585,8 @@
     var wanted = TABS.some(function (t) { return t.id === qp.tab; }) ? qp.tab : "overview";
     state = { tab: wanted, loading: true, error: null, overview: null,
       findings: [], events: { total: 0, rows: [] }, wallets: [],
-      eventSearch: "", eventStatus: "all", confirm: null, refunding: false };
+      eventSearch: "", eventStatus: "all", confirm: null, refunding: false,
+      salesGrain: "day", sales: null, salesError: null, salesLoading: false };
     window.setTimeout(load, 0);
     return '<header class="apage__head"><div><h1>Finance</h1>' +
       '<p class="apage__lede">Loading financial data…</p></div></header>' +

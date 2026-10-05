@@ -24,6 +24,7 @@
     search: "", category: "all", status: "all", live: false,
     editing: null,        /* null | {} for new | item object */
     form: null, formErrors: {}, saving: false, uploading: false,
+    formSession: 0,       /* bumped per openForm(); ties the open drawer to its state */
     confirm: null,        /* {kind:'item'|'category', id, name} */
     returnTo: null        /* "inventory" when opened by Inventory's Add item */
   };
@@ -113,6 +114,21 @@
       }).join("") + "</div>";
   }
 
+  /* Stock-tracked dishes with a known count: how many portions are left
+     right now, and whether that alone is keeping the dish off sale for
+     customers (stock_availability_enabled, 0082). The manual status above is
+     unchanged by this — stock can only ever take a dish off sale. */
+  function stockBadgeHTML(item) {
+    if (item.stockRemaining == null) return "";
+    var left = Math.max(0, Math.floor(item.stockRemaining));
+    if (left < 1 && item.status === "available" && item.stockRulesOn) {
+      return '<span class="obadge is-cancelled" title="Customers see this dish as sold out until ' +
+        'more is prepared on the inventory board">Sold out · no stock</span>';
+    }
+    return '<span class="otag" title="Portions left by the inventory board">' +
+      left + " left</span>";
+  }
+
   function cardHTML(item) {
     var img = imageFor(item);
     return (
@@ -127,6 +143,7 @@
             '<span class="obadge ' + (item.status === "available" ? "is-completed"
               : item.status === "sold_out" ? "is-cancelled" : "is-out") + '">' +
               esc(item.status.replace("_", " ")) + "</span>" +
+            stockBadgeHTML(item) +
           "</div>" +
           '<p class="mcard__desc">' + (esc(item.blurb || item.description) || "<em>No description</em>") + "</p>" +
           '<p class="mcard__meta"><span class="otag">' + esc(catName(item.categoryId)) + "</span>" +
@@ -188,7 +205,7 @@
             '<span class="odrawer__sub">' + (isNew ? "Create a menu item" : "Edit menu item") + "</span></div>" +
             '<button class="icon-btn" type="button" data-mclose aria-label="Close">' + KT.icon("close", 20) + "</button>" +
           "</header>" +
-          '<form class="odetail__body mform" data-mform novalidate>' +
+          '<form class="odetail__body mform" data-mform data-mform-session="' + state.formSession + '" novalidate>' +
             field("name", "Name",
               '<input class="input" name="name" value="' + esc(f.name || "") + '" required>') +
             field("blurb", "Short description",
@@ -277,8 +294,28 @@
     var wasSearch = active && active.hasAttribute && active.hasAttribute("data-msearch");
     var caret = wasSearch ? active.selectionStart : null;
 
+    /* The drawer is rebuilt from state.form on every render — a photo upload,
+       a live-status flip or a realtime menu refresh all re-render while the
+       form is open. Capture what has been typed first, or those renders
+       restore the values the form opened with (the "description wiped after
+       choosing a photo" bug). Only for the SAME form session: a drawer left
+       over from another item must never leak its fields into this one. */
+    var domForm = KT.qs("[data-mform]");
+    var panel = KT.qs("[data-mdrawer] .odrawer__panel");
+    var keepScroll = null;
+    if (state.editing && state.form && domForm &&
+        domForm.getAttribute("data-mform-session") === String(state.formSession)) {
+      state.form = readForm();
+      if (panel) keepScroll = panel.scrollTop;
+    }
+
     KT.mount(host, headHTML() + filtersHTML() + listHTML() +
       (state.editing ? formHTML() : "") + confirmHTML());
+
+    if (keepScroll != null) {
+      var p2 = KT.qs("[data-mdrawer] .odrawer__panel");
+      if (p2) p2.scrollTop = keepScroll;
+    }
 
     if (wasSearch) {
       var i = KT.qs("[data-msearch]");
@@ -324,6 +361,7 @@
 
   function openForm(item, opts) {
     opts = opts || {};
+    state.formSession += 1;
     state.editing = item || {};
     state.form = item
       ? { name: item.name, blurb: item.blurb, description: item.description,
@@ -345,6 +383,9 @@
     });
     f.imageUrl = state.form.imageUrl;
     f.tracksStock = state.form.tracksStock === true;
+    /* A select that is not rendered for this form (saleUnit outside the
+       Inventory flow) keeps whatever the form state already held. */
+    if (!("saleUnit" in f) && state.form.saleUnit != null) f.saleUnit = state.form.saleUnit;
     return f;
   }
 
@@ -379,6 +420,7 @@
 
   async function upload(file) {
     if (!file) return;
+    state.form = readForm();      /* render() below would otherwise rebuild from stale state */
     state.uploading = true; render();
     try {
       var url = await svc.adminMenuService.uploadImage(file, state.editing && state.editing.id);
