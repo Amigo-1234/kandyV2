@@ -13,7 +13,7 @@
    verify_jwt = false: Paystack has no Supabase JWT. The HMAC IS the auth.
    ========================================================================== */
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { hmacSha512Hex, timingSafeEqualHex, toNaira, json, orderSettlementNaira } from "../_shared/paystack.ts";
+import { hmacSha512Hex, timingSafeEqualHex, json, orderSettlementNaira, walletSettlementNaira } from "../_shared/paystack.ts";
 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -58,17 +58,27 @@ Deno.serve(async (req) => {
      different table, different reference namespace. An order payment can never
      credit a wallet and a top-up can never mark an order paid. */
   if (purpose === "wallet_funding") {
+    /* Gross charge normally; the signed requested_amount only when the extra
+       is provably Paystack's own fee (see walletSettlementNaira). The RPC
+       still credits only the intent's recorded amount, and 0080 binds the
+       payload to that intent's reference and owner. */
+    if (data?.status === "success" && event?.event !== "charge.success") {
+      /* Only charge.success can credit. Any other event that happens to carry
+         status "success" is acknowledged and leaves the intent untouched. */
+      return json({ received: true, ignored: "not charge.success" }, 200);
+    }
+    const fund = walletSettlementNaira(event);
     const { data: funded, error: fundError } = await admin.rpc("settle_wallet_funding", {
       p_provider: "paystack",
       p_reference: reference,
-      p_amount: toNaira(data?.amount ?? 0),
+      p_amount: fund.amount,
       p_currency: String(data?.currency ?? "NGN"),
       p_gateway_status: gatewayStatus,
       p_source: "webhook",
       p_raw: event,
     });
     if (fundError) {
-      console.error("wallet funding refused", { reference, message: fundError.message });
+      console.error("wallet funding refused", { reference, basis: fund.basis, message: fundError.message });
       return json({ received: true, credited: false, reason: fundError.message }, 200);
     }
     return json({ received: true, ...funded }, 200);

@@ -106,3 +106,48 @@ export function orderSettlementNaira(
 
   return { amount: requested / 100, basis: "requested" };
 }
+
+/**
+ * The amount, in naira, to settle a WALLET top-up against.
+ *
+ * Same rule as orderSettlementNaira, bound to the wallet's own reference and
+ * metadata format instead of an order's. wallet-fund-initialize generates the
+ * reference as KTW-<18 uppercase hex> and signs metadata
+ * {purpose: "wallet_funding", user_id}; there is no order code.
+ *
+ * Default: the gross `data.amount`. Paystack's signed `requested_amount` is
+ * used only when every one of these holds on the HMAC-verified payload:
+ *
+ *   - event charge.success, status success, currency NGN
+ *   - metadata.purpose is wallet_funding, metadata.user_id is present (the
+ *     database then requires it to be the intent's owner — migration 0080),
+ *     and the reference is KTW-<18 uppercase hex>
+ *   - amount, requested_amount and fees are whole kobo; requested_amount is
+ *     positive and whole naira
+ *   - amount > requested_amount            (never an underpayment)
+ *   - amount − requested_amount ≤ fees     (the extra is Paystack's own fee)
+ *
+ * settle_wallet_funding keeps the final say: it credits only the intent's
+ * recorded amount, and only when the amount offered equals it exactly.
+ */
+export function walletSettlementNaira(event: any): { amount: number; basis: "charged" | "requested" } {
+  const d = event?.data ?? {};
+  const gross = { amount: toNaira(d?.amount ?? 0), basis: "charged" as const };
+
+  const charged = Number(d?.amount);
+  const requested = Number(d?.requested_amount);
+  const fees = Number(d?.fees);
+  if (d?.requested_amount == null || d?.fees == null) return gross;
+  if (!Number.isSafeInteger(charged) || !Number.isSafeInteger(requested) || !Number.isSafeInteger(fees)) return gross;
+  if (requested <= 0 || requested % 100 !== 0 || fees < 0) return gross;
+  if (charged <= requested) return gross;
+  if (charged - requested > fees) return gross;
+
+  if (event?.event !== "charge.success" || d?.status !== "success") return gross;
+  if (String(d?.currency ?? "").toUpperCase() !== "NGN") return gross;
+  if (String(d?.metadata?.purpose ?? "") !== "wallet_funding") return gross;
+  if (!/^KTW-[0-9A-F]{18}$/.test(String(d?.reference ?? ""))) return gross;
+  if (!String(d?.metadata?.user_id ?? "")) return gross;
+
+  return { amount: requested / 100, basis: "requested" };
+}
