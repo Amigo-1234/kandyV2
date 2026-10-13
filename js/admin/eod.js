@@ -14,6 +14,12 @@
    question "who is still outstanding" is answered by looking, not by opening
    six reports.
 
+   PAST DAYS. A date picker and a strip of recent days open any earlier day.
+   A past day is read-only: the handler's own report is shown as text, not a
+   form, and staff_day_report_save() refuses any day but today regardless.
+   Supervisors can still mark a past report reviewed — that writes only the
+   review columns, never the author's words.
+
    Rendering and interaction only. Every query lives in
    js/services/admin-eod.js.
    ========================================================================== */
@@ -35,7 +41,9 @@
     draft: null,            /* the form's working copy */
     dirty: false, saving: false, submitting: false,
     open: null,             /* staff_id whose report is expanded on the team tab */
-    reviewing: null         /* report id mid-review */
+    reviewing: null,        /* report id mid-review */
+    date: null,             /* null = today; YYYY-MM-DD = a past day (read-only) */
+    index: null             /* day_report_index(): recent days and their status */
   };
   var ctx = { role: "staff" };
 
@@ -53,6 +61,19 @@
     return new Date(v).toLocaleTimeString("en-NG", Object.assign({
       hour: "2-digit", minute: "2-digit", hour12: false }, LAGOS));
   }
+
+  function dayLabel(d, withYear) {
+    if (!d) return "";
+    var p = String(d).split("-").map(Number);
+    return new Date(Date.UTC(p[0], p[1] - 1, p[2], 12)).toLocaleDateString("en-GB", {
+      weekday: "short", day: "numeric", month: "short", year: withYear ? "numeric" : undefined, timeZone: "UTC" });
+  }
+  function addDays(d, n) {
+    var p = String(d).split("-").map(Number);
+    return new Date(Date.UTC(p[0], p[1] - 1, p[2] + n, 12)).toISOString().slice(0, 10);
+  }
+  function today() { return state.index && state.index.today; }
+  function isPast() { return !!state.date && !!today() && state.date < today(); }
 
   /* ---- The five things a query cannot know -----------------------------
      Fewer boxes than the brief listed, on purpose: several of its prompts ask
@@ -94,7 +115,7 @@
           metric("status changes", a.status_changes) +
         "</div>" +
         (span ? '<p class="eodact__span">Active ' + esc(span) + "</p>"
-              : '<p class="eodact__span">No order activity recorded today.</p>') +
+              : '<p class="eodact__span">No order activity recorded ' + (isPast() ? "that day" : "today") + ".</p>") +
       "</div>"
     );
   }
@@ -113,9 +134,51 @@
     );
   }
 
+  var FIELD_COL = { problems: "problems", customerIssues: "customer_issues",
+                    stockIssues: "stock_issues", followUps: "follow_ups", notes: "notes" };
+
+  /** A report as text. Used for every past day, and for the team view. */
+  function saidHTML(r) {
+    var said = FIELDS.map(function (f) {
+      var v = r[FIELD_COL[f.key]];
+      if (!v) return "";
+      return '<div class="eodsaid"><dt>' + esc(f.label) + "</dt><dd>" + esc(v) + "</dd></div>";
+    }).join("");
+    return said ? '<dl class="eodsaidlist">' + said + "</dl>" : '<p class="odetail__muted">Nothing to flag was written.</p>';
+  }
+
+  function minePastHTML() {
+    var d = state.mine;
+    var r = d.report;
+    return (
+      '<section class="dsec">' +
+        '<header class="dsec__head"><h2>' + KT.icon("check", 17) + "Your day</h2>" +
+          '<span class="dsec__hint">' + esc(dayLabel(d.business_date, true)) + "</span></header>" +
+        '<div class="panel apanel">' + activityHTML(d.activity) + "</div>" +
+      "</section>" +
+      '<section class="dsec">' +
+        '<header class="dsec__head"><h2>' + KT.icon("mail", 17) + "Your report</h2>" +
+          '<span class="eodstatus">' +
+            (r && r.status === "submitted"
+              ? '<span class="eodpill eodpill--done">Submitted ' + clock(r.submitted_at) + "</span>" +
+                (r.reviewed_at ? '<span class="eodpill eodpill--seen">Seen by management</span>' : "") +
+                (r.needs_follow_up ? '<span class="eodpill eodpill--flag">Flagged for follow-up</span>' : "")
+              : r ? '<span class="eodpill eodpill--draft">Draft — never submitted</span>'
+                  : '<span class="eodpill eodpill--missing">No report filed</span>') +
+          "</span></header>" +
+        '<div class="panel apanel">' +
+          (r ? saidHTML(r) : '<p class="odetail__muted">You did not write a report for this day.</p>') +
+          (r && r.reviewed_at && r.review_note
+            ? '<div class="eodreview"><strong>From management</strong><p>' + esc(r.review_note) + "</p></div>" : "") +
+        "</div>" +
+      "</section>"
+    );
+  }
+
   function mineHTML() {
     var d = state.mine;
     if (!d) return "";
+    if (isPast()) return minePastHTML();
     var r = d.report;
     var submitted = r && r.status === "submitted";
 
@@ -133,7 +196,7 @@
     return (
       '<section class="dsec">' +
         '<header class="dsec__head"><h2>' + KT.icon("check", 17) + "Your day</h2>" +
-          '<span class="dsec__hint">' + esc(d.business_date) + "</span></header>" +
+          '<span class="dsec__hint">' + esc(dayLabel(d.business_date)) + "</span></header>" +
         '<div class="panel apanel">' +
           '<p class="eodlede">These come from the orders you moved. Nobody types them, ' +
             "and they cannot be edited.</p>" +
@@ -190,16 +253,10 @@
 
     var body = "";
     if (open && r) {
-      var said = FIELDS.map(function (f) {
-        var map = { problems: "problems", customerIssues: "customer_issues",
-                    stockIssues: "stock_issues", followUps: "follow_ups", notes: "notes" };
-        var v = r[map[f.key]];
-        if (!v) return "";
-        return '<div class="eodsaid"><dt>' + esc(f.label) + "</dt><dd>" + esc(v) + "</dd></div>";
-      }).join("");
       body =
         '<div class="eodperson__body">' +
-          (said || '<p class="odetail__muted">They reported nothing to flag.</p>') +
+          (r.status !== "submitted" ? '<p class="odetail__muted">Draft — not submitted.</p>' : "") +
+          saidHTML(r) +
           (r.reviewed_at
             ? '<p class="odetail__muted">Reviewed ' + clock(r.reviewed_at) +
               (r.review_note ? " — " + esc(r.review_note) : "") + "</p>"
@@ -250,8 +307,8 @@
 
     return (
       '<section class="dsec">' +
-        '<header class="dsec__head"><h2>' + KT.icon("grid", 17) + "The day so far</h2>" +
-          '<span class="dsec__hint">' + esc(d.business_date) + "</span></header>" +
+        '<header class="dsec__head"><h2>' + KT.icon("grid", 17) + (isPast() ? "The day" : "The day so far") + "</h2>" +
+          '<span class="dsec__hint">' + esc(dayLabel(d.business_date, isPast())) + "</span></header>" +
         '<div class="astat__grid eodsum">' +
           '<div class="astat"><span class="astat__label">Reports in</span>' +
             '<strong class="astat__value">' + (t.submitted || 0) + " / " + (t.expected || 0) + "</strong>" +
@@ -275,16 +332,16 @@
           '<div class="astat"><span class="astat__label">Scoops sold</span>' +
             '<strong class="astat__value">' + net + "</strong>" +
             '<span class="astat__hint">' +
-              (rev === null || rev === undefined ? "net today" : KT.naira(rev)) + "</span></div>" +
+              (rev === null || rev === undefined ? (isPast() ? "net that day" : "net today") : KT.naira(rev)) + "</span></div>" +
         "</div>" +
       "</section>" +
 
       '<section class="dsec">' +
-        '<header class="dsec__head"><h2>' + KT.icon("user", 17) + "Who worked today</h2></header>" +
+        '<header class="dsec__head"><h2>' + KT.icon("user", 17) + (isPast() ? "Who worked" : "Who worked today") + "</h2></header>" +
         (d.people && d.people.length
           ? '<div class="eodlist">' + d.people.map(personHTML).join("") + "</div>"
           : '<div class="panel apanel"><p class="odetail__muted">' +
-            "Nobody has worked an order yet today.</p></div>") +
+            (isPast() ? "Nobody worked an order or filed a report that day." : "Nobody has worked an order yet today.") + "</p></div>") +
       "</section>"
     );
   }
@@ -301,6 +358,41 @@
           '" type="button" data-eodtab="team">The team</button>' +
       "</div>"
     );
+  }
+
+  function dateBarHTML() {
+    var t = today();
+    if (!t) return "";
+    var d = state.date || t;
+    var ix = (state.index && state.index.days) || [];
+    var team = canSeeTeam() && state.tab === "team";
+    return '<div class="invdate">' +
+        '<button class="btn btn--soft btn--sm invdate__step" type="button" data-eodstep="-1" aria-label="Previous day">‹</button>' +
+        '<label class="invdate__pick"><span class="sr-only">Choose a day</span>' +
+          '<input class="input" type="date" data-eoddate value="' + esc(d) + '" max="' + esc(t) + '"></label>' +
+        '<button class="btn btn--soft btn--sm invdate__step" type="button" data-eodstep="1" aria-label="Next day"' +
+          (isPast() ? "" : " disabled") + ">›</button>" +
+        (isPast() ? '<button class="btn btn--ghost btn--sm" type="button" data-eodtoday>Back to today</button>' : "") +
+      "</div>" +
+      (ix.length ? '<div class="eoddays" role="list" aria-label="Recent days">' + ix.map(function (x) {
+        var on = x.business_date === d;
+        var mark, cls;
+        if (team && x.team) {
+          mark = x.team.submitted + " in" + (x.team.follow_up ? " · " + x.team.follow_up + " flag" : "");
+          cls = x.team.submitted ? "is-done" : "is-none";
+        } else {
+          var m = x.mine;
+          mark = !m ? "—" : m.status === "submitted" ? "Sent" : "Draft";
+          cls = !m ? "is-none" : m.status === "submitted" ? "is-done" : "is-draft";
+        }
+        return '<button class="eodday ' + cls + (on ? " is-active" : "") + '" type="button" role="listitem" data-eodday="' +
+          esc(x.business_date) + '" aria-pressed="' + on + '">' +
+          "<strong>" + esc(x.is_today ? "Today" : dayLabel(x.business_date)) + "</strong>" +
+          "<span>" + esc(mark) + "</span></button>";
+      }).join("") + "</div>" : "") +
+      (isPast() ? '<div class="invro" role="note">' + KT.icon("lock", 15) + "<span><strong>" +
+        esc(dayLabel(d, true)) + " — read only.</strong> Past reports can be read but not changed" +
+        (canSeeTeam() ? ". Managers can still mark them reviewed." : ".") + "</span></div>" : "");
   }
 
   function render() {
@@ -328,7 +420,7 @@
     KT.mount(host,
       '<header class="apage__head"><div><h1>End of day</h1>' +
         '<p class="apage__lede">What the system already knows, and the part only you can tell it.</p>' +
-      "</div></header>" + tabsHTML() + body);
+      "</div></header>" + tabsHTML() + (state.loading && !state.index ? "" : dateBarHTML()) + body);
 
     if (focusKey) {
       var again = KT.qs('[data-eodfield="' + focusKey + '"]');
@@ -357,14 +449,17 @@
     render();
     try {
       if (!svc) svc = (await import("../services/admin-eod.js")).adminEodService;
-      var calls = [svc.staffDay()];
-      if (canSeeTeam()) calls.push(svc.teamDay());
+      var calls = [svc.staffDay(state.date), svc.index(null, null)];
+      if (canSeeTeam()) calls.push(svc.teamDay(state.date));
       var got = await Promise.all(calls);
       if (gen !== mountGen) return;
       state.mine = got[0];
-      state.team = got[1] || null;
-      /* Never clobber what the person is in the middle of typing. */
-      if (!state.dirty) state.draft = draftFrom(state.mine && state.mine.report);
+      state.index = got[1];
+      state.team = got[2] || null;
+      if (state.date && state.date >= state.index.today) state.date = null;
+      /* Never clobber what the person is in the middle of typing — and a
+         past day never feeds the form. */
+      if (!state.dirty && !isPast()) state.draft = draftFrom(state.mine && state.mine.report);
     } catch (error) {
       if (gen !== mountGen) return;
       state.error = (KT.services && KT.services.errorMessage)
@@ -374,8 +469,20 @@
     }
   }
 
+  function goTo(date) {
+    var t = today();
+    if (state.dirty && !isPast() && date && t && date < t &&
+        !window.confirm("You have unsaved changes to today's report. Leave them and look at another day?")) {
+      render();
+      return;
+    }
+    state.date = (!date || (t && date >= t)) ? null : date;
+    state.open = null;
+    load();
+  }
+
   async function save(submit) {
-    if (state.saving || state.submitting) return;
+    if (state.saving || state.submitting || isPast()) return;
     if (submit) state.submitting = true; else state.saving = true;
     render();
     try {
@@ -408,7 +515,8 @@
     try {
       await svc.review(id, flag, "");
       KT.toast(flag ? "Flagged for follow-up." : "Marked as reviewed.", "success");
-      state.team = await svc.teamDay();
+      state.team = await svc.teamDay(state.date);
+      state.index = await svc.index(null, null);
     } catch (error) {
       KT.toast(KT.services.errorMessage(error), "error");
     } finally {
@@ -424,7 +532,7 @@
     viewGen = gen;
     state = { loading: true, error: null, mine: null, team: null,
       tab: "mine", draft: null, dirty: false, saving: false,
-      submitting: false, open: null, reviewing: null };
+      submitting: false, open: null, reviewing: null, date: null, index: null };
 
     /*
        This is a form of five textareas that a handler fills in on a phone.
@@ -451,6 +559,11 @@
 
   /* ---- Events ----------------------------------------------------------- */
 
+  document.addEventListener("change", function (e) {
+    var d = e.target.closest && e.target.closest("[data-eoddate]");
+    if (d && d.value) goTo(d.value);
+  });
+
   document.addEventListener("input", function (e) {
     var f = e.target.closest && e.target.closest("[data-eodfield]");
     if (!f) return;
@@ -464,6 +577,12 @@
 
     var tab = t.closest("[data-eodtab]");
     if (tab) { state.tab = tab.getAttribute("data-eodtab"); render(); return; }
+
+    var step = t.closest("[data-eodstep]");
+    if (step) { goTo(addDays(state.date || today(), Number(step.getAttribute("data-eodstep")))); return; }
+    if (t.closest("[data-eodtoday]")) { goTo(null); return; }
+    var dayBtn = t.closest("[data-eodday]");
+    if (dayBtn) { goTo(dayBtn.getAttribute("data-eodday")); return; }
 
     if (t.closest("[data-eodretry]")) { load(); return; }
     if (t.closest("[data-eodsave]")) { save(false); return; }

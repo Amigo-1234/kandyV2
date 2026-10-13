@@ -36,7 +36,11 @@
       { id: "end-of-day", label: "End of day",        icon: "check",    min: "staff" },
       /* staff+: handlers record what they cooked and threw away. Adjustments
          and physical counts inside are supervisor+, enforced in the RPCs. */
-      { id: "inventory",  label: "Inventory",         icon: "flame",    min: "staff" }
+      { id: "inventory",  label: "Inventory",         icon: "flame",    min: "staff" },
+      /* staff+: raw ingredients and supplies, separate from dish stock.
+         Registering an ingredient, adjustments and counts are supervisor+,
+         enforced in the ingredient RPCs (0084). */
+      { id: "ingredients", label: "Ingredients",      icon: "leaf",     min: "staff" }
     ]},
     { group: "Management", items: [
       { id: "menu-manage", label: "Menu management",  icon: "settings", min: "admin" },

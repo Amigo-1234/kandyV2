@@ -57,6 +57,18 @@ export const adminEodService = {
     return data;
   },
 
+  /**
+   * Which days have reports (0084), newest first: the caller's own status
+   * per day, plus team counts for supervisors+. Opening a past day then uses
+   * staffDay(day) / teamDay(day), which are read-only for any day but today.
+   */
+  async index(from, to) {
+    const { data, error } = await supabase.rpc("day_report_index",
+      { p_from: from || null, p_to: to || null });
+    if (error) throw error;
+    return data;
+  },
+
   /** Supervisor+: the whole team's day in one call. */
   async teamDay(day) {
     const { data, error } = await supabase.rpc("admin_day_reports",

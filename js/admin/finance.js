@@ -17,7 +17,8 @@
   var svc = null;
   var state = {
     tab: "overview", loading: true, error: null,
-    overview: null, findings: [], events: { total: 0, rows: [] }, wallets: [],
+    overview: null, findings: [], events: { total: 0, rows: [] },
+    w: wfresh(),
     eventSearch: "", eventStatus: "all",
     confirm: null, refunding: false,
     salesGrain: "day", sales: null, salesError: null, salesLoading: false
@@ -354,32 +355,214 @@
     );
   }
 
-  /* ---- Wallets ----------------------------------------------------------- */
+  /* ---- Wallets -----------------------------------------------------------
+
+     A customer directory over the authoritative ledger (0084). Every figure
+     comes from admin_wallet_directory / admin_wallet_history, which read
+     wallets, wallet_transactions and wallet_funding_intents as stored —
+     nothing here adds up money on its own except to display it. Both RPCs
+     are owner/admin only and refuse anyone else on the server. */
+
+  var WFILTERS = [
+    { id: "activity", label: "With activity", count: "with_activity" },
+    { id: "balance",  label: "Money in wallet", count: "with_balance" },
+    { id: "attempts", label: "Unfinished top-ups", count: null },
+    { id: "mismatch", label: "Mismatches", count: "mismatched" },
+    { id: "all",      label: "Everyone", count: "wallets" }
+  ];
+  var WCATS = [
+    { id: "",                   label: "All" },
+    { id: "funding",            label: "Top-ups" },
+    { id: "payment",            label: "Payments" },
+    { id: "refund",             label: "Refunds" },
+    { id: "adjustment",         label: "Adjustments" },
+    { id: "partner_commission", label: "Partner commission" },
+    { id: "reward",             label: "Rewards" }
+  ];
+  var CAT_LABEL = { funding: "Top-up", payment: "Order payment", refund: "Refund", adjustment: "Adjustment",
+                    partner_commission: "Partner commission", reward: "Reward", other: "Other" };
+  var ATTEMPT_LABEL = {
+    pending: "Not completed — no money received",
+    failed: "Failed — no money received",
+    cancelled: "Cancelled — no money received",
+    mismatch: "Not credited — payment could not be verified. Needs review."
+  };
+
+  function wfresh() {
+    return { search: "", filter: "activity", data: null, rows: [], loading: false, error: null,
+             sel: null, hist: null, histLoading: false, histError: null, cat: "", q: "" };
+  }
+
+  function dayTime(d) {
+    if (!d) return "—";
+    return new Date(d).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Africa/Lagos" });
+  }
+  function signed(n) {
+    var v = Number(n || 0);
+    return (v < 0 ? "−" : "+") + naira(Math.abs(v));
+  }
+
+  function reconBanner(t) {
+    if (t.reconciled) {
+      return '<p class="fin__note wrecon is-ok">' + KT.icon("check", 15) + "<span><strong>Ledger reconciles.</strong> " +
+        naira(t.balance_total) + " held in " + t.wallets + " wallets equals " + naira(t.ledger_net_total) +
+        " recorded in the wallet ledger, every wallet matches its own history, and each of the " + t.paid_intents +
+        " paid Paystack top-ups has exactly one matching credit.</span></p>";
+    }
+    var bits = [];
+    if (t.mismatched) bits.push(t.mismatched + " wallet(s) whose balance does not match their ledger");
+    if (Number(t.balance_total) !== Number(t.ledger_net_total)) bits.push("total balances " + naira(t.balance_total) +
+      " vs ledger " + naira(t.ledger_net_total));
+    if (t.paid_intents_unmatched) bits.push(t.paid_intents_unmatched + " paid top-up(s) without a matching credit");
+    if (t.funding_without_intent) bits.push(t.funding_without_intent + " top-up credit(s) without a paid Paystack record");
+    if (t.transactions_without_wallet) bits.push(t.transactions_without_wallet + " ledger owner(s) without a wallet");
+    return '<p class="fin__note wrecon is-bad">' + KT.icon("close", 15) + "<span><strong>Needs attention:</strong> " +
+      esc(bits.join("; ")) + ". Nothing has been changed — " +
+      (t.mismatched ? '<button class="linkbtn" type="button" data-wfilter="mismatch">show the mismatched wallets</button>.' : "review below.") +
+      "</span></p>";
+  }
+
+  function walletTotalsHTML(t) {
+    return '<div class="astat__grid">' +
+      stat("Held in wallets", naira(t.balance_total), t.with_balance + " with money" + (t.locked_total ? " · " + naira(t.locked_total) + " locked" : "")) +
+      stat("Topped up", naira(t.funding_total), t.funding_count + " successful Paystack top-ups") +
+      stat("Spent from wallets", naira(t.payments_total), t.payments_count + " order payments") +
+      stat("Refunded to wallets", naira(t.refunds_in_total), t.refunds_out_total ? naira(t.refunds_out_total) + " refund debits" : "order refunds") +
+      stat("Adjustments", (t.adjust_in_total || t.adjust_out_total) ? "+" + naira(t.adjust_in_total) + " / −" + naira(t.adjust_out_total) : naira(0),
+           "owner corrections") +
+      stat("Partner commission", naira(t.partner_total), t.rewards_total ? naira(t.rewards_total) + " other rewards" : "paid to Partners") +
+      stat("Unfinished top-ups", String(t.attempts), naira(t.attempts_amount) + " — no money received") +
+    "</div>";
+  }
+
+  function wrowHTML(r) {
+    var contact = [r.email, r.phone].filter(Boolean).map(esc).join(" · ") || '<span class="wmuted">No email or phone on file</span>';
+    var facts = [["Topped up", naira(r.funding)], ["Spent", naira(r.payments)]];
+    if (r.refunds_in || r.refunds_out) facts.push(["Refunds", naira(r.refunds_in) + (r.refunds_out ? " / −" + naira(r.refunds_out) : "")]);
+    if (r.adjust_in || r.adjust_out) facts.push(["Adjustments", "+" + naira(r.adjust_in) + " / −" + naira(r.adjust_out)]);
+    if (r.partner) facts.push(["Partner commission", naira(r.partner)]);
+    if (r.rewards) facts.push(["Rewards", naira(r.rewards)]);
+    if (r.attempts) facts.push(["Unfinished top-ups", r.attempts + " · " + naira(r.attempts_amount)]);
+    return '<button class="wrow' + (r.reconciled ? "" : " is-bad") + '" type="button" data-wopen="' + esc(r.user_id) + '">' +
+      '<span class="wrow__who"><strong>' + (r.name ? esc(r.name) : '<em class="wmuted">No name on account</em>') + "</strong>" +
+        (r.role && r.role !== "customer" ? '<span class="wrole">' + esc(r.role) + "</span>" : "") +
+        (r.suspended ? '<span class="wrole is-bad">suspended</span>' : "") +
+        '<span class="wrow__contact">' + contact + "</span></span>" +
+      '<span class="wrow__bal"><strong>' + naira(r.balance) + "</strong><span>balance</span></span>" +
+      '<span class="wrow__facts">' + facts.map(function (f) {
+        return "<span><em>" + esc(f[0]) + "</em> " + esc(f[1]) + "</span>";
+      }).join("") + "</span>" +
+      '<span class="wrow__meta">' + (r.last_at ? "Last activity " + esc(dayTime(r.last_at)) : "No wallet transactions") +
+        (r.reconciled ? "" : ' · <strong class="wbad">balance does not match its ledger</strong>') + "</span>" +
+    "</button>";
+  }
 
   function walletsHTML() {
-    if (!state.wallets.length) {
-      return '<div class="panel apanel"><div class="empty"><div class="empty__art">' +
-        KT.icon("wallet", 30) + "</div><h3>No wallets</h3></div></div>";
+    var w = state.w;
+    if (w.sel) return walletHistoryHTML();
+    if (w.error) {
+      return '<div class="panel apanel"><p class="field__error">' + esc(w.error) + '</p>' +
+        '<button class="btn btn--soft btn--sm" type="button" data-wreload>Try again</button></div>';
     }
+    if (!w.data) return '<div class="panel apanel">' + KT.loadingLabel("Loading customer wallets…") + KT.skeleton.lines(5) + "</div>";
+    var t = w.data.totals;
     return (
+      reconBanner(t) +
+      walletTotalsHTML(t) +
       '<p class="fin__note">' + KT.icon("lock", 15) +
-        "<span>Read-only. Wallet balances can only be changed by the owner through the " +
-        "existing adjustment RPC, which records every change in the ledger and the audit log." +
-        "</span></p>" +
-      '<div class="fin__rows">' +
-        state.wallets.map(function (w) {
-          return '<article class="finrow"><div class="finrow__top">' +
-            '<code class="finrow__issue">' + esc(String(w.user_id).slice(0, 8)) + "…</code>" +
-            '<span class="finrow__when">' + when(w.updated_at) + "</span></div>" +
-            '<dl class="finrow__facts">' +
-              "<div><dt>Balance</dt><dd>" + naira(w.balance) + "</dd></div>" +
-              "<div><dt>Available</dt><dd>" + naira(w.available_balance) + "</dd></div>" +
-              "<div><dt>Locked</dt><dd>" + naira(w.locked_balance) + "</dd></div>" +
-              "<div><dt>Status</dt><dd>" + esc(w.status) + "</dd></div>" +
-            "</dl></article>";
-        }).join("") +
-      "</div>"
+        "<span>Read-only. Only owners and admins can open this page. Balances change only through payments, " +
+        "Paystack top-ups, refunds and the owner's audited adjustment tool.</span></p>" +
+      '<div class="fin__filters">' +
+        '<label class="field fin__search"><span class="sr-only">Search customers</span>' +
+          '<input class="input" type="search" data-wsearch value="' + esc(w.search) + '" placeholder="Search by name, email or phone"></label>' +
+      "</div>" +
+      '<div class="ochips wfilters" role="group" aria-label="Show">' + WFILTERS.map(function (f) {
+        var n = f.count ? t[f.count] : null;
+        return '<button class="chip' + (w.filter === f.id ? " is-active" : "") + '" type="button" data-wfilter="' + f.id + '">' +
+          esc(f.label) + (n !== null && n !== undefined ? " (" + n + ")" : "") + "</button>";
+      }).join("") + "</div>" +
+      '<p class="fin__count">' + (w.loading ? "Loading…" : w.data.matching + (w.data.matching === 1 ? " customer" : " customers")) + "</p>" +
+      (w.rows.length
+        ? '<div class="wlist">' + w.rows.map(wrowHTML).join("") + "</div>"
+        : '<div class="panel apanel"><p class="odetail__muted">No customers match.</p></div>') +
+      (w.rows.length < w.data.matching
+        ? '<p class="wmore"><button class="btn btn--soft" type="button" data-wmore' + (w.loading ? " disabled" : "") + ">Show more</button></p>"
+        : "")
     );
+  }
+
+  function walletHistoryHTML() {
+    var w = state.w;
+    var back = '<p><button class="btn btn--ghost btn--sm" type="button" data-wback>' + KT.icon("arrowLeft", 15) +
+      "<span>All customer wallets</span></button></p>";
+    if (w.histError) return back + '<div class="panel apanel"><p class="field__error">' + esc(w.histError) + "</p></div>";
+    if (w.histLoading || !w.hist) return back + '<div class="panel apanel">' + KT.loadingLabel("Loading wallet history…") + KT.skeleton.lines(6) + "</div>";
+    var h = w.hist, c = h.customer, s = h.summary, rc = h.reconciliation, wl = h.wallet || {};
+    var q = w.q.trim().toLowerCase();
+    var rows = h.transactions.slice().reverse().filter(function (t) {
+      if (w.cat && t.category !== w.cat) return false;
+      if (q && [t.order_code, t.reference, t.description, CAT_LABEL[t.category]].join(" ").toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+    return back +
+      '<section class="panel apanel whead">' +
+        '<div class="whead__who"><h2>' + (c.name ? esc(c.name) : '<em class="wmuted">No name on account</em>') + "</h2>" +
+          "<p>" + [c.email, c.phone].filter(Boolean).map(esc).join(" · ") +
+            (c.role && c.role !== "customer" ? ' · <span class="wrole">' + esc(c.role) + "</span>" : "") +
+            (c.joined ? " · joined " + esc(dayTime(c.joined).replace(/,? \d\d:\d\d$/, "")) : "") + "</p></div>" +
+        '<div class="whead__bal"><strong>' + naira(wl.balance) + "</strong><span>current balance" +
+          (wl.locked ? " · " + naira(wl.locked) + " locked" : "") + "</span></div>" +
+      "</section>" +
+      (rc.ok
+        ? '<p class="fin__note wrecon is-ok">' + KT.icon("check", 15) + "<span>Balance " + naira(rc.balance) +
+          " matches this customer's ledger (" + s.transactions + " transactions). Every running balance below agrees with the balance recorded at the time.</span></p>"
+        : '<p class="fin__note wrecon is-bad">' + KT.icon("close", 15) + "<span><strong>Does not reconcile:</strong> balance " +
+          naira(rc.balance) + " vs ledger " + naira(rc.ledger_net) +
+          (rc.running_mismatches ? "; " + rc.running_mismatches + " row(s) whose recorded balance differs from the running total" : "") +
+          ". Nothing has been changed.</span></p>") +
+      '<div class="astat__grid">' +
+        stat("Topped up", naira(s.funding), s.funding_count + " top-ups") +
+        stat("Spent", naira(s.payments), s.payments_count + " order payments") +
+        stat("Refunds", naira(s.refunds_in), s.refunds_out ? "−" + naira(s.refunds_out) + " refund debits" : "back to wallet") +
+        stat("Adjustments", "+" + naira(s.adjust_in) + " / −" + naira(s.adjust_out), "owner corrections") +
+        stat("Partner commission", naira(s.partner_commission), s.rewards ? naira(s.rewards) + " other rewards" : "") +
+      "</div>" +
+      '<h3 class="fin__section">Transactions <span>newest first</span></h3>' +
+      '<div class="ochips wfilters" role="group" aria-label="Transaction type">' + WCATS.map(function (k) {
+        return '<button class="chip' + (w.cat === k.id ? " is-active" : "") + '" type="button" data-wcat="' + k.id + '">' + esc(k.label) + "</button>";
+      }).join("") + "</div>" +
+      '<div class="fin__filters"><label class="field fin__search"><span class="sr-only">Search transactions</span>' +
+        '<input class="input" type="search" data-wq value="' + esc(w.q) + '" placeholder="Order number or reference"></label></div>' +
+      (rows.length
+        ? '<div class="wtx-wrap" tabindex="0" role="region" aria-label="Wallet transactions"><table class="wtx"><thead><tr>' +
+            "<th>Date</th><th>Type</th><th>Order</th><th>Reference</th><th class=\"num\">Amount</th><th class=\"num\">Balance after</th><th>Status</th>" +
+          "</tr></thead><tbody>" + rows.map(function (t) {
+            return '<tr class="' + (t.running_ok ? "" : "is-bad") + '">' +
+              '<td data-l="Date">' + esc(dayTime(t.created_at)) + "</td>" +
+              '<td data-l="Type"><span class="wcat wcat--' + esc(t.category) + '">' + esc(CAT_LABEL[t.category] || t.category) + "</span>" +
+                (t.description ? '<span class="wdesc">' + esc(t.description) + "</span>" : "") + "</td>" +
+              '<td data-l="Order">' + (t.order_code ? "<strong>" + esc(t.order_code) + "</strong>" : '<span class="wmuted">—</span>') + "</td>" +
+              '<td data-l="Reference"><code class="wref">' + esc(t.reference || "—") + "</code></td>" +
+              '<td data-l="Amount" class="num ' + (t.signed < 0 ? "wneg" : "wpos") + '">' + signed(t.signed) + "</td>" +
+              '<td data-l="Balance after" class="num">' + naira(t.balance_after) +
+                (t.running_ok ? "" : '<span class="wbad"> (running total ' + naira(t.running) + ")</span>") + "</td>" +
+              '<td data-l="Status">Completed</td></tr>';
+          }).join("") + "</tbody></table></div>"
+        : '<div class="panel apanel"><p class="odetail__muted">' +
+            (h.transactions.length ? "No transactions match." : "This wallet has no transactions.") + "</p></div>") +
+      '<h3 class="fin__section">Top-ups that did not go through <span>no money was received for these</span></h3>' +
+      (h.attempts.length
+        ? '<div class="wtx-wrap"><table class="wtx"><thead><tr><th>Started</th><th class="num">Amount</th><th>Reference</th><th>Status</th></tr></thead><tbody>' +
+          h.attempts.map(function (a) {
+            return "<tr>" +
+              '<td data-l="Started">' + esc(dayTime(a.created_at)) + "</td>" +
+              '<td data-l="Amount" class="num wmuted">' + naira(a.amount) + "</td>" +
+              '<td data-l="Reference"><code class="wref">' + esc(a.reference) + "</code></td>" +
+              '<td data-l="Status"><span class="wattempt wattempt--' + esc(a.status) + '">' +
+                esc(a.awaiting ? "Waiting for Paystack confirmation" : (ATTEMPT_LABEL[a.status] || a.status)) + "</span></td></tr>";
+          }).join("") + "</tbody></table></div>"
+        : '<div class="panel apanel"><p class="odetail__muted">None.</p></div>');
   }
 
   /* ---- Refund confirmation ----------------------------------------------- */
@@ -456,15 +639,14 @@
       var res = await Promise.all([
         svc.overview(),
         svc.reconciliation({ limit: 200 }),
-        svc.paymentEvents({ search: state.eventSearch, status: state.eventStatus }),
-        svc.wallets({ limit: 50 })
+        svc.paymentEvents({ search: state.eventSearch, status: state.eventStatus })
       ]);
       state.overview = res[0];
       state.findings = res[1];
       state.events = res[2];
-      state.wallets = res[3];
       state.loading = false;
       paint();
+      if (state.tab === "wallets") loadWallets(false);
       loadSales();   /* its own failure must not take the rest of Finance down */
       svc.logAction("finance.view_sensitive", "Opened the finance overview",
         { findings: state.findings.length });
@@ -473,6 +655,43 @@
       state.error = (KT.services && KT.services.errorMessage)
         ? KT.services.errorMessage(error) : String(error.message || error);
       paint();
+    }
+  }
+
+  var wGen = 0;
+  async function loadWallets(append) {
+    var w = state.w;
+    var gen = ++wGen;
+    w.loading = true; w.error = null; paint();
+    try {
+      if (!svc) svc = (await import("../services/admin-finance.js")).adminFinanceService;
+      var res = await svc.walletDirectory({ search: w.search, filter: w.filter, limit: 50,
+                                            offset: append ? w.rows.length : 0 });
+      if (gen !== wGen) return;
+      w.data = res;
+      w.rows = append ? w.rows.concat(res.rows) : res.rows;
+    } catch (error) {
+      if (gen !== wGen) return;
+      w.error = KT.services.errorMessage(error);
+    } finally {
+      if (gen === wGen) { w.loading = false; paint(); }
+    }
+  }
+
+  async function openWallet(userId) {
+    var w = state.w;
+    w.sel = userId; w.hist = null; w.histError = null; w.histLoading = true; w.cat = ""; w.q = "";
+    paint();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    try {
+      var h = await svc.walletHistory(userId);
+      if (state.w !== w || w.sel !== userId) return;
+      w.hist = h;
+    } catch (error) {
+      if (state.w !== w || w.sel !== userId) return;
+      w.histError = KT.services.errorMessage(error);
+    } finally {
+      if (state.w === w && w.sel === userId) { w.histLoading = false; paint(); }
     }
   }
 
@@ -501,10 +720,21 @@
           svc.logAction("finance.payment_events_review", "Reviewed payment events", {});
         } else if (state.tab === "wallets") {
           svc.logAction("finance.wallet_review", "Reviewed wallet balances", {});
+          if (!state.w.data) loadWallets(false);
         }
       }
       return;
     }
+
+    var wf = e.target.closest("[data-wfilter]");
+    if (wf) { state.w.filter = wf.getAttribute("data-wfilter"); state.w.sel = null; loadWallets(false); return; }
+    if (e.target.closest("[data-wmore]")) { loadWallets(true); return; }
+    if (e.target.closest("[data-wreload]")) { loadWallets(false); return; }
+    var wo = e.target.closest("[data-wopen]");
+    if (wo) { openWallet(wo.getAttribute("data-wopen")); return; }
+    if (e.target.closest("[data-wback]")) { state.w.sel = null; state.w.hist = null; paint(); return; }
+    var wc = e.target.closest("[data-wcat]");
+    if (wc) { state.w.cat = wc.getAttribute("data-wcat"); paint(); return; }
     if (e.target.closest("[data-fin-reload]")) { e.preventDefault(); load(); return; }
 
     var grain = e.target.closest("[data-fin-grain]");
@@ -557,7 +787,25 @@
     if (e.target.closest && e.target.closest("[data-sbar]")) hideTip();
   });
 
+  var wTimer = null;
+  function refocus(sel, el) {
+    var caret = el.selectionStart;
+    var again = KT.qs(sel);
+    if (again) { again.focus(); try { again.setSelectionRange(caret, caret); } catch (x) {} }
+  }
+
   document.addEventListener("input", function (e) {
+    var ws = e.target.closest && e.target.closest("[data-wsearch]");
+    if (ws) {
+      state.w.search = ws.value;
+      window.clearTimeout(wTimer);
+      wTimer = window.setTimeout(function () {
+        loadWallets(false).then(function () { refocus("[data-wsearch]", ws); });
+      }, 320);
+      return;
+    }
+    var wq = e.target.closest && e.target.closest("[data-wq]");
+    if (wq) { state.w.q = wq.value; paint(); refocus("[data-wq]", wq); return; }
     var s = e.target.closest("[data-fin-search]");
     if (!s) return;
     state.eventSearch = s.value;
@@ -584,7 +832,7 @@
     var qp = KT.admin.routeParams();
     var wanted = TABS.some(function (t) { return t.id === qp.tab; }) ? qp.tab : "overview";
     state = { tab: wanted, loading: true, error: null, overview: null,
-      findings: [], events: { total: 0, rows: [] }, wallets: [],
+      findings: [], events: { total: 0, rows: [] }, w: wfresh(),
       eventSearch: "", eventStatus: "all", confirm: null, refunding: false,
       salesGrain: "day", sales: null, salesError: null, salesLoading: false };
     window.setTimeout(load, 0);
@@ -595,6 +843,8 @@
 
   KT.admin.views.financeTeardown = function () {
     window.clearTimeout(searchTimer);
+    window.clearTimeout(wTimer);
+    wGen += 1;
     state.confirm = null;
   };
 })(window.KT || (window.KT = {}));
