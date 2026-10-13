@@ -25,6 +25,11 @@
     lines: [],                 // [{ menuId, qty, group }]
     fulfilment: "delivery",    // delivery | pickup
     couponCode: "",
+    /* A Partner code (0083). Attribution only — it never changes a price.
+       The name is for display; the server re-validates the code at checkout
+       and records the Partner on the order itself. */
+    partnerCode: "",
+    partnerName: "",
     notes: "",
     /* How many takeaway packs the customer has opened. 0 means grouping is
        off entirely and every line carries group:null — the behaviour this
@@ -119,6 +124,8 @@
         state.lines = normaliseLines(parsed.lines);
         state.fulfilment = parsed.fulfilment === "pickup" ? "pickup" : "delivery";
         state.couponCode = parsed.couponCode || "";
+        state.partnerCode = /^[A-Z0-9]{4,20}$/.test(parsed.partnerCode || "") ? parsed.partnerCode : "";
+        state.partnerName = state.partnerCode ? String(parsed.partnerName || "").slice(0, 80) : "";
         state.notes = parsed.notes || "";
         state.groups = Math.min(MAX_GROUPS, Math.max(0, Math.trunc(Number(parsed.groups) || 0)));
       }
@@ -181,6 +188,19 @@
     },
 
     coupon: function () { return KT.rules.coupon(state.couponCode); },
+
+    /** The Partner code on this basket, or null. */
+    partner: function () {
+      return state.partnerCode ? { code: state.partnerCode, name: state.partnerName } : null;
+    },
+
+    /** Set (after a server lookup said it is a Partner code) or clear it. */
+    setPartner: function (code, name) {
+      var c = String(code || "").trim().toUpperCase();
+      state.partnerCode = /^[A-Z0-9]{4,20}$/.test(c) ? c : "";
+      state.partnerName = state.partnerCode ? String(name || "").slice(0, 80) : "";
+      write();
+    },
 
     /** @returns {{ok:boolean, message:string}} */
     applyCoupon: function (code) {
@@ -278,6 +298,8 @@
     clear: function () {
       state.lines = [];
       state.couponCode = "";
+      state.partnerCode = "";
+      state.partnerName = "";
       state.notes = "";
       state.groups = 0;
       state.activeGroup = null;
@@ -435,6 +457,8 @@
         paymentMode: "gateway"
       });
       totals.couponCode = state.couponCode;
+      totals.partnerCode = state.partnerCode;
+      totals.partnerName = state.partnerName;
       totals.nextCoupon = KT.rules.nextCouponTarget(totals.subtotal);
       totals.hasSoldOut = lines.some(function (l) { return l.soldOut; });
       return totals;
@@ -454,7 +478,10 @@
         }),
         fulfilment: state.fulfilment,
         addressId: state.fulfilment === "delivery" ? addressId || "" : "",
-        customer: customer || {},
+        /* The Partner code rides in the customer snapshot; the orders trigger
+           (0083) validates it, records the Partner on the order and strips it. */
+        customer: Object.assign({}, customer || {},
+          state.partnerCode ? { partner_code: state.partnerCode } : {}),
         coupon: state.couponCode ? { code: state.couponCode } : null,
         notes: state.notes,
         estimatedDeliveryMinutes: KT.rules.ETA_MINUTES[state.fulfilment]

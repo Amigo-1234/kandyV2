@@ -340,13 +340,13 @@
         "<h3>Order summary</h3>" +
         packRecapHTML() +
         '<form class="promoform" data-promo-form>' +
-          '<label class="sr-only" for="promoCode">Promo code</label>' +
-          '<input class="input" id="promoCode" placeholder="Promo code" autocomplete="off" value="' +
-            (sum.couponCode || "") + '">' +
-          '<button class="btn btn--ghost" type="submit">' +
-            (sum.couponCode ? "Remove" : "Apply") + "</button>" +
+          '<label class="sr-only" for="promoCode">Promo or Partner code</label>' +
+          '<input class="input" id="promoCode" placeholder="Promo or Partner code" autocomplete="off" ' +
+            'autocapitalize="characters" spellcheck="false" maxlength="30">' +
+          '<button class="btn btn--ghost" type="submit">Apply</button>' +
         "</form>" +
         '<p class="field__hint" data-promo-msg></p>' +
+        appliedCodesHTML(sum) +
         KT.components.cartSummary(sum) +
         '<button class="btn btn--primary btn--lg btn--block" type="button" data-checkout' +
           (empty || sum.hasSoldOut || authPending ? " disabled" : "") + ">" +
@@ -364,6 +364,74 @@
           "<span>Totals are recalculated on our server before payment. Card details never touch this site — " +
           "Paystack and Flutterwave handle them.</span></div>" +
       "</div>";
+  }
+
+  /* Applied codes, one line each, so a discount coupon and a Partner code
+     can never be mistaken for one another. A Partner line promises no
+     discount — it only says who the order supports. */
+  function appliedCodesHTML(sum) {
+    var out = "";
+    if (sum.couponCode) {
+      out += '<div class="promochip promochip--coupon">' +
+        '<span><strong>' + esc(sum.couponCode) + "</strong> · discount applied</span>" +
+        '<button class="btn btn--ghost btn--sm" type="button" data-promo-remove="coupon" ' +
+          'aria-label="Remove discount code ' + esc(sum.couponCode) + '">Remove</button></div>';
+    }
+    if (sum.partnerCode) {
+      out += '<div class="promochip promochip--partner">' +
+        "<span><strong>" + esc(sum.partnerCode) + "</strong> applied — you’re supporting " +
+          esc(sum.partnerName || "a Kandy’s Partner") + ".<br><small>Partner codes don’t change your price.</small></span>" +
+        '<button class="btn btn--ghost btn--sm" type="button" data-promo-remove="partner" ' +
+          'aria-label="Remove Partner code ' + esc(sum.partnerCode) + '">Remove</button></div>';
+    }
+    return out;
+  }
+
+  function esc(v) {
+    return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function promoMessage(text, good) {
+    var msg = KT.qs("[data-promo-msg]");
+    if (!msg) return;
+    msg.textContent = text;
+    msg.style.color = good ? "var(--mint)" : "var(--chili)";
+  }
+
+  /* A code that is not a discount coupon may be a Partner code. The lookup
+     is advisory; the orders trigger validates again at checkout. */
+  async function applyPartnerCode(code, quiet) {
+    var svc = KT.services && KT.services.rewards;
+    if (!svc || !svc.lookupPartner) return false;
+    var res;
+    try { res = await svc.lookupPartner(code); } catch (e) { if (!quiet) promoMessage("We could not check that code. Try again.", false); return false; }
+    if (res.kind === "partner") {
+      KT.cart.setPartner(res.code, res.partner_name);
+      if (!quiet) promoMessage(res.code + " applied — you’re supporting " + res.partner_name + ".", true);
+      return true;
+    }
+    if (quiet) return false;
+    if (res.kind === "self") promoMessage("You can’t use your own Partner code.", false);
+    else if (res.kind === "referral") promoMessage("That’s a friend’s referral code — it works when a new customer creates an account, not at checkout.", false);
+    else promoMessage("That code is not recognised.", false);
+    return false;
+  }
+
+  /* Arriving from a Partner's link pre-applies their code (removable) —
+     once per visit. The flag means a removed code stays removed, and the
+     next order after checkout is not attributed again just because the
+     link was used earlier. */
+  var LINK_USED = "kt.partnerLinkUsed";
+  var linkTried = false;
+  function linkUsed() { try { return sessionStorage.getItem(LINK_USED) === "1"; } catch (e) { return linkTried; } }
+  async function applyLinkPartner() {
+    if (linkTried || linkUsed() || KT.cart.partner() || !KT.referral || !KT.referral.captured) return;
+    var code = KT.referral.captured();
+    if (!code || !KT.services || !KT.services.rewards) return;
+    linkTried = true;
+    try { sessionStorage.setItem(LINK_USED, "1"); } catch (e) { /* private mode: this page only */ }
+    await applyPartnerCode(code, true);
   }
 
   function suggestions() {
@@ -458,6 +526,14 @@
         return;
       }
       var said = String((error && error.message) || "");
+      /* The Partner code stopped being valid between applying and paying
+         (disabled Partner, or the customer's own code). Drop it so one tap
+         can continue; never silently attribute to anyone else. */
+      if (/partner code/i.test(said)) {
+        KT.cart.setPartner("", "");
+        KT.toast(KT.services.errorMessage(error) + " We removed it — you can check out without it.", "info", { duration: 7000 });
+        return;
+      }
       /* Delivery was switched off after this page loaded (enforce_delivery_
          enabled). Switch the basket to pickup so one tap can continue. */
       if (/delivery is unavailable/i.test(said)) {
@@ -570,9 +646,11 @@
       loadAddresses();
       renderSide();
       loadDelivery();
+      applyLinkPartner();
     });
     loadAddresses();
     loadDelivery();
+    applyLinkPartner();
     document.addEventListener("visibilitychange", function () {
       if (document.visibilityState === "visible") loadDelivery();
     });
@@ -624,11 +702,26 @@
       if (!form) return;
       e.preventDefault();
       var input = KT.qs("input", form);
-      var result = KT.cart.applyCoupon(KT.cart.summary().couponCode ? "" : input.value);
-      var msg = KT.qs("[data-promo-msg]");
-      if (msg) {
-        msg.textContent = result.message;
-        msg.style.color = result.ok ? "var(--mint)" : "var(--chili)";
+      var code = String(input.value || "").trim();
+      if (!code) { promoMessage("Enter a code first.", false); return; }
+      /* Discount coupons keep their existing path, unchanged. */
+      if (KT.rules.coupon(code)) {
+        var result = KT.cart.applyCoupon(code);
+        promoMessage(result.message, result.ok);
+        return;
+      }
+      applyPartnerCode(code, false);
+    });
+
+    document.addEventListener("click", function (e) {
+      var rm = e.target.closest("[data-promo-remove]");
+      if (!rm) return;
+      if (rm.getAttribute("data-promo-remove") === "coupon") {
+        KT.cart.applyCoupon("");
+        promoMessage("Discount code removed.", true);
+      } else {
+        KT.cart.setPartner("", "");
+        promoMessage("Partner code removed.", true);
       }
     });
   };

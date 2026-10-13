@@ -450,6 +450,40 @@
   flex: none;
 }
 
+/* Applied codes — a discount coupon and a Partner code look different on
+   purpose, so a Partner code is never read as a price change. */
+.promochip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.promochip > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.promochip small {
+  color: var(--ink-3);
+  font-size: 0.74rem;
+}
+.promochip .btn {
+  flex: none;
+}
+.promochip--coupon {
+  background: var(--mint-50);
+  border: 1px solid var(--mint);
+}
+.promochip--partner {
+  background: var(--kt-pink-50);
+  border: 1px dashed var(--kt-pink-200);
+}
+
 .phasenote {
   display: flex;
   gap: 10px;

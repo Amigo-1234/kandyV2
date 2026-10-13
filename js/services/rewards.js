@@ -68,6 +68,22 @@ export const rewardsService = {
     if (error) throw error;
     return data;
   },
+  /**
+   * What a code typed in the basket is (partner_code_lookup, 0083):
+   * { kind: "partner" | "referral" | "self" | "unknown", code, partner_name? }.
+   * Advisory — the orders trigger re-validates at checkout.
+   */
+  async lookupPartner(code) {
+    const { data, error } = await supabase.rpc("partner_code_lookup", { p_code: String(code || "") });
+    if (error) throw error;
+    return data || { kind: "unknown" };
+  },
+  /** Manager+: per-Partner totals and commission history (0083). */
+  async partnerReport() {
+    const { data, error } = await supabase.rpc("admin_partner_report");
+    if (error) throw error;
+    return data;
+  },
   async partners() {
     const { data, error } = await supabase.rpc("admin_partner_referrals");
     if (error) throw error;
