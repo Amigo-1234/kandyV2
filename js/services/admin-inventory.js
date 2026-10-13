@@ -78,6 +78,35 @@ export const adminInventoryService = {
     return data;
   },
 
+  /**
+   * Read-only history (0084): per day and per dish between two Lagos dates
+   * (at most 62 days), with who recorded what, the notes, and which tracked
+   * dishes had no entry or no count. A past day is only ever read here.
+   */
+  async range(from, to, menuItemId) {
+    const { data, error } = await supabase.rpc("admin_inventory_range", {
+      p_from: from || null, p_to: to || null, p_menu_item_id: menuItemId || null
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  /** Menu items that can be tracked, and whether this viewer may switch them. */
+  async candidates() {
+    const { data, error } = await supabase.rpc("admin_inventory_candidates");
+    if (error) throw error;
+    return data;
+  },
+
+  /** Admin/owner: track (or stop tracking) an EXISTING menu item. Never creates one. */
+  async setTracking(menuItemId, tracked) {
+    const { data, error } = await supabase.rpc("admin_set_stock_tracking", {
+      p_menu_item_id: menuItemId, p_tracked: !!tracked
+    });
+    if (error) throw error;
+    return data;
+  },
+
   /** Record a physical count. Supervisor+; the server checks, not this. */
   async count(menuItemId, qty, note) {
     const { data, error } = await supabase.rpc("inventory_count_record", {
