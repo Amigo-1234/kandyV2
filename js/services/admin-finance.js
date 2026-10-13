@@ -89,6 +89,27 @@ export const adminFinanceService = {
     return data || [];
   },
 
+  /**
+   * Customer wallet directory (0084). Owner/admin only — the RPC refuses
+   * anyone else before reading a row. Names, contact details, balances and
+   * per-category ledger totals, plus whole-ledger reconciliation figures.
+   * filter: activity | balance | attempts | mismatch | all.
+   */
+  async walletDirectory({ search = "", filter = "activity", limit = 50, offset = 0 } = {}) {
+    const { data, error } = await supabase.rpc("admin_wallet_directory", {
+      p_search: search || null, p_filter: filter, p_limit: limit, p_offset: offset
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  /** One customer's complete wallet ledger and unfinished top-ups. Audited server-side. */
+  async walletHistory(userId) {
+    const { data, error } = await supabase.rpc("admin_wallet_history", { p_user_id: userId });
+    if (error) throw error;
+    return data;
+  },
+
   /** The EXISTING refund RPC. Admin+ enforced inside; idempotent; audited. */
   async refund(orderCode, reason) {
     const { data, error } = await supabase.rpc("admin_refund_order", {
