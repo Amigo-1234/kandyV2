@@ -113,6 +113,19 @@
             </span>
           </label>
 
+          <div class="field invitefield" data-invite>
+            <label class="field__label" for="suInvite">Invite code <span class="field__opt">optional</span></label>
+            <span class="input-group">
+              <span class="input-group__icon" data-icon="gift" aria-hidden="true"></span>
+              <input class="input invitefield__input" type="text" id="suInvite" data-invite-input
+                     autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20"
+                     placeholder="e.g. ADONIS" aria-describedby="suInviteMsg">
+              <button class="input-group__action" type="button" data-invite-clear hidden
+                      aria-label="Remove invite code">&times;</button>
+            </span>
+            <span class="field__hint invitefield__msg" id="suInviteMsg" data-invite-msg aria-live="polite">Got a code from a friend or a Kandy's Partner? Add it here.</span>
+          </div>
+
           <label class="checkline">
             <input type="checkbox">
             <span class="checkline__box" data-icon="check" data-icon-size="12"></span>

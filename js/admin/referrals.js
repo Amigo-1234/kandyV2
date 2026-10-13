@@ -69,7 +69,10 @@
     var codes = (p.codes || []).map(function (c) {
       return '<code class="refcode">' + esc(c) + '</code>' + (c === p.current_code ? ' <span class="refmuted">current</span>' : '');
     }).join(' ');
-    var mismatch = Number(p.ledger_total) !== Number(p.commission_total);
+    /* What the wallet ledger should show is every commission's credited
+       part (earned minus anything held back for refunds). */
+    var expected = p.expected_ledger != null ? p.expected_ledger : p.commission_total;
+    var mismatch = Number(p.ledger_total) !== Number(expected);
     var hist = p.history || [];
     return '<article class="refpcard">' +
       '<div class="refselected-head"><div><strong>' + esc(p.name || p.id) + '</strong>' +
@@ -83,6 +86,11 @@
       '</div>' +
       (mismatch ? '<p class="refalias-note">Wallet ledger shows ' + esc(KT.naira(Number(p.ledger_total) || 0)) +
         ' in Partner credits — check the history below.</p>' : '') +
+      (Number(p.reversed_total) || Number(p.outstanding)
+        ? '<p class="refalias-note">Refunded orders: ' + esc(KT.naira(Number(p.reversed_total) || 0)) +
+          ' of commission reversed · ' + esc(KT.naira(Number(p.withheld_total) || 0)) + ' held back from later commissions · ' +
+          '<strong>' + esc(KT.naira(Number(p.outstanding) || 0)) + ' still to recover</strong>. Wallets are never debited.</p>'
+        : '') +
       (Number(p.not_credited) ? '<p class="refalias-note" style="color:var(--chili)!important">' + esc(String(p.not_credited)) +
         ' completed order(s) with this code have no commission row.</p>' : '') +
       '<details class="refpcard__hist"><summary>Earnings history (' + hist.length + ')</summary>' +
@@ -94,7 +102,10 @@
           '</td><td>' + esc(h.customer || '—') + '</td><td><code class="refcode">' + esc(h.code_used || '—') + '</code>' +
           (h.source === 'signup_link' ? ' <span class="refmuted">via signup link</span>' : '') + '</td>' +
           '<td class="refmoney">' + esc(KT.naira(Number(h.base) || 0)) + '</td><td class="refmoney"><strong>' + esc(KT.naira(Number(h.amount) || 0)) + '</strong></td><td>' +
-          (h.credited ? badge('Credited', 'credited') : (Number(h.amount) === 0 ? badge('No credit due', 'neutral') : badge('Pending', 'pending'))) + '</td></tr>';
+          (h.reversed_at ? badge('Reversed — order refunded', 'neutral')
+            : Number(h.withheld) && Number(h.withheld) >= Number(h.amount) && Number(h.amount) > 0 ? badge('Held back for a refund', 'pending')
+            : h.credited ? badge(Number(h.withheld) ? 'Credited ' + KT.naira(Number(h.amount) - Number(h.withheld)) : 'Credited', 'credited')
+            : (Number(h.amount) === 0 ? badge('No credit due', 'neutral') : badge('Pending', 'pending'))) + '</td></tr>';
       }).join('') : '<tr><td colspan="7" class="refempty">No commissions yet.</td></tr>') +
       '</tbody></table></div></details></article>';
   }

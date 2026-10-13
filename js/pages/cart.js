@@ -412,7 +412,9 @@
       return true;
     }
     if (quiet) return false;
-    if (res.kind === "self") promoMessage("You can’t use your own Partner code.", false);
+    if (res.kind === "self") promoMessage("You can’t use your own code here.", false);
+    else if (res.kind === "partner_paused") promoMessage("That Partner code is paused right now. You can check out without it.", false);
+    else if (res.kind === "inactive") promoMessage("That code has expired or been disabled.", false);
     else if (res.kind === "referral") promoMessage("That’s a friend’s referral code — it works when a new customer creates an account, not at checkout.", false);
     else promoMessage("That code is not recognised.", false);
     return false;
@@ -426,12 +428,24 @@
   var linkTried = false;
   function linkUsed() { try { return sessionStorage.getItem(LINK_USED) === "1"; } catch (e) { return linkTried; } }
   async function applyLinkPartner() {
-    if (linkTried || linkUsed() || KT.cart.partner() || !KT.referral || !KT.referral.captured) return;
-    var code = KT.referral.captured();
-    if (!code || !KT.services || !KT.services.rewards) return;
+    if (linkTried || linkUsed() || KT.cart.partner() || !KT.services || !KT.services.rewards) return;
+    var code = KT.referral && KT.referral.captured ? KT.referral.captured() : "";
+    var svc = KT.services.rewards;
+    var signedIn = !!(KT.auth && KT.auth.user());
+    /* Nothing to offer yet (signed out, or sign-in still resolving): try
+       again on the next call rather than spending the once-per-visit flag. */
+    if (!code && !signedIn) return;
     linkTried = true;
     try { sessionStorage.setItem(LINK_USED, "1"); } catch (e) { /* private mode: this page only */ }
-    await applyPartnerCode(code, true);
+    if (code) { await applyPartnerCode(code, true); return; }
+    /* Signed up with a Partner invite code on another visit or device: offer
+       it on the FIRST checkout only (the server returns nothing once a paid
+       order exists). Removable like any other code; it never earns on its own. */
+    if (!svc.signupPartner) return;
+    try {
+      var sp = await svc.signupPartner();
+      if (sp && sp.code && !KT.cart.partner()) await applyPartnerCode(sp.code, true);
+    } catch (e) { /* signed out or offline — nothing to offer */ }
   }
 
   function suggestions() {
@@ -651,6 +665,7 @@
     loadAddresses();
     loadDelivery();
     applyLinkPartner();
+    document.addEventListener("kt:auth", function () { applyLinkPartner(); });
     document.addEventListener("visibilitychange", function () {
       if (document.visibilityState === "visible") loadDelivery();
     });

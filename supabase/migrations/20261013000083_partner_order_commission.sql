@@ -27,6 +27,20 @@
    partner_* value supplied any other way is discarded, and a BEFORE UPDATE
    trigger makes both columns immutable.
 
+   REFUNDS (approved policy pending — see section 3b): a refund never
+   debits a Partner's wallet. If an order that already earned a commission
+   is refunded, the commission is marked reversed and the amount that was
+   credited is recovered from the Partner's NEXT commissions before anything
+   further is paid out. Historical (signup_link) commissions are never
+   reversed. A refunded order can therefore never be used to earn twice.
+
+   SIGNUP INVITE CODES: the existing signup path (handle_new_user) already
+   records attribution from a code typed at signup. partner_code_lookup()
+   now also answers for signed-out visitors with paused / inactive codes,
+   handle_new_user() skips referrers whose account is suspended, and
+   my_signup_partner_code() lets a new customer's FIRST checkout pre-fill
+   (never force) the Partner code they signed up with.
+
    Ordinary referral points are unchanged, except that a referral whose
    referrer is (or was recorded as) a Partner now earns neither points nor
    a signup-based commission (see referral_qualify below).
@@ -115,7 +129,14 @@ create table if not exists public.partner_commissions (
   amount       integer not null check (amount >= 0),
   wallet_tx_id uuid references public.wallet_transactions (id),
   source       text not null check (source in ('order_code', 'signup_link')),
-  created_at   timestamptz not null default now()
+  created_at   timestamptz not null default now(),
+  /* Part of `amount` held back to recover commissions on refunded orders.
+     The wallet was credited amount - offset_applied. */
+  offset_applied integer not null default 0,
+  /* Set when the order is refunded after earning. Never cleared. */
+  reversed_at     timestamptz,
+  reversal_reason text,
+  constraint partner_commissions_offset_ok check (offset_applied >= 0 and offset_applied <= amount)
 );
 create index if not exists partner_commissions_partner_idx
   on public.partner_commissions (partner_id, created_at desc);
@@ -155,6 +176,9 @@ declare
   v_amount  integer;
   v_balance integer;
   v_tx      uuid;
+  v_owed    integer;
+  v_offset  integer := 0;
+  v_credit  integer;
 begin
   if new.partner_id is null then return new; end if;
   if not (new.paid and new.status = 'Completed') then return new; end if;
@@ -181,26 +205,51 @@ begin
   if not found then return new; end if;
 
   if v_amount > 0 then
+    /* The Partner's wallet row is the per-Partner lock: every commission
+       for this Partner is computed one at a time, so the recovery below
+       can never be applied twice. */
     select balance into v_balance from public.wallets
      where user_id = new.partner_id and status = 'active' for update;
     if not found then raise exception 'Partner wallet is not active'; end if;
 
-    /* Same reference namespace as 0081, so the UNIQUE reference also blocks
-       a second credit for any order the old rule already paid. The wallet
-       balance follows the ledger via apply_partner_referral_credit (0081). */
-    insert into public.wallet_transactions
-      (user_id, type, reason, amount, balance_after, reference, order_id, description)
-    values (new.partner_id, 'credit', 'reward', v_amount, v_balance + v_amount,
-            'partner-referral:' || new.id::text, new.id,
-            'Partner commission · order ' || new.code)
-    returning id into v_tx;
+    /* 3b. Recover commissions already credited on orders that were later
+       refunded. Owed = what was credited on reversed orders, minus what
+       has already been held back from commissions that still stand. */
+    select greatest(0,
+             coalesce(sum(c.amount - c.offset_applied) filter (where c.reversed_at is not null), 0)
+           - coalesce(sum(c.offset_applied) filter (where c.reversed_at is null), 0))::integer
+      into v_owed
+      from public.partner_commissions c
+     where c.partner_id = new.partner_id and c.order_id <> new.id;
+    v_offset := least(coalesce(v_owed, 0), v_amount);
+    v_credit := v_amount - v_offset;
+    if v_offset > 0 then
+      update public.partner_commissions set offset_applied = v_offset where order_id = new.id;
+    end if;
 
-    update public.partner_commissions set wallet_tx_id = v_tx where order_id = new.id;
+    if v_credit > 0 then
+      /* Same reference namespace as 0081, so the UNIQUE reference also blocks
+         a second credit for any order the old rule already paid. The wallet
+         balance follows the ledger via apply_partner_referral_credit (0081). */
+      insert into public.wallet_transactions
+        (user_id, type, reason, amount, balance_after, reference, order_id, description)
+      values (new.partner_id, 'credit', 'reward', v_credit, v_balance + v_credit,
+              'partner-referral:' || new.id::text, new.id,
+              'Partner commission · order ' || new.code ||
+                case when v_offset > 0 then ' (' || v_offset || ' naira held back for a refunded order)' else '' end)
+      returning id into v_tx;
+
+      update public.partner_commissions set wallet_tx_id = v_tx where order_id = new.id;
+    end if;
 
     perform public.notify_user(
       new.partner_id, 'reward', 'You earned a Partner commission',
       'Order ' || new.code || ' with your code ' || coalesce(new.partner_code, '') ||
-        ' earned you ' || v_amount || ' naira in wallet credit.',
+        ' earned you ' || v_amount || ' naira' ||
+        case when v_offset > 0
+             then ', of which ' || v_offset || ' naira was held back to cover a refunded order. '
+                  || v_credit || ' naira was added to your wallet.'
+             else ' in wallet credit.' end,
       null, false);
   end if;
   return new;
@@ -219,6 +268,55 @@ drop trigger if exists orders_partner_commission on public.orders;
 create trigger orders_partner_commission
   after update on public.orders
   for each row execute function public.partner_order_commission();
+
+/* ---- 3b. Refunds --------------------------------------------------------
+
+   An order refunded BEFORE it earned never earns: partner_order_commission()
+   refuses refunded orders, and partner_commissions.order_id allows one row
+   per order ever, so re-completing cannot pay again.
+
+   An order refunded AFTER it earned: the commission is marked reversed and
+   the amount that reached the Partner's wallet is recovered from their next
+   commissions (above). Nothing is debited from the wallet — the credit may
+   already have been spent, and a balance must never go negative. The
+   historical signup_link commissions are left exactly as they are. */
+create or replace function public.partner_commission_reversal()
+returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  v_partner uuid;
+  v_credited integer;
+begin
+  if new.payment_status is distinct from 'refunded'
+     or old.payment_status is not distinct from 'refunded' then
+    return new;
+  end if;
+
+  update public.partner_commissions
+     set reversed_at = now(), reversal_reason = 'Order refunded'
+   where order_id = new.id and reversed_at is null and source = 'order_code'
+  returning partner_id, amount - offset_applied into v_partner, v_credited;
+
+  if found and v_partner is not null and v_credited > 0 then
+    perform public.notify_user(
+      v_partner, 'reward', 'A Partner commission was reversed',
+      'Order ' || new.code || ' was refunded, so its ' || v_credited ||
+        ' naira commission will be held back from your next Partner commissions. ' ||
+        'Your wallet balance has not been changed.',
+      null, false);
+  end if;
+  return new;
+exception when others then
+  /* A refund must never fail because of commission bookkeeping. */
+  raise warning 'partner commission reversal skipped for order %: %', new.id, sqlerrm;
+  return new;
+end;
+$$;
+revoke all on function public.partner_commission_reversal() from public, anon, authenticated;
+
+drop trigger if exists orders_partner_commission_reversal on public.orders;
+create trigger orders_partner_commission_reversal
+  after update of payment_status on public.orders
+  for each row execute function public.partner_commission_reversal();
 
 /* ---- 4. Signup-link commission retired; points rule unchanged ---------- */
 
@@ -350,10 +448,21 @@ $$;
 /** What a code typed in the basket is. Display name only for Partners. */
 create or replace function public.partner_code_lookup(p_code text)
 returns jsonb language plpgsql stable security definer set search_path = public as $$
+/* What a typed code is, for the basket and the signup form. Callable signed
+   out (signup). Reveals a name only for Partners, who are public figures;
+   an ordinary referral code never says whose it is.
+     unknown         not a code
+     self            the caller's own code
+     inactive        the owner's account is suspended
+     partner         an enabled Partner's code (current or alias)
+     partner_paused  a Partner whose Partner mode is switched off — at signup
+                     it still counts as an ordinary friend referral
+     referral        an ordinary customer's referral code */
 declare
   v_code  text := upper(btrim(coalesce(p_code, '')));
   v_owner uuid;
   v_name  text;
+  v_susp  boolean;
 begin
   if v_code !~ '^[A-Z0-9]{4,20}$' then
     return jsonb_build_object('kind', 'unknown', 'code', v_code);
@@ -362,18 +471,112 @@ begin
   if v_owner is null then
     return jsonb_build_object('kind', 'unknown', 'code', v_code);
   end if;
-  if not exists (select 1 from public.partner_referrers p where p.user_id = v_owner and p.enabled) then
-    return jsonb_build_object('kind', 'referral', 'code', v_code);
-  end if;
   if v_owner = auth.uid() then
     return jsonb_build_object('kind', 'self', 'code', v_code);
   end if;
-  select nullif(btrim(display_name), '') into v_name from public.profiles where id = v_owner;
-  return jsonb_build_object('kind', 'partner', 'code', v_code, 'partner_name', coalesce(v_name, 'a Kandy''s Partner'));
+  select nullif(btrim(display_name), ''), suspended_at is not null
+    into v_name, v_susp from public.profiles where id = v_owner;
+  if coalesce(v_susp, true) then
+    return jsonb_build_object('kind', 'inactive', 'code', v_code);
+  end if;
+  if exists (select 1 from public.partner_referrers p where p.user_id = v_owner and p.enabled) then
+    return jsonb_build_object('kind', 'partner', 'code', v_code,
+                              'partner_name', coalesce(v_name, 'a Kandy''s Partner'));
+  end if;
+  if exists (select 1 from public.partner_referrers p where p.user_id = v_owner) then
+    return jsonb_build_object('kind', 'partner_paused', 'code', v_code);
+  end if;
+  return jsonb_build_object('kind', 'referral', 'code', v_code);
 end;
 $$;
 revoke all on function public.partner_code_lookup(text) from public;
 grant execute on function public.partner_code_lookup(text) to anon, authenticated;
+
+/* ---- 5b. Signup invite codes ------------------------------------------- */
+
+/* The Partner code a customer signed up with, for their FIRST checkout only:
+   returned while they have no paid order and the Partner is still enabled,
+   so the basket can pre-fill it (removable). It earns nothing by itself —
+   commission still comes only from a code on a paid, completed order. */
+create or replace function public.my_signup_partner_code()
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare
+  v_uid  uuid := auth.uid();
+  v_ref  public.referrals%rowtype;
+  v_name text;
+begin
+  if v_uid is null then return null; end if;
+  select * into v_ref from public.referrals where referred_id = v_uid;
+  if not found or v_ref.code_used is null or v_ref.referrer_id is null then return null; end if;
+  if not exists (select 1 from public.partner_referrers p
+                  where p.user_id = v_ref.referrer_id and p.enabled) then return null; end if;
+  if exists (select 1 from public.profiles pr
+              where pr.id = v_ref.referrer_id and pr.suspended_at is not null) then return null; end if;
+  if not exists (select 1 from public.referral_code_aliases a
+                  where a.code = v_ref.code_used and a.user_id = v_ref.referrer_id) then return null; end if;
+  if exists (select 1 from public.orders o where o.user_id = v_uid and o.paid) then return null; end if;
+  select nullif(btrim(display_name), '') into v_name from public.profiles where id = v_ref.referrer_id;
+  return jsonb_build_object('code', v_ref.code_used, 'partner_name', coalesce(v_name, 'a Kandy''s Partner'));
+end;
+$$;
+revoke all on function public.my_signup_partner_code() from public, anon;
+grant execute on function public.my_signup_partner_code() to authenticated;
+
+/* 0081's handle_new_user(), unchanged except that a code belonging to a
+   suspended account no longer attributes a signup. */
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_code     text;
+  v_referrer uuid;
+  v_partner boolean;
+begin
+  insert into public.profiles (id, display_name, phone, photo_url)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data ->> 'display_name',
+             new.raw_user_meta_data ->> 'full_name', ''),
+    coalesce(new.raw_user_meta_data ->> 'phone', ''),
+    coalesce(new.raw_user_meta_data ->> 'avatar_url', '')
+  )
+  on conflict (id) do nothing;
+
+  insert into public.wallets (user_id)
+  values (new.id)
+  on conflict (user_id) do nothing;
+
+  begin
+    v_code := upper(btrim(coalesce(new.raw_user_meta_data ->> 'referral_code', '')));
+    if v_code <> '' then
+      select a.user_id, exists (
+        select 1 from public.partner_referrers p
+         where p.user_id=a.user_id and p.enabled
+      ) into v_referrer, v_partner
+        from public.referral_code_aliases a where a.code = v_code;
+
+      /* A real code, belonging to somebody else whose account is active.
+         Self-referral fails here on the id comparison and again on
+         referrals_not_self; a second attribution fails on one_referrer. */
+      if v_referrer is not null and v_referrer <> new.id
+         and not exists (select 1 from public.profiles s
+                          where s.id = v_referrer and s.suspended_at is not null) then
+        insert into public.referrals (referrer_id, referred_id, status, code_used, partner_reward)
+        values (v_referrer, new.id, 'signed_up', v_code, coalesce(v_partner,false))
+        on conflict do nothing;   /* one_referrer index decides */
+      end if;
+    end if;
+  exception when others then
+    /* Attribution is best-effort. Signup is not. */
+    raise warning 'referral attribution skipped for %: %', new.id, sqlerrm;
+  end;
+
+  return new;
+end;
+$$;
 
 /* ---- 6. Admin reporting ------------------------------------------------ */
 
@@ -400,8 +603,21 @@ begin
             'orders_attributed', (select count(*) from public.orders o where o.partner_id = p.id),
             'orders_open', (select count(*) from public.orders o where o.partner_id = p.id
                               and o.status not in ('Completed', 'Cancelled')),
-            'qualifying_orders', (select count(*) from public.partner_commissions c where c.partner_id = p.id and c.amount > 0),
-            'commission_total', coalesce((select sum(c.amount) from public.partner_commissions c where c.partner_id = p.id), 0),
+            'qualifying_orders', (select count(*) from public.partner_commissions c
+                                   where c.partner_id = p.id and c.amount > 0 and c.reversed_at is null),
+            'commission_total', coalesce((select sum(c.amount) from public.partner_commissions c
+                                           where c.partner_id = p.id and c.reversed_at is null), 0),
+            'reversed_total', coalesce((select sum(c.amount) from public.partner_commissions c
+                                         where c.partner_id = p.id and c.reversed_at is not null), 0),
+            'withheld_total', coalesce((select sum(c.offset_applied) from public.partner_commissions c
+                                         where c.partner_id = p.id and c.reversed_at is null), 0),
+            'outstanding', (select greatest(0,
+                               coalesce(sum(c.amount - c.offset_applied) filter (where c.reversed_at is not null), 0)
+                             - coalesce(sum(c.offset_applied) filter (where c.reversed_at is null), 0))
+                              from public.partner_commissions c where c.partner_id = p.id),
+            /* What the wallet ledger should show: every commission's credited part. */
+            'expected_ledger', coalesce((select sum(c.amount - c.offset_applied) from public.partner_commissions c
+                                          where c.partner_id = p.id), 0),
             'ledger_total', coalesce((select sum(w.amount) from public.wallet_transactions w
                                        where w.user_id = p.id and w.reference like 'partner-referral:%'), 0),
             'not_credited', (select count(*) from public.orders o
@@ -413,7 +629,9 @@ begin
               select jsonb_agg(jsonb_build_object(
                        'order_code', o.code, 'customer', cp.display_name, 'code_used', c.code_used,
                        'at', c.created_at, 'base', c.base, 'amount', c.amount,
-                       'credited', c.wallet_tx_id is not null, 'source', c.source)
+                       'credited', c.wallet_tx_id is not null, 'source', c.source,
+                       'withheld', c.offset_applied, 'reversed_at', c.reversed_at,
+                       'refunded', o.payment_status = 'refunded')
                      order by c.created_at desc)
                 from public.partner_commissions c
                 join public.orders o on o.id = c.order_id

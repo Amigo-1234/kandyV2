@@ -235,3 +235,20 @@
   margin-top: 1px;
   color: var(--ink-4);
 }
+
+
+/* ---- Signup invite code (optional) ------------------------------------ */
+.field__opt { font-weight: 500; color: var(--ink-4); font-size: 0.78rem; margin-left: 4px; }
+.invitefield__input { text-transform: uppercase; letter-spacing: 0.06em; padding-right: 48px; }
+.invitefield__input::placeholder { text-transform: none; letter-spacing: normal; }
+.invitefield .input-group__action { font-size: 1.25rem; line-height: 1; }
+.invitefield__msg { display: block; min-height: 1.2em; line-height: 1.45; }
+.invitefield.is-good .invitefield__msg { color: #0a7a5e; font-weight: 600; }
+.invitefield.is-good .input { border-color: var(--mint); }
+.invitefield.is-bad .invitefield__msg { color: var(--chili); font-weight: 600; }
+.invitefield.is-bad .input { border-color: var(--chili); }
+.invitefield.is-checking .invitefield__msg { color: var(--ink-3); }
+:root[data-theme="dark"] .invitefield.is-good .invitefield__msg { color: #35d6a8; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .invitefield.is-good .invitefield__msg { color: #35d6a8; }
+}

@@ -78,6 +78,16 @@ export const rewardsService = {
     if (error) throw error;
     return data || { kind: "unknown" };
   },
+  /**
+   * The Partner code this customer signed up with, while they have no paid
+   * order yet — for pre-filling (never forcing) their first checkout.
+   * { code, partner_name } or null.
+   */
+  async signupPartner() {
+    const { data, error } = await supabase.rpc("my_signup_partner_code");
+    if (error) throw error;
+    return data || null;
+  },
   /** Manager+: per-Partner totals and commission history (0083). */
   async partnerReport() {
     const { data, error } = await supabase.rpc("admin_partner_report");
