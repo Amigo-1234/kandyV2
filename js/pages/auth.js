@@ -156,7 +156,43 @@
       "error", { duration: 5200 });
   }
 
-  function socials() {
+  /* ---- Pending invite for Google signup ---------------------------------
+     Google cannot carry signup metadata, so an invite code entered before
+     "Continue with Google" waits on this device for 30 minutes. When Google
+     returns with a session, claim_signup_invite() attaches it — server-side,
+     and only to a brand-new account with no referral yet. It is read once
+     and removed, whatever the answer. */
+  var PENDING_INVITE = "kt.pendingInvite";
+  var PENDING_TTL_MS = 30 * 60 * 1000;
+  function stashInvite(code) {
+    try {
+      if (code) localStorage.setItem(PENDING_INVITE, JSON.stringify({ code: code, at: Date.now() }));
+      else localStorage.removeItem(PENDING_INVITE);
+    } catch (e) { /* private mode: Google signup simply goes without */ }
+  }
+  function takeInvite() {
+    try {
+      var raw = localStorage.getItem(PENDING_INVITE);
+      localStorage.removeItem(PENDING_INVITE);
+      var p = raw ? JSON.parse(raw) : null;
+      if (!p || !p.code || !(Date.now() - p.at < PENDING_TTL_MS)) return "";
+      return /^[A-Z0-9]{4,20}$/.test(p.code) ? p.code : "";
+    } catch (e) { return ""; }
+  }
+  async function claimPendingInvite() {
+    var code = takeInvite();
+    var svc = KT.services && KT.services.rewards;
+    if (!code || !svc || !svc.claimSignupInvite) return;
+    try {
+      var r = await svc.claimSignupInvite(code);
+      /* Offer the code on this visit's first basket, as email signup does. */
+      if (r && r.status === "attributed" && KT.referral) KT.referral.set(code);
+    } catch (e) { /* attribution is best-effort; signing in is not */ }
+  }
+
+  /* `beforeGoogle` (signup page only) checks the invite code and keeps it
+     for the return trip; returning false stops before leaving for Google. */
+  function socials(beforeGoogle) {
     KT.qsa("[data-social]").forEach(function (b) {
       var isGoogle = /google/i.test(b.textContent);
       if (!isGoogle) {
@@ -166,6 +202,11 @@
       }
       b.addEventListener("click", async function () {
         if (!KT.services) return;
+        if (beforeGoogle) {
+          if ((await beforeGoogle()) === false) return;
+        } else {
+          stashInvite("");   /* sign-in page: no invite to carry */
+        }
         b.disabled = true;
         b.setAttribute("aria-busy", "true");
 
@@ -186,6 +227,7 @@
         } catch (error) {
           /* We never left, so roll the optimistic state back. */
           clearHandoff();
+          stashInvite("");
           if (KT.session && !(KT.auth && KT.auth.isSignedIn())) KT.session.forget();
           b.disabled = false;
           b.removeAttribute("aria-busy");
@@ -209,8 +251,11 @@
       /* Role decides the destination, so this waits for the profile rather
          than bouncing to the customer account page first. One redirect, no
          flash of the wrong screen, and no loop: every destination below is a
-         different page from this one. */
-      KT.auth.landingUrl().then(function (url) {
+         different page from this one. A Google signup's pending invite is
+         claimed first, so it is recorded before the customer moves on. */
+      claimPendingInvite().then(function () {
+        return KT.auth.landingUrl();
+      }).then(function (url) {
         window.location.href = url;
       });
     });
@@ -391,13 +436,27 @@
   KT.pages.signup = function () {
     artwork();
     passwordToggles(document);
-    socials();
     gate("[data-signup-form]");
     carryNext();
     redirectIfSignedIn();
 
     var form = KT.qs("[data-signup-form]");
     var invite = inviteField(form);
+
+    /* Google signup uses the same invite field and the same check as email
+       signup; the code is carried across the Google round trip. */
+    socials(async function () {
+      await invite.settle();
+      if (!invite.ok()) {
+        KT.toast(invite.message() || "Check the invite code, or remove it.", "info");
+        invite.focus();
+        return false;
+      }
+      var code = invite.value();
+      stashInvite(code);
+      if (KT.referral) { if (code) KT.referral.set(code); else KT.referral.clear(); }
+      return true;
+    });
 
     /* Password strength meter (presentation only). */
     var pw = KT.qs("#suPassword");
@@ -456,6 +515,7 @@
         return;
       }
       var inviteCode = invite.value();
+      stashInvite("");   /* email signup carries the code itself */
 
       busy(form, true, "Creating your account…");
       try {

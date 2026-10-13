@@ -39,7 +39,9 @@
    now also answers for signed-out visitors with paused / inactive codes,
    handle_new_user() skips referrers whose account is suspended, and
    my_signup_partner_code() lets a new customer's FIRST checkout pre-fill
-   (never force) the Partner code they signed up with.
+   (never force) the Partner code they signed up with. claim_signup_invite()
+   does the same attribution for Google signups, for brand-new accounts
+   only.
 
    Ordinary referral points are unchanged, except that a referral whose
    referrer is (or was recorded as) a Partner now earns neither points nor
@@ -521,6 +523,111 @@ end;
 $$;
 revoke all on function public.my_signup_partner_code() from public, anon;
 grant execute on function public.my_signup_partner_code() to authenticated;
+
+/* Google (OAuth) signup cannot carry signup metadata, so the signup page
+   keeps the invite code on the device for 30 minutes and, once Google
+   returns with a session, asks this function to attach it. It attaches
+   ONLY to a brand-new account: created in the last 30 minutes, no orders,
+   no referral yet. An existing account signing in again gets nothing, and
+   an existing attribution is never replaced (the one_referrer index is the
+   final word). Same validation as handle_new_user(): a real code, not the
+   caller's own, owner not suspended. */
+create or replace function public.claim_signup_invite(p_code text)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare
+  v_uid     uuid := auth.uid();
+  v_code    text := upper(btrim(coalesce(p_code, '')));
+  v_created timestamptz;
+  v_owner   uuid;
+  v_partner boolean;
+  v_name    text;
+begin
+  if v_uid is null then
+    raise exception 'Sign in required' using errcode = '28000';
+  end if;
+  if v_code !~ '^[A-Z0-9]{4,20}$' then
+    return jsonb_build_object('status', 'invalid');
+  end if;
+  /* One attribution per customer, ever — never overwritten. */
+  if exists (select 1 from public.referrals where referred_id = v_uid) then
+    return jsonb_build_object('status', 'already_attributed');
+  end if;
+  select created_at into v_created from auth.users where id = v_uid;
+  if v_created is null or v_created < now() - interval '30 minutes'
+     or exists (select 1 from public.orders o where o.user_id = v_uid) then
+    return jsonb_build_object('status', 'not_new');
+  end if;
+  select a.user_id into v_owner from public.referral_code_aliases a where a.code = v_code;
+  if v_owner is null then
+    return jsonb_build_object('status', 'invalid');
+  end if;
+  if v_owner = v_uid then
+    return jsonb_build_object('status', 'self');
+  end if;
+  if exists (select 1 from public.profiles s where s.id = v_owner and s.suspended_at is not null) then
+    return jsonb_build_object('status', 'inactive');
+  end if;
+  v_partner := exists (select 1 from public.partner_referrers p where p.user_id = v_owner and p.enabled);
+
+  insert into public.referrals (referrer_id, referred_id, status, code_used, partner_reward)
+  values (v_owner, v_uid, 'signed_up', v_code, v_partner)
+  on conflict do nothing;
+  if not found then
+    return jsonb_build_object('status', 'already_attributed');
+  end if;
+
+  if v_partner then
+    select nullif(btrim(display_name), '') into v_name from public.profiles where id = v_owner;
+  end if;
+  return jsonb_build_object('status', 'attributed', 'code', v_code, 'partner', v_partner,
+                            'partner_name', v_name);
+end;
+$$;
+revoke all on function public.claim_signup_invite(text) from public, anon;
+grant execute on function public.claim_signup_invite(text) to authenticated;
+
+/* A Partner's own earnings, for their account page: codes, totals, and
+   anything reversed after a refund, held back, or still to be recovered.
+   Own data only (auth.uid()); null for anyone who is not a Partner. No
+   customer names. */
+create or replace function public.my_partner_summary()
+returns jsonb language plpgsql stable security definer set search_path = public as $$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null or not exists (select 1 from public.partner_referrers where user_id = v_uid) then
+    return null;
+  end if;
+  return jsonb_build_object(
+    'enabled', (select enabled from public.partner_referrers where user_id = v_uid),
+    'codes', coalesce((select jsonb_agg(a.code order by (a.code = rc.code) desc, a.code)
+                         from public.referral_code_aliases a
+                         left join public.referral_codes rc on rc.user_id = v_uid
+                        where a.user_id = v_uid), '[]'::jsonb),
+    'orders', (select count(*) from public.partner_commissions c
+                where c.partner_id = v_uid and c.amount > 0 and c.reversed_at is null),
+    'earned', coalesce((select sum(c.amount) from public.partner_commissions c
+                         where c.partner_id = v_uid and c.reversed_at is null), 0),
+    'credited', coalesce((select sum(w.amount) from public.wallet_transactions w
+                           where w.user_id = v_uid and w.reference like 'partner-referral:%'), 0),
+    'reversed', coalesce((select sum(c.amount) from public.partner_commissions c
+                           where c.partner_id = v_uid and c.reversed_at is not null), 0),
+    'withheld', coalesce((select sum(c.offset_applied) from public.partner_commissions c
+                           where c.partner_id = v_uid and c.reversed_at is null), 0),
+    'outstanding', (select greatest(0,
+                      coalesce(sum(c.amount - c.offset_applied) filter (where c.reversed_at is not null), 0)
+                    - coalesce(sum(c.offset_applied) filter (where c.reversed_at is null), 0))
+                      from public.partner_commissions c where c.partner_id = v_uid),
+    'recent', coalesce((select jsonb_agg(x order by x.at desc) from (
+                 select c.created_at as at, c.amount, c.offset_applied as withheld,
+                        c.reversed_at is not null as reversed
+                   from public.partner_commissions c
+                  where c.partner_id = v_uid
+                  order by c.created_at desc limit 10) x), '[]'::jsonb));
+end;
+$$;
+revoke all on function public.my_partner_summary() from public, anon;
+grant execute on function public.my_partner_summary() to authenticated;
 
 /* 0081's handle_new_user(), unchanged except that a code belonging to a
    suspended account no longer attributes a signup. */

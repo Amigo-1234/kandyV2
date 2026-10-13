@@ -88,6 +88,22 @@ export const rewardsService = {
     if (error) throw error;
     return data || null;
   },
+  /**
+   * Google signup: attach the invite code entered before leaving for Google.
+   * The server accepts it only for a brand-new account with no referral yet.
+   * { status: attributed | already_attributed | not_new | invalid | self | inactive }
+   */
+  async claimSignupInvite(code) {
+    const { data, error } = await supabase.rpc("claim_signup_invite", { p_code: String(code || "") });
+    if (error) throw error;
+    return data;
+  },
+  /** A Partner's own earnings and any refund recovery; null for non-Partners. */
+  async partnerSummary() {
+    const { data, error } = await supabase.rpc("my_partner_summary");
+    if (error) throw error;
+    return data || null;
+  },
   /** Manager+: per-Partner totals and commission history (0083). */
   async partnerReport() {
     const { data, error } = await supabase.rpc("admin_partner_report");
