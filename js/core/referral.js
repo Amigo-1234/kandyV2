@@ -78,6 +78,10 @@
     /** Called once the referral has been spent on a signup. */
     clear: function () { memory = ""; write(""); },
 
+    /** Remember a code typed at signup for the rest of this visit, so the
+        basket can offer it on the first checkout. Validated shape only. */
+    set: function (code) { var c = clean(code); memory = c; write(c); return c; },
+
     /** Build a share link for a code. Same-origin by construction. */
     linkFor: function (code) {
       var c = clean(code);

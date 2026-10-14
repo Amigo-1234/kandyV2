@@ -43,6 +43,73 @@
     }).join('');
   }
 
+  /* Per-Partner earnings (admin_partner_report, 0083). Every code a Partner
+     has held is listed together — the current one first — so ADONIS and
+     POPSYADONIS read as one person. Totals come from partner_commissions,
+     one row per order, so nothing is counted twice; the wallet ledger total
+     is shown beside it as a cross-check. */
+  function reportHTML() {
+    var rep = state.data && state.data.report;
+    if (state.data && state.data.reportError) {
+      return '<section class="panel apanel"><h3>Partner earnings</h3><p class="refmuted">' +
+        esc(state.data.reportError) + '</p></section>';
+    }
+    if (!rep) return "";
+    var partners = rep.partners || [];
+    return '<section class="panel apanel refreport" aria-labelledby="partnerReportTitle">' +
+      '<div class="refsection-head"><div><p class="refeyebrow">Partner earnings</p><h2 id="partnerReportTitle">Partner report</h2>' +
+      '<p>10% of the order subtotal after discounts, credited once per paid, completed order where the Partner\'s code was applied' +
+      ' (minimum order ' + esc(KT.naira(Number(rep.min_order) || 0)) + ').</p></div></div>' +
+      (partners.length ? partners.map(partnerCardHTML).join("") :
+        '<p class="refmuted">No Partners yet. Enable Partner mode for a customer below.</p>') +
+      '</section>';
+  }
+
+  function partnerCardHTML(p) {
+    var codes = (p.codes || []).map(function (c) {
+      return '<code class="refcode">' + esc(c) + '</code>' + (c === p.current_code ? ' <span class="refmuted">current</span>' : '');
+    }).join(' ');
+    /* What the wallet ledger should show is every commission's credited
+       part (earned minus anything held back for refunds). */
+    var expected = p.expected_ledger != null ? p.expected_ledger : p.commission_total;
+    var mismatch = Number(p.ledger_total) !== Number(expected);
+    var hist = p.history || [];
+    return '<article class="refpcard">' +
+      '<div class="refselected-head"><div><strong>' + esc(p.name || p.id) + '</strong>' +
+        '<div class="refaliases refpcard__codes" aria-label="Codes for this Partner">' + (codes || '<span class="refmuted">No code</span>') + '</div></div>' +
+        badge(p.enabled ? 'Partner' : 'Disabled', p.enabled ? 'partner' : 'neutral') + '</div>' +
+      '<div class="rstats">' +
+        tile("Commission earned", KT.naira(Number(p.commission_total) || 0)) +
+        tile("Qualifying orders", p.qualifying_orders) +
+        tile("Orders with code", p.orders_attributed, (Number(p.orders_open) || 0) + " still open") +
+        tile("Link signups", p.signups) +
+      '</div>' +
+      (mismatch ? '<p class="refalias-note">Wallet ledger shows ' + esc(KT.naira(Number(p.ledger_total) || 0)) +
+        ' in Partner credits — check the history below.</p>' : '') +
+      (Number(p.reversed_total) || Number(p.outstanding)
+        ? '<p class="refalias-note">Refunded orders: ' + esc(KT.naira(Number(p.reversed_total) || 0)) +
+          ' of commission reversed · ' + esc(KT.naira(Number(p.withheld_total) || 0)) + ' held back from later commissions · ' +
+          '<strong>' + esc(KT.naira(Number(p.outstanding) || 0)) + ' still to recover</strong>. Wallets are never debited.</p>'
+        : '') +
+      (Number(p.not_credited) ? '<p class="refalias-note" style="color:var(--chili)!important">' + esc(String(p.not_credited)) +
+        ' completed order(s) with this code have no commission row.</p>' : '') +
+      '<details class="refpcard__hist"><summary>Earnings history (' + hist.length + ')</summary>' +
+      '<div class="reftable-wrap" tabindex="0" role="region" aria-label="Earnings history — scroll horizontally"><table class="reftable reftable--hist"><thead><tr>' +
+      '<th scope="col">Order</th><th scope="col">Date</th><th scope="col">Customer</th><th scope="col">Code</th>' +
+      '<th scope="col" class="refmoney">Base</th><th scope="col" class="refmoney">Commission</th><th scope="col">Status</th></tr></thead><tbody>' +
+      (hist.length ? hist.map(function (h) {
+        return '<tr><td class="reforder">' + esc(h.order_code || '—') + '</td><td>' + esc(h.at ? new Date(h.at).toLocaleDateString() : '—') +
+          '</td><td>' + esc(h.customer || '—') + '</td><td><code class="refcode">' + esc(h.code_used || '—') + '</code>' +
+          (h.source === 'signup_link' ? ' <span class="refmuted">via signup link</span>' : '') + '</td>' +
+          '<td class="refmoney">' + esc(KT.naira(Number(h.base) || 0)) + '</td><td class="refmoney"><strong>' + esc(KT.naira(Number(h.amount) || 0)) + '</strong></td><td>' +
+          (h.reversed_at ? badge('Reversed — order refunded', 'neutral')
+            : Number(h.withheld) && Number(h.withheld) >= Number(h.amount) && Number(h.amount) > 0 ? badge('Held back for a refund', 'pending')
+            : h.credited ? badge(Number(h.withheld) ? 'Credited ' + KT.naira(Number(h.amount) - Number(h.withheld)) : 'Credited', 'credited')
+            : (Number(h.amount) === 0 ? badge('No credit due', 'neutral') : badge('Pending', 'pending'))) + '</td></tr>';
+      }).join('') : '<tr><td colspan="7" class="refempty">No commissions yet.</td></tr>') +
+      '</tbody></table></div></details></article>';
+  }
+
   function partnerHTML() {
     var d = state.data && state.data.partners;
     if (!d) return "";
@@ -65,17 +132,17 @@
       '<div class="refmode-actions"><div><strong>Referral mode</strong><p>Update the mode, or leave the code blank to keep the current code.</p></div>' +
       '<div class="refbuttons"><button type="button" class="btn btn--soft" data-partner-enable disabled>Enable Partner</button>' +
       '<button type="button" class="btn btn--ghost refdisable" data-partner-disable disabled>Disable Partner</button></div></div></div></div>' +
-      '<div class="refresults-head"><div><h3>Attributed customers &amp; rewards</h3><p>Mode is recorded at signup. Commission applies to the first qualifying order.</p></div>' +
+      '<div class="refresults-head"><div><h3>Signups through Partner links</h3><p>Who joined through each code. Commission is now earned per order where a Partner code is applied — see the Partner report above.</p></div>' +
       '<span class="refcount">' + d.referrals.length + ' referrals</span></div>' +
       '<p class="refscroll-hint">Scroll the table sideways to view all columns.</p>' +
       '<div class="reftable-wrap" tabindex="0" role="region" aria-label="Referral results — scroll horizontally"><table class="reftable"><caption class="sr-only">Customers attributed to referrers and their qualifying rewards</caption><thead><tr>' +
-      '<th scope="col">Referrer</th><th scope="col">Customer</th><th scope="col">Mode at signup</th><th scope="col">Code used</th><th scope="col">Order</th><th scope="col" class="refmoney">10% base</th><th scope="col" class="refmoney">Commission</th><th scope="col">Credited</th></tr></thead><tbody>' +
+      '<th scope="col">Referrer</th><th scope="col">Customer</th><th scope="col">Mode at signup</th><th scope="col">Code used</th><th scope="col">First-order commission</th><th scope="col" class="refmoney">10% base</th><th scope="col" class="refmoney">Commission</th><th scope="col">Credited</th></tr></thead><tbody>' +
       (d.referrals.length ? d.referrals.map(function (r) {
         var referrer = d.users.find(function (u) { return u.id === r.referrer_id; });
         var status = r.partner_reward ? (r.credited ? badge('Credited','credited') : (r.commission === 0 && r.order_id ? badge('No credit due','neutral') : badge('Pending','pending'))) : badge('N/A','neutral');
         return '<tr><td>' + esc((referrer || {}).name || r.referrer_id || 'Deleted account') + '</td><td>' + esc(r.customer_name || r.customer_id) + '</td><td>' +
           badge(r.partner_reward ? 'Partner' : 'Normal', r.partner_reward ? 'partner' : 'neutral') + '</td><td><code class="refcode">' + esc(r.code_used || 'Unknown (legacy)') + '</code></td>' +
-          '<td class="reforder">' + (r.order_id ? '<span title="' + esc(r.order_id) + '">' + esc(r.order_id) + '</span>' : '<span class="refmuted">Awaiting order</span>') + '</td>' +
+          '<td class="reforder">' + (r.order_id ? '<span title="' + esc(r.order_id) + '">' + esc(r.order_code || r.order_id) + '</span>' : '<span class="refmuted">Awaiting order</span>') + '</td>' +
           '<td class="refmoney">' + esc(r.base == null ? '—' : KT.naira(r.base)) + '</td><td class="refmoney"><strong>' + esc(r.commission == null ? '—' : KT.naira(r.commission)) + '</strong></td><td>' + status + '</td></tr>';
       }).join('') : '<tr><td colspan="8" class="refempty">No attributed customers yet. Referrals will appear here when customers join through a reserved code.</td></tr>') +
       '</tbody></table></div><p class="refalias-note">Credited refers to Partner wallet commission. Normal referrals use the existing points rewards.</p></section>';
@@ -164,7 +231,7 @@
         "<h3>We could not load referral analytics</h3><p>" + esc(state.error) + "</p>" +
         '<button class="btn btn--primary" type="button" data-rretry>Try again</button>' +
         "</div></div>";
-    } else body = bodyHTML() + partnerHTML();
+    } else body = bodyHTML() + reportHTML() + partnerHTML();
     KT.mount(host, head() + body);
     selectedPartnerDetail();
   }
@@ -176,6 +243,9 @@
       if (!svc) svc = (await import("../services/rewards.js")).rewardsService;
       var d = await svc.adminOverview();
       d.partners = await svc.partners();
+      /* The report is additive: if it cannot load, the rest of the page still works. */
+      try { d.report = await svc.partnerReport(); }
+      catch (e) { d.reportError = "Partner earnings are unavailable right now."; }
       if (gen !== mountGen) return;
       state.data = d;
     } catch (error) {

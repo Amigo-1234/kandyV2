@@ -68,6 +68,48 @@ export const rewardsService = {
     if (error) throw error;
     return data;
   },
+  /**
+   * What a code typed in the basket is (partner_code_lookup, 0083):
+   * { kind: "partner" | "referral" | "self" | "unknown", code, partner_name? }.
+   * Advisory — the orders trigger re-validates at checkout.
+   */
+  async lookupPartner(code) {
+    const { data, error } = await supabase.rpc("partner_code_lookup", { p_code: String(code || "") });
+    if (error) throw error;
+    return data || { kind: "unknown" };
+  },
+  /**
+   * The Partner code this customer signed up with, while they have no paid
+   * order yet — for pre-filling (never forcing) their first checkout.
+   * { code, partner_name } or null.
+   */
+  async signupPartner() {
+    const { data, error } = await supabase.rpc("my_signup_partner_code");
+    if (error) throw error;
+    return data || null;
+  },
+  /**
+   * Google signup: attach the invite code entered before leaving for Google.
+   * The server accepts it only for a brand-new account with no referral yet.
+   * { status: attributed | already_attributed | not_new | invalid | self | inactive }
+   */
+  async claimSignupInvite(code) {
+    const { data, error } = await supabase.rpc("claim_signup_invite", { p_code: String(code || "") });
+    if (error) throw error;
+    return data;
+  },
+  /** A Partner's own earnings and any refund recovery; null for non-Partners. */
+  async partnerSummary() {
+    const { data, error } = await supabase.rpc("my_partner_summary");
+    if (error) throw error;
+    return data || null;
+  },
+  /** Manager+: per-Partner totals and commission history (0083). */
+  async partnerReport() {
+    const { data, error } = await supabase.rpc("admin_partner_report");
+    if (error) throw error;
+    return data;
+  },
   async partners() {
     const { data, error } = await supabase.rpc("admin_partner_referrals");
     if (error) throw error;

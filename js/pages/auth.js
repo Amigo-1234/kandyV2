@@ -156,7 +156,43 @@
       "error", { duration: 5200 });
   }
 
-  function socials() {
+  /* ---- Pending invite for Google signup ---------------------------------
+     Google cannot carry signup metadata, so an invite code entered before
+     "Continue with Google" waits on this device for 30 minutes. When Google
+     returns with a session, claim_signup_invite() attaches it — server-side,
+     and only to a brand-new account with no referral yet. It is read once
+     and removed, whatever the answer. */
+  var PENDING_INVITE = "kt.pendingInvite";
+  var PENDING_TTL_MS = 30 * 60 * 1000;
+  function stashInvite(code) {
+    try {
+      if (code) localStorage.setItem(PENDING_INVITE, JSON.stringify({ code: code, at: Date.now() }));
+      else localStorage.removeItem(PENDING_INVITE);
+    } catch (e) { /* private mode: Google signup simply goes without */ }
+  }
+  function takeInvite() {
+    try {
+      var raw = localStorage.getItem(PENDING_INVITE);
+      localStorage.removeItem(PENDING_INVITE);
+      var p = raw ? JSON.parse(raw) : null;
+      if (!p || !p.code || !(Date.now() - p.at < PENDING_TTL_MS)) return "";
+      return /^[A-Z0-9]{4,20}$/.test(p.code) ? p.code : "";
+    } catch (e) { return ""; }
+  }
+  async function claimPendingInvite() {
+    var code = takeInvite();
+    var svc = KT.services && KT.services.rewards;
+    if (!code || !svc || !svc.claimSignupInvite) return;
+    try {
+      var r = await svc.claimSignupInvite(code);
+      /* Offer the code on this visit's first basket, as email signup does. */
+      if (r && r.status === "attributed" && KT.referral) KT.referral.set(code);
+    } catch (e) { /* attribution is best-effort; signing in is not */ }
+  }
+
+  /* `beforeGoogle` (signup page only) checks the invite code and keeps it
+     for the return trip; returning false stops before leaving for Google. */
+  function socials(beforeGoogle) {
     KT.qsa("[data-social]").forEach(function (b) {
       var isGoogle = /google/i.test(b.textContent);
       if (!isGoogle) {
@@ -166,6 +202,11 @@
       }
       b.addEventListener("click", async function () {
         if (!KT.services) return;
+        if (beforeGoogle) {
+          if ((await beforeGoogle()) === false) return;
+        } else {
+          stashInvite("");   /* sign-in page: no invite to carry */
+        }
         b.disabled = true;
         b.setAttribute("aria-busy", "true");
 
@@ -186,6 +227,7 @@
         } catch (error) {
           /* We never left, so roll the optimistic state back. */
           clearHandoff();
+          stashInvite("");
           if (KT.session && !(KT.auth && KT.auth.isSignedIn())) KT.session.forget();
           b.disabled = false;
           b.removeAttribute("aria-busy");
@@ -209,8 +251,11 @@
       /* Role decides the destination, so this waits for the profile rather
          than bouncing to the customer account page first. One redirect, no
          flash of the wrong screen, and no loop: every destination below is a
-         different page from this one. */
-      KT.auth.landingUrl().then(function (url) {
+         different page from this one. A Google signup's pending invite is
+         claimed first, so it is recorded before the customer moves on. */
+      claimPendingInvite().then(function () {
+        return KT.auth.landingUrl();
+      }).then(function (url) {
         window.location.href = url;
       });
     });
@@ -278,15 +323,140 @@
 
   /* ---- Sign up --------------------------------------------------------- */
 
+  /* ---- Invite code (optional) -------------------------------------------
+     A referral or Partner code typed at signup, or pre-filled from an invite
+     link. Checked as the customer types so they know whether it counts; the
+     server checks it again when the account is created (handle_new_user),
+     and a code is never required. */
+  var INVITE_HINT = "Got a code from a friend or a Kandy\u2019s Partner? Add it here.";
+  function inviteField(form) {
+    var input = KT.qs("[data-invite-input]", form);
+    var msg = KT.qs("[data-invite-msg]", form);
+    var clear = KT.qs("[data-invite-clear]", form);
+    var wrap = KT.qs("[data-invite]", form);
+    var state = { checked: "", ok: true, message: "", pending: null };
+    var timer = null;
+    if (!input) return { value: function () { return ""; }, settle: function () { return Promise.resolve(); }, ok: function () { return true; } };
+
+    function show(text, tone) {
+      msg.textContent = text;
+      wrap.classList.remove("is-good", "is-bad", "is-checking");
+      if (tone) wrap.classList.add("is-" + tone);
+    }
+    function code() { return String(input.value || "").trim().toUpperCase(); }
+    function shapeOk(c) { return /^[A-Z0-9]{4,20}$/.test(c); }
+
+    async function check() {
+      var c = code();
+      state.checked = c;
+      if (!c) { state.ok = true; show(INVITE_HINT, null); return; }
+      if (!shapeOk(c)) {
+        state.ok = false;
+        state.message = "Invite codes are 4\u201320 letters or numbers.";
+        show(state.message, "bad");
+        return;
+      }
+      var svc = KT.services && KT.services.rewards;
+      if (!svc || !svc.lookupPartner) {
+        state.ok = true; show("We\u2019ll check this code when you create your account.", null); return;
+      }
+      show("Checking\u2026", "checking");
+      var res;
+      try { res = await svc.lookupPartner(c); }
+      catch (e) {
+        if (code() !== c) return;
+        state.ok = true;
+        show("We couldn\u2019t check the code just now \u2014 it will be checked when your account is created.", null);
+        return;
+      }
+      if (code() !== c) return;   /* the customer kept typing */
+      var kind = res && res.kind;
+      if (kind === "partner") {
+        state.ok = true; show("\u2713 " + c + " \u2014 you\u2019re joining with " + (res.partner_name || "a Kandy\u2019s Partner") + ".", "good");
+      } else if (kind === "referral") {
+        state.ok = true; show("\u2713 Valid invite code. Your friend is rewarded after your first order.", "good");
+      } else if (kind === "partner_paused") {
+        state.ok = true; show("\u2713 Valid code. This Partner\u2019s programme is paused, so it counts as a friend\u2019s invite.", "good");
+      } else if (kind === "inactive") {
+        state.ok = false; state.message = "That code has expired or been disabled. Remove it to continue.";
+        show(state.message, "bad");
+      } else {
+        state.ok = false; state.message = "We don\u2019t recognise that code. Check it, or remove it to continue.";
+        show(state.message, "bad");
+      }
+    }
+
+    function schedule(delay) {
+      clearTimeout(timer);
+      clear.hidden = !input.value;
+      state.pending = new Promise(function (resolve) {
+        timer = setTimeout(function () { check().then(resolve, resolve); }, delay);
+      });
+    }
+
+    input.addEventListener("input", function () {
+      var caret = input.selectionStart;
+      input.value = input.value.toUpperCase().replace(/\s+/g, "");
+      try { input.setSelectionRange(caret, caret); } catch (e) {}
+      schedule(450);
+    });
+    input.addEventListener("blur", function () { if (code() !== state.checked) schedule(0); });
+    clear.addEventListener("click", function () {
+      input.value = "";
+      clear.hidden = true;
+      /* Removing a link code also stops the basket offering it later. */
+      if (KT.referral && KT.referral.clear) KT.referral.clear();
+      schedule(0);
+      input.focus();
+    });
+
+    /* Arrived on an invite link: pre-fill, but leave it editable. */
+    var captured = KT.referral && KT.referral.captured && KT.referral.captured();
+    if (captured) {
+      input.value = captured;
+      clear.hidden = false;
+      wrap.classList.add("is-prefilled");
+    }
+    function start() { if (input.value) schedule(0); }
+    if (KT.services) start(); else document.addEventListener("kt:services", start, { once: true });
+
+    return {
+      value: code,
+      ok: function () { return !code() || state.ok; },
+      message: function () { return state.message; },
+      /* Make sure the latest typing has been checked before submitting. */
+      settle: async function () {
+        if (code() !== state.checked) { clearTimeout(timer); await check(); }
+        else if (state.pending) await state.pending;
+      },
+      focus: function () { input.focus(); }
+    };
+  }
+
   KT.pages.signup = function () {
     artwork();
     passwordToggles(document);
-    socials();
     gate("[data-signup-form]");
     carryNext();
     redirectIfSignedIn();
 
     var form = KT.qs("[data-signup-form]");
+    var invite = inviteField(form);
+
+    /* Google signup uses the same invite field and the same check as email
+       signup; the code is carried across the Google round trip. */
+    socials(async function () {
+      await invite.settle();
+      if (!invite.ok()) {
+        KT.toast(invite.message() || "Check the invite code, or remove it.", "info");
+        invite.focus();
+        return false;
+      }
+      var code = invite.value();
+      stashInvite(code);
+      if (KT.referral) { if (code) KT.referral.set(code); else KT.referral.clear(); }
+      return true;
+    });
 
     /* Password strength meter (presentation only). */
     var pw = KT.qs("#suPassword");
@@ -336,11 +506,25 @@
         return;
       }
 
+      /* An invite code is optional, but one that will not count is never
+         sent silently: the customer fixes it or removes it. */
+      await invite.settle();
+      if (!invite.ok()) {
+        KT.toast(invite.message() || "Check the invite code, or remove it.", "info");
+        invite.focus();
+        return;
+      }
+      var inviteCode = invite.value();
+      stashInvite("");   /* email signup carries the code itself */
+
       busy(form, true, "Creating your account…");
       try {
         var result = await KT.auth.signUp({ firstName: firstName, lastName: lastName,
           email: email, phone: phone, password: password,
-          referralCode: KT.referral && KT.referral.captured() });
+          referralCode: inviteCode });
+        /* Remember the code for this visit so the basket can offer a
+           Partner code on the first checkout; forget a removed one. */
+        if (KT.referral) { if (inviteCode) KT.referral.set(inviteCode); else KT.referral.clear(); }
 
         if (result && result.needsEmailConfirmation) {
           /* No session yet. Redirecting would drop a session-less visitor on

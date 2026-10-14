@@ -22,7 +22,7 @@
     profile: null, wallet: null, addresses: [], orders: [],
     transactions: [], favourites: [], notifications: [], tickets: [],
     editing: null, gateways: null,
-    rewards: null, redeeming: false,
+    rewards: null, redeeming: false, partner: null,
     staffFlag: null
   };
 
@@ -317,6 +317,53 @@
     );
   }
 
+  /* ---- Partner earnings (Partners only) ----------------------------------
+     Shown only when my_partner_summary() says this account is a Partner.
+     A refunded order's commission is never taken back from the wallet; it
+     is recovered from later commissions, and this card says how much is
+     still to be recovered. */
+  function partnerPanel() {
+    var p = state.partner;
+    if (!p) return "";
+    var day = function (v) {
+      return new Date(v).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Africa/Lagos" });
+    };
+    return (
+      '<div class="panel rewards" id="partner">' +
+        '<div class="panel__head"><div><h2>Partner earnings</h2>' +
+          "<p>10% of every completed order where a customer uses your code" +
+          (p.enabled ? "." : " — your Partner programme is paused.") + "</p></div></div>" +
+        '<p class="rewards__label">Your codes</p>' +
+        '<div class="rewards__codeRow">' + (p.codes || []).map(function (c) {
+          return '<code class="rewards__code">' + esc(c) + "</code>";
+        }).join(" ") + "</div>" +
+        '<dl class="rewards__stats">' +
+          "<div><dt>Commission earned</dt><dd>" + KT.naira(p.earned) + "</dd></div>" +
+          "<div><dt>Paid to your wallet</dt><dd>" + KT.naira(p.credited) + "</dd></div>" +
+          "<div><dt>Qualifying orders</dt><dd>" + p.orders + "</dd></div>" +
+          "<div><dt>Still to recover</dt><dd>" + KT.naira(p.outstanding) + "</dd></div>" +
+        "</dl>" +
+        (p.reversed || p.outstanding
+          ? '<p class="rewards__legal">' + KT.naira(p.reversed) + " of commission was reversed because the orders were " +
+            "refunded. Your wallet is never debited for this: " + KT.naira(p.withheld) + " has been held back from later " +
+            "commissions so far, and " + KT.naira(p.outstanding) + " will be held back from your next ones.</p>"
+          : "") +
+        ((p.recent || []).length
+          ? '<div class="orderitems">' + p.recent.map(function (r) {
+              var paid = Number(r.amount) - Number(r.withheld);
+              return '<div class="orderitem">' +
+                '<div class="orderitem__text"><strong>Partner commission</strong><span>' + day(r.at) +
+                  (r.reversed ? " · reversed (order refunded)"
+                    : Number(r.withheld) ? " · " + KT.naira(r.withheld) + " held back for a refund" : "") +
+                "</span></div>" +
+                '<span class="price">' + (r.reversed ? "<s>" + KT.naira(r.amount) + "</s>" : "+" + KT.naira(paid)) + "</span>" +
+              "</div>";
+            }).join("") + "</div>"
+          : "") +
+      "</div>"
+    );
+  }
+
   function transactionsPanel() {
     if (!state.transactions.length) return "";
     return (
@@ -607,7 +654,7 @@
     if (!KT.auth || !KT.auth.isSignedIn()) return signedOut();
     KT.mount("[data-account-nav]", sideNav("account"));
     KT.mount("[data-account-main]",
-      staffFlagCard() + walletCard() + rewardsPanel() + notificationsPanel() + profilePanel() + addressPanel() +
+      staffFlagCard() + walletCard() + rewardsPanel() + partnerPanel() + notificationsPanel() + profilePanel() + addressPanel() +
       favouritesPanel() + ordersPanel() + transactionsPanel() + supportPanel());
     KT.images.bindAll(document);
     KT.components.paintCards(document);
@@ -623,7 +670,8 @@
       s.orders.list({ limit: 5 }), s.wallet.transactions({ limit: 8 }),
       s.account.favourites(), s.payments.status(),
       s.account.notifications({ limit: 8 }), s.content.supportTickets({ limit: 5 }),
-      s.rewards.summary(), s.account.staffFlagStatus()
+      s.rewards.summary(), s.account.staffFlagStatus(),
+      s.rewards.partnerSummary ? s.rewards.partnerSummary() : Promise.resolve(null)
     ]);
     state.profile = results[0].value || null;
     state.wallet = results[1].value || null;
@@ -636,6 +684,7 @@
     state.tickets = results[8].value || [];
     state.rewards = results[9].value || null;
     state.staffFlag = results[10].value || null;
+    state.partner = results[11].value || null;
     render();
 
     /* The code is minted on first ask, so a customer who has never opened
