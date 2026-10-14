@@ -1,9 +1,12 @@
 /* ==========================================================================
-   Kandy's Treats — Inventory (finished dishes)
+   Kandy's Treats — Inventory (every menu product)
    --------------------------------------------------------------------------
-   The batch-cooked and portioned dishes, what happened to each of them on a
-   day, and the history behind it. Raw ingredients live on their own screen
-   (#/ingredients) and never feed into this one or into menu availability.
+   Every product on the menu — rice, proteins, drinks, sides, everything not
+   in the trash — under its own menu id, what happened to each of them on a
+   day, and the history behind it. A product added to the menu appears here
+   by itself (0085); nothing is copied, so a rename shows at once. Raw
+   ingredients live on their own screen (#/ingredients) and never feed into
+   this one or into menu availability.
 
    THE ONE DISTINCTION THIS SCREEN HAS TO MAKE
 
@@ -16,9 +19,11 @@
                variance. None of these is an input anywhere on the page,
                because none of them has a column to write to.
 
-     recorded  prepared, waste, staff meal, adjustment, physical count. Each
-               is a form, each is attributed, and each becomes a ledger row
-               that cannot afterwards be edited.
+     recorded  added (prepared/restocked), waste, staff meal, adjustment,
+               opening count, closing count. Each is a form, each is
+               attributed, and each becomes a ledger row that cannot
+               afterwards be edited. Sales are never typed: they come from
+               the orders that reached the kitchen, once each.
 
    Where a product has never been counted, the screen says "not set" / "not
    counted" rather than showing zero — an unknown opening and an empty pot are
@@ -49,8 +54,10 @@
       day: null, history: null,   /* today: admin_inventory_day + admin_inventory_history */
       past: null,                 /* a past day: one day of admin_inventory_range */
       open: null, form: null, saving: false, showHistory: false,
+      board: { cat: "", q: "", uncounted: false },
+      sales: { key: null, loading: false, error: null, data: null },
       track: { open: false, loading: false, error: null, data: null, q: "", busy: null, confirm: null },
-      hist: { preset: "7", from: "", to: "", item: "", kind: "", q: "", gaps: false,
+      hist: { preset: "7", from: "", to: "", item: "", cat: "", kind: "", q: "", gaps: false,
               loading: false, error: null, data: null, openDay: null }
     };
   }
@@ -99,15 +106,18 @@
   function show(v, dash) { var s = num(v); return s === null ? (dash || "—") : s; }
   function shortName(n) { return String(n).replace(/\s*\(per .*?\)\s*/i, ""); }
 
+  /* Sales are not a kind: they are worked out from orders (see "sold"). */
   var KINDS = [
-    { id: "prepared",   label: "Prepared",   hint: "Cooked and ready to sell", sup: false },
+    { id: "opening",    label: "Opening count", hint: "What is there before service starts", sup: false },
+    { id: "prepared",   label: "Added",      hint: "Cooked, restocked or received — ready to sell", sup: false },
     { id: "waste",      label: "Waste",      hint: "Thrown away — needs a reason", sup: false },
     { id: "staff_meal", label: "Staff meal", hint: "Eaten by the team", sup: false },
     { id: "adjustment", label: "Adjustment", hint: "Correcting the ledger", sup: true },
-    { id: "count",      label: "Physical count", hint: "What is actually there now", sup: true }
+    { id: "count",      label: "Closing count", hint: "What is actually there now / at close", sup: false }
   ];
-  var KIND_LABEL = { prepared: "Prepared", waste: "Waste", staff_meal: "Staff meal",
-                     adjustment: "Adjustment", count: "Count" };
+  var KIND_LABEL = { prepared: "Added", waste: "Waste", staff_meal: "Staff meal",
+                     adjustment: "Adjustment", opening: "Opening count", count: "Closing count" };
+  function isCount(kind) { return kind === "count" || kind === "opening"; }
 
   /* ---- One product ------------------------------------------------------ */
 
@@ -122,11 +132,14 @@
   }
 
   /**
-   * One dish. `it` is an item from admin_inventory_day or _range (same shape);
-   * `ro` renders it read-only (past days, history) — no button, no panel.
+   * One product. `it` is an item from admin_inventory_day or _range (same
+   * shape). mode: "today" opens the entry panel; "past" opens a read-only
+   * panel (the orders behind "sold"); "history" is a plain read-only row.
    */
-  function rowHTML(it, ro) {
-    var open = !ro && state.open === it.menu_item_id;
+  function rowHTML(it, mode) {
+    var ro = mode !== "today";
+    var openable = mode !== "history";
+    var open = openable && state.open === it.menu_item_id;
     var unestablished = !it.opening_established;
     var expected = it.expected_closing;
     var variance = it.variance;
@@ -139,23 +152,30 @@
         "invc--derived " + (v === 0 ? "is-flat" : v < 0 ? "is-short" : "is-over"));
     }
 
+    var on = Number(it.overnight_change);
     var flags = (it.missing_entry ? flag("Not entered", "entry") : "") +
-                (it.missing_count ? flag("Not counted", "count") : "") +
+                (it.missing_count
+                  ? flag(it.opening_established ? "Closing not counted" : "Not counted", "count") : "") +
+                (it.overnight_change !== null && it.overnight_change !== undefined && on !== 0
+                  ? flag("Overnight " + (on > 0 ? "+" : "") + num(on), "entry") : "") +
+                (it.menu_status === "hidden" ? flag("Hidden on menu", "muted") : "") +
+                (it.menu_status === "sold_out" ? flag("Sold out on menu", "muted") : "") +
                 (it.tracked_that_day === false ? flag("Not tracked this day", "muted") : "");
 
-    var tag = ro ? "div" : "button";
+    var tag = openable ? "button" : "div";
     return (
-      '<article class="invrow' + (open ? " is-open" : "") + (ro ? " is-ro" : "") + '">' +
+      '<article class="invrow' + (open ? " is-open" : "") + (openable ? "" : " is-ro") + '">' +
         "<" + tag + ' class="invrow__head"' +
-          (ro ? "" : ' type="button" data-invopen="' + esc(it.menu_item_id) + '" ' +
-            'aria-expanded="' + (open ? "true" : "false") + '"') + ">" +
+          (openable ? ' type="button" data-invopen="' + esc(it.menu_item_id) + '" ' +
+            'aria-expanded="' + (open ? "true" : "false") + '"' : "") + ">" +
           '<span class="invrow__name"><strong>' + esc(shortName(it.name)) + "</strong>" +
             '<span class="invrow__unit">per ' + esc(it.sale_unit) + "</span>" +
             (flags ? '<span class="invrow__flags">' + flags + "</span>" : "") + "</span>" +
           '<span class="invrow__figs">' +
             cell("opening", unestablished
-              ? '<span class="invc__none">not set</span>' : show(it.opening), "invc--derived") +
-            cell("prepared", show(it.prepared, "0"), "invc--rec") +
+              ? '<span class="invc__none">' + (it.never_counted ? "not counted" : "not set") + "</span>"
+              : show(it.opening), "invc--derived") +
+            cell("added", show(it.prepared, "0"), "invc--rec") +
             cell("sold", show(it.consumed, "0"), "invc--derived") +
             cell("waste", show(it.waste, "0"), "invc--rec") +
             cell("staff", show(it.staff_meal, "0"), "invc--rec") +
@@ -164,15 +184,41 @@
               ? '<span class="invc__none">—</span>'
               : (Number(expected) < 0 ? '<span class="is-negative">' + num(expected) + "</span>"
                                       : num(expected)), "invc--derived is-total") +
-            cell("counted", it.counted === null || it.counted === undefined
+            cell("closing", it.counted === null || it.counted === undefined
               ? '<span class="invc__none">not counted</span>' : num(it.counted), "invc--rec") +
             varianceCell +
           "</span>" +
-          (ro ? "" : '<span class="invrow__chev">' + KT.icon("chevronDown", 16) + "</span>") +
+          (openable ? '<span class="invrow__chev">' + KT.icon("chevronDown", 16) + "</span>" : "") +
         "</" + tag + ">" +
-        (open ? panelHTML(it) : "") +
+        (open ? (ro ? '<div class="invrow__body">' + salesHTML(it) + "</div>" : panelHTML(it)) : "") +
       "</article>"
     );
+  }
+
+  /* ---- The orders behind "sold" ----------------------------------------- */
+
+  function salesKey(it) { return (state.date || today()) + ":" + it.menu_item_id; }
+
+  function salesHTML(it) {
+    var s = state.sales;
+    var head = '<div class="invsales"><h4>Sold ' + show(it.consumed, "0") + " — from orders that reached the kitchen</h4>";
+    if (s.key !== salesKey(it) || s.loading) return head + KT.skeleton.lines(2) + "</div>";
+    if (s.error) return head + '<p class="field__error">' + esc(s.error) + "</p></div>";
+    var rows = (s.data && s.data.orders) || [];
+    if (!rows.length) return head + '<p class="odetail__muted">No orders for this product reached the kitchen on this day.</p></div>';
+    return head + '<ul class="invsales__list">' + rows.map(function (o) {
+      var off = o.status === "Cancelled" || o.payment_status === "refunded";
+      return "<li>" +
+        "<strong>" + esc(o.code) + "</strong>" +
+        "<span>× " + num(o.qty) + "</span>" +
+        '<span class="invsales__st' + (off ? " is-off" : "") + '">' + esc(o.status) +
+          (o.payment_status && o.payment_status !== "paid" ? " · " + esc(o.payment_status) : "") + "</span>" +
+        '<span class="invsales__t">kitchen ' + clock(o.kitchen_at) + "</span>" +
+      "</li>";
+    }).join("") + "</ul>" +
+      '<p class="invhint">Each order is counted once, on the day it first reached the kitchen. ' +
+      "A cancelled or refunded order still counts if it was cooked. Sales are never typed in, " +
+      "so stock cannot be taken off twice.</p></div>";
   }
 
   /* ---- The entry panel (today only) ------------------------------------- */
@@ -184,20 +230,36 @@
     return [];
   }
 
+  function openingNote(it) {
+    if (it.opening_source === "opening_count") {
+      var on = it.overnight_change;
+      return '<p class="invnote">Opening counted today' +
+        (it.opening_counted_at ? " at " + clock(it.opening_counted_at) : "") + "." +
+        (on !== null && on !== undefined
+          ? " Last closing count was " + num(it.carried) + " (" +
+            ((Number(on) > 0 ? "+" : "") + num(on)) + " overnight)."
+          : "") + "</p>";
+    }
+    if (it.opening_established) {
+      return '<p class="invnote">Opening carried from the closing count on ' +
+        esc(dayLabel(it.opening_from)) + ".</p>";
+    }
+    return '<p class="invnote invnote--warn">' +
+      (it.never_counted ? "Never counted. " : "Opening stock not established. ") +
+      "Record an opening count before service to start tracking this product.</p>";
+  }
+
   function panelHTML(it) {
     var f = state.form || { kind: "prepared", qty: "", reason: "", note: "" };
     var kinds = KINDS.filter(function (k) { return !k.sup || canAdjust(); });
     var reasons = reasonsFor(f.kind);
     var needsReason = f.kind === "waste" || f.kind === "adjustment";
     var meta = KINDS.filter(function (k) { return k.id === f.kind; })[0] || KINDS[0];
+    var lateOpening = f.kind === "opening" && Number(it.consumed) > 0;
 
     return (
       '<div class="invrow__body">' +
-        (it.opening_established
-          ? '<p class="invnote">Opening carried from the count on ' +
-            esc(dayLabel(it.opening_from)) + ".</p>"
-          : '<p class="invnote invnote--warn">Opening stock not established — ' +
-            "record a physical count to start tracking this product.</p>") +
+        openingNote(it) +
 
         '<div class="ochips invkinds">' +
           kinds.map(function (k) {
@@ -206,11 +268,15 @@
           }).join("") +
         "</div>" +
         '<p class="invhint">' + esc(meta.hint) + "</p>" +
+        (lateOpening
+          ? '<p class="invnote invnote--warn">' + num(it.consumed) + " already sold today. An opening count " +
+            "now would leave those sales out — use a closing count instead.</p>"
+          : "") +
 
         '<div class="invform">' +
           '<label class="field invform__qty">' +
             '<span class="field__label">' +
-              (f.kind === "count" ? "Counted" : "Quantity") + " (" + esc(it.sale_unit) + "s)</span>" +
+              (isCount(f.kind) ? "Counted" : "Quantity") + " (" + esc(it.sale_unit) + "s)</span>" +
             '<input class="input" type="number" step="0.25" inputmode="decimal" ' +
               'data-invqty value="' + esc(f.qty) + '" ' +
               'placeholder="' + (f.kind === "adjustment" ? "+ or −" : "0") + '">' +
@@ -227,7 +293,7 @@
             : "") +
           '<label class="field invform__note"><span class="field__label">Note <span class="invopt">optional</span></span>' +
             '<textarea class="textarea" rows="2" maxlength="500" data-invnote ' +
-              'placeholder="e.g. 2 pots · sizes · anything the next shift should know">' +
+              'placeholder="e.g. 2 pots · 1 crate · anything the next shift should know">' +
               esc(f.note) + "</textarea></label>" +
           '<button class="btn btn--primary invform__go" type="button" data-invsave' +
             (state.saving ? " disabled" : "") + ">" +
@@ -235,8 +301,9 @@
           "</button>" +
         "</div>" +
         '<p class="invhint">Recorded entries cannot be edited afterwards. A ' +
-          "mistake is fixed with an adjustment that references it, so both stay " +
-          "in the history.</p>" +
+          "mistake is fixed with an adjustment that references it, or a new " +
+          "count, so both stay in the history.</p>" +
+        salesHTML(it) +
       "</div>"
     );
   }
@@ -249,7 +316,7 @@
     }
     return '<ul class="invhist">' + rows.map(function (r) {
       var sign = r.kind === "waste" || r.kind === "staff_meal" ? "−" :
-                 r.kind === "count" ? "=" :
+                 isCount(r.kind) ? "=" :
                  (Number(r.qty) < 0 ? "" : "+");
       return "<li>" +
         '<span class="invhist__kind invhist__kind--' + esc(r.kind) + '">' +
@@ -278,7 +345,7 @@
           '" aria-pressed="' + on + '">' + esc(label) + "</button>";
     }
     return '<nav class="invtabs" aria-label="Inventory sections">' +
-      tab("dishes", "Dishes") + tab("history", "History") +
+      tab("dishes", "Products") + tab("history", "History") +
       tab("ingredients", "Ingredients", "#/ingredients") + "</nav>";
   }
 
@@ -299,23 +366,29 @@
   }
 
   function summaryHTML(items, entriesCount) {
-    var tracked = items.filter(function (i) { return i.tracked_that_day !== false; });
-    var notEntered = tracked.filter(function (i) { return i.missing_entry; }).length;
-    var notCounted = tracked.filter(function (i) { return i.missing_count; }).length;
+    var inScope = items.filter(function (i) { return i.tracked_that_day !== false; });
+    var notEntered = inScope.filter(function (i) { return i.missing_entry; }).length;
+    var notCounted = inScope.filter(function (i) { return i.missing_count; }).length;
     function stat(n, label, warn) {
       return '<div class="invsum__s' + (warn && n ? " is-warn" : "") + '"><strong>' + n + "</strong><span>" +
         esc(label) + "</span></div>";
     }
     return '<div class="invsum">' +
-      stat(tracked.length, "dishes tracked") +
+      stat(inScope.length, inScope.length === 1 ? "product" : "products") +
       stat(entriesCount, entriesCount === 1 ? "entry" : "entries") +
-      stat(notEntered, "not entered", true) +
+      stat(notEntered, "prep not entered", true) +
       stat(notCounted, "not counted", true) +
     "</div>";
   }
 
-  /* ---- Track an existing item ------------------------------------------ */
+  /* ---- Prep list (tracks_stock) ----------------------------------------- */
 
+  /*
+     Every product is on the board whatever this says (0085). The prep list
+     is the batch-cooked dishes: they get "Not entered" on a day with no
+     entry, and they are the products automatic availability would follow —
+     which stays off until Kandy switches it on.
+  */
   function trackHTML() {
     var t = state.track;
     if (!t.open) return "";
@@ -336,33 +409,89 @@
           '<span class="invtrack__name"><strong>' + esc(i.name) + "</strong>" +
             '<span>' + esc(String(i.category_id || "").replace(/-/g, " ")) + " · counted in " +
               esc(i.sale_unit) + "s" + (i.status !== "available" ? " · " + esc(i.status.replace("_", " ")) : "") +
-              (i.tracks_stock && i.tracked_since ? " · tracked since " + esc(dayLabel(String(i.tracked_since).slice(0, 10), true)) : "") +
+              (i.tracks_stock && i.tracked_since ? " · on the list since " + esc(dayLabel(String(i.tracked_since).slice(0, 10), true)) : "") +
             "</span></span>" +
           (!t.data.can_change ? "" :
             i.tracks_stock
               ? '<button class="btn btn--ghost btn--sm" type="button" data-invuntrack="' + esc(i.id) + '"' +
-                  (busy ? " disabled" : "") + ">" + (confirming ? "Confirm stop" : "Stop tracking") + "</button>"
+                  (busy ? " disabled" : "") + ">" + (confirming ? "Confirm remove" : "Remove") + "</button>"
               : '<button class="btn btn--primary btn--sm" type="button" data-invtrack="' + esc(i.id) + '"' +
-                  (busy ? " disabled" : "") + ">" + (busy ? KT.spinner(14) : "Track") + "</button>") +
+                  (busy ? " disabled" : "") + ">" + (busy ? KT.spinner(14) : "Add") + "</button>") +
         "</li>";
       }
       body =
         '<label class="field"><span class="sr-only">Search menu items</span>' +
           '<input class="input" type="search" data-invtrackq value="' + esc(t.q) + '" ' +
-            'placeholder="Search the menu — e.g. chicken, beef, fish"></label>' +
-        "<h4>Not tracked yet</h4>" +
-        (untracked.length ? '<ul class="invtrack">' + untracked.map(line).join("") + "</ul>"
-                          : '<p class="odetail__muted">Nothing matches.</p>') +
-        "<h4>Tracked</h4>" +
+            'placeholder="Search the menu — e.g. rice, stew, beans"></label>' +
+        "<h4>On the prep list</h4>" +
         (tracked.length ? '<ul class="invtrack">' + tracked.map(line).join("") + "</ul>"
-                        : '<p class="odetail__muted">Nothing matches.</p>');
+                        : '<p class="odetail__muted">Nothing matches.</p>') +
+        "<h4>Not on the prep list</h4>" +
+        (untracked.length ? '<ul class="invtrack">' + untracked.map(line).join("") + "</ul>"
+                          : '<p class="odetail__muted">Nothing matches.</p>');
     }
     return '<section class="panel apanel invtrackpanel" aria-labelledby="invTrackTitle">' +
-      '<div class="invtrackpanel__head"><div><h3 id="invTrackTitle">Track an existing menu item</h3>' +
-        "<p>Uses the dish already on your menu — nothing is duplicated. Proteins are counted in units. " +
-        "Tracking starts today; past days are not changed. It does not take anything off sale.</p></div>" +
+      '<div class="invtrackpanel__head"><div><h3 id="invTrackTitle">Daily prep list</h3>' +
+        "<p>Every menu product is already in Inventory — this list does not add or remove anything " +
+        "from the board. It marks the batch-cooked dishes, which are flagged “Not entered” on a day " +
+        "with no preparation entry. Automatic stock-based availability stays off.</p></div>" +
         '<button class="btn btn--ghost btn--sm" type="button" data-invtrackclose>Close</button></div>' +
       body + "</section>";
+  }
+
+  /* ---- Board: categories and filters ------------------------------------ */
+
+  function categoriesOf(items) {
+    var seen = {}, out = [];
+    items.forEach(function (i) {
+      var id = i.category_id || "";
+      if (!seen[id]) { seen[id] = { id: id, name: i.category || id || "Other", n: 0 }; out.push(seen[id]); }
+      seen[id].n += 1;
+    });
+    return out;
+  }
+
+  function boardFilter(items) {
+    var b = state.board, q = b.q.trim().toLowerCase();
+    return items.filter(function (i) {
+      if (b.cat && (i.category_id || "") !== b.cat) return false;
+      if (b.uncounted && !i.missing_count) return false;
+      if (q && (i.name + " " + (i.category || "")).toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+  }
+
+  function boardControlsHTML(items) {
+    var b = state.board;
+    var cats = categoriesOf(items);
+    return '<div class="invboardf">' +
+      '<div class="ochips invcats" role="group" aria-label="Category">' +
+        '<button class="chip' + (!b.cat ? " is-active" : "") + '" type="button" data-invcat="">All <span>' +
+          items.length + "</span></button>" +
+        cats.map(function (c) {
+          return '<button class="chip' + (b.cat === c.id ? " is-active" : "") + '" type="button" data-invcat="' +
+            esc(c.id) + '">' + esc(c.name) + " <span>" + c.n + "</span></button>";
+        }).join("") +
+      "</div>" +
+      '<div class="invboardf__row">' +
+        '<label class="field invboardf__q"><span class="sr-only">Find a product</span>' +
+          '<input class="input" type="search" data-invboardq value="' + esc(b.q) + '" placeholder="Find a product — e.g. coke, chicken"></label>' +
+        '<label class="invcheck"><input type="checkbox" data-invuncounted' + (b.uncounted ? " checked" : "") +
+          "> Only not counted</label>" +
+      "</div></div>";
+  }
+
+  /** Rows grouped under their category, in menu order. */
+  function groupedHTML(items, mode) {
+    var shown = boardFilter(items);
+    if (!shown.length) {
+      return '<p class="odetail__muted">' + (items.length ? "No products match these filters." : "No products.") + "</p>";
+    }
+    return categoriesOf(shown).map(function (c) {
+      var rows = shown.filter(function (i) { return (i.category_id || "") === c.id; });
+      return '<div class="invgroup"><h3 class="invgroup__h">' + esc(c.name) + " <span>" + rows.length + "</span></h3>" +
+        '<div class="invlist">' + rows.map(function (i) { return rowHTML(i, mode); }).join("") + "</div></div>";
+    }).join("");
   }
 
   /* ---- Dishes tab ------------------------------------------------------- */
@@ -376,7 +505,8 @@
       return Object.assign({}, it, {
         tracked_that_day: true,
         entries: entries[it.menu_item_id] || 0,
-        missing_entry: !entries[it.menu_item_id],
+        /* Only a batch-cooked dish is expected to have an entry every day. */
+        missing_entry: !!it.prep_tracked && !entries[it.menu_item_id],
         missing_count: it.counted === null || it.counted === undefined
       });
     });
@@ -387,17 +517,21 @@
       var p = state.past && state.past.days && state.past.days[0];
       if (!p) return "";
       if (!p.tracked) return notTrackedHTML(state.past.activated_on);
+      var allOn = state.past.all_products_on;
       return (
         '<div class="invro" role="note">' + KT.icon("lock", 15) +
           "<span><strong>" + esc(dayLabel(p.business_date, true)) + " — read only.</strong> Past records " +
-          "can be viewed but not changed.</span></div>" +
+          "can be viewed but not changed." +
+          (allOn && p.business_date < allOn
+            ? " Before " + esc(dayLabel(allOn, true)) + " only the stock-tracked dishes were in Inventory, so only they are shown."
+            : "") + "</span></div>" +
         summaryHTML(p.items, p.summary.entries) +
         '<section class="dsec">' +
           '<header class="dsec__head"><h2>' + KT.icon("flame", 17) + "Stock on " +
             esc(dayLabel(p.business_date)) + "</h2></header>" +
           legendHTML() +
-          (p.items.length ? '<div class="invlist">' + p.items.map(function (i) { return rowHTML(i, true); }).join("") + "</div>"
-                          : '<p class="odetail__muted">No dishes were tracked on this day.</p>') +
+          (p.items.length ? boardControlsHTML(p.items) + groupedHTML(p.items, "past")
+                          : '<p class="odetail__muted">No products were tracked on this day.</p>') +
         "</section>" +
         '<section class="dsec">' +
           '<header class="dsec__head"><h2>' + KT.icon("clock", 17) + "Entries that day</h2>" +
@@ -417,7 +551,8 @@
         '<header class="dsec__head"><h2>' + KT.icon("flame", 17) + "Today's stock</h2>" +
           '<span class="dsec__hint">' + esc(dayLabel(d.business_date)) + "</span></header>" +
         legendHTML() +
-        '<div class="invlist">' + items.map(function (i) { return rowHTML(i, false); }).join("") + "</div>" +
+        boardControlsHTML(items) +
+        groupedHTML(items, "today") +
       "</section>" +
       '<section class="dsec">' +
         '<header class="dsec__head"><h2>' + KT.icon("clock", 17) + "Today's entries</h2>" +
@@ -434,7 +569,8 @@
     return '<p class="eodlede">' +
       '<span class="invkey invkey--derived"></span>worked out by the system · ' +
       '<span class="invkey invkey--rec"></span>recorded by the team · ' +
-      "<em>not counted</em> means nobody counted it — not that there were none</p>";
+      "<em>not counted</em> means nobody counted it — not that there were none · " +
+      "tap a product to record or to see the orders behind “sold”</p>";
   }
 
   function notTrackedHTML(activated) {
@@ -455,9 +591,17 @@
     return { from: addDays(t, -(n - 1)), to: t };
   }
 
+  /** menu_item_id -> category_id, from today's board (every live product). */
+  function catMap() {
+    var m = {};
+    ((state.day && state.day.items) || []).forEach(function (i) { m[i.menu_item_id] = i.category_id || ""; });
+    return m;
+  }
+
   function entryMatches(e) {
     var h = state.hist;
     if (h.kind && e.kind !== h.kind) return false;
+    if (h.cat && catMap()[e.menu_item_id] !== h.cat) return false;
     if (h.q) {
       var q = h.q.toLowerCase();
       var hay = [e.product, e.note, e.actor, e.reason, KIND_LABEL[e.kind]].join(" ").toLowerCase();
@@ -487,11 +631,19 @@
               '<button class="btn btn--primary btn--sm" type="button" data-invhapply>Show</button></div>'
           : "") +
         '<div class="invfilters__row">' +
-          '<label class="field"><span class="field__label">Dish</span><select class="select" data-invhitem>' +
-            '<option value="">All dishes</option>' +
-            items.map(function (i) {
-              return '<option value="' + esc(i.menu_item_id) + '"' + (h.item === i.menu_item_id ? " selected" : "") + ">" +
-                esc(shortName(i.name)) + "</option>";
+          '<label class="field"><span class="field__label">Category</span><select class="select" data-invhcat>' +
+            '<option value="">All categories</option>' +
+            categoriesOf(items).map(function (c) {
+              return '<option value="' + esc(c.id) + '"' + (h.cat === c.id ? " selected" : "") + ">" + esc(c.name) + "</option>";
+            }).join("") + "</select></label>" +
+          '<label class="field"><span class="field__label">Product</span><select class="select" data-invhitem>' +
+            '<option value="">All products</option>' +
+            categoriesOf(items).filter(function (c) { return !h.cat || c.id === h.cat; }).map(function (c) {
+              return '<optgroup label="' + esc(c.name) + '">' +
+                items.filter(function (i) { return (i.category_id || "") === c.id; }).map(function (i) {
+                  return '<option value="' + esc(i.menu_item_id) + '"' + (h.item === i.menu_item_id ? " selected" : "") + ">" +
+                    esc(shortName(i.name)) + "</option>";
+                }).join("") + "</optgroup>";
             }).join("") + "</select></label>" +
           '<label class="field"><span class="field__label">Entry type</span><select class="select" data-invhkind>' +
             '<option value="">All types</option>' +
@@ -516,11 +668,11 @@
 
   function daysHTML(data) {
     var h = state.hist;
-    var filtering = !!(h.kind || h.q);
+    var filtering = !!(h.kind || h.q || h.cat);
     var shown = data.days.filter(function (d) {
       if (!d.tracked) return !filtering && !h.gaps;
       if (h.gaps && !(d.summary.missing_entries || d.summary.missing_counts)) return false;
-      if (filtering && !d.entries.some(entryMatches)) return false;
+      if ((h.kind || h.q) && !d.entries.some(entryMatches)) return false;
       return true;
     });
     if (!shown.length) {
@@ -535,6 +687,7 @@
       var s = d.summary;
       var open = h.openDay === d.business_date;
       var entries = d.entries.filter(entryMatches);
+      var dayItems = h.cat ? d.items.filter(function (i) { return (i.category_id || "") === h.cat; }) : d.items;
       return '<article class="invday' + (open ? " is-open" : "") + '">' +
         '<button class="invday__head" type="button" data-invday="' + esc(d.business_date) + '" aria-expanded="' + open + '">' +
           "<strong>" + esc(dayLabel(d.business_date, true)) + "</strong>" +
@@ -550,8 +703,8 @@
         "</button>" +
         (open
           ? '<div class="invday__body">' +
-              (d.items.length ? '<div class="invlist">' + d.items.map(function (i) { return rowHTML(i, true); }).join("") + "</div>"
-                              : '<p class="odetail__muted">No dishes tracked.</p>') +
+              (dayItems.length ? '<div class="invlist">' + dayItems.map(function (i) { return rowHTML(i, "history"); }).join("") + "</div>"
+                               : '<p class="odetail__muted">No products in this view.</p>') +
               "<h4>Entries" + (filtering ? " matching your filters" : "") + "</h4>" +
               entriesHTML(entries, filtering ? "No entries match." : "Nothing was recorded.") +
             "</div>"
@@ -571,7 +724,8 @@
     var key = a && a.getAttribute && (a.hasAttribute("data-invqty") ? "[data-invqty]"
       : a.hasAttribute("data-invnote") ? "[data-invnote]"
       : a.hasAttribute("data-invhq") ? "[data-invhq]"
-      : a.hasAttribute("data-invtrackq") ? "[data-invtrackq]" : null);
+      : a.hasAttribute("data-invtrackq") ? "[data-invtrackq]"
+      : a.hasAttribute("data-invboardq") ? "[data-invboardq]" : null);
     var caret = key ? a.selectionStart : null;
 
     var body;
@@ -591,7 +745,7 @@
 
     KT.mount(host,
       '<header class="apage__head opage__head"><div><h1>Inventory</h1>' +
-        '<p class="apage__lede">What was cooked, sold, wasted and counted for each tracked dish — ' +
+        '<p class="apage__lede">What was added, sold, wasted and counted for every product on the menu — ' +
         "today, and on any day since tracking began.</p></div>" +
         /*
            A kitchen leaves this screen open. Loaded at 23:50 and looked at
@@ -609,13 +763,13 @@
           "</button>" +
           (canManage()
             ? '<button class="btn btn--soft btn--sm" type="button" data-invtrackopen>' +
-                KT.icon("check", 15) + "<span>Track an item</span></button>" +
+                KT.icon("check", 15) + "<span>Prep list</span></button>" +
               /* Opens the Menu management editor (one create form, one set of
                  rules); saving returns here and reloads the board. Only for a
-                 dish that is not on the menu at all — anything already on it
-                 is tracked with the button beside this one instead. */
+                 product that is not on the menu at all — every menu product is
+                 already on this board. */
               '<a class="btn btn--primary btn--sm" href="#/menu-manage?new=1&amp;from=inventory" data-invadd ' +
-                'title="Only for a dish that is not on the menu yet">' +
+                'title="Only for a product that is not on the menu yet">' +
                 KT.icon("plus", 15) + "<span>New menu item</span></a>"
             : "") +
         "</div>" +
@@ -708,8 +862,8 @@
     try {
       await svc.setTracking(id, on);
       var item = (t.data.items.filter(function (i) { return i.id === id; })[0] || {});
-      KT.toast(on ? shortName(item.name) + " is now tracked. Record today's figures below."
-                  : shortName(item.name) + " is no longer tracked. Its past records are kept.", "success");
+      KT.toast(on ? shortName(item.name) + " is on the prep list."
+                  : shortName(item.name) + " is off the prep list. It stays in Inventory.", "success");
       t.confirm = null;
       await Promise.all([loadTrack(), load()]);
     } catch (error) {
@@ -719,25 +873,50 @@
     }
   }
 
+  /** The orders behind the open product's "sold" figure (read-only). */
+  async function loadSales() {
+    var gen = mountGen;
+    var it = (isPast() ? ((state.past && state.past.days && state.past.days[0] && state.past.days[0].items) || [])
+                       : ((state.day && state.day.items) || []))
+      .filter(function (i) { return i.menu_item_id === state.open; })[0];
+    if (!it) return;
+    var key = salesKey(it);
+    var s = state.sales;
+    s.key = key; s.loading = true; s.error = null; s.data = null; render();
+    try {
+      await ensureSvc();
+      var data = await svc.sales(state.date || null, it.menu_item_id);
+      if (gen !== mountGen || s.key !== key) return;
+      s.data = data;
+    } catch (error) {
+      if (gen !== mountGen || s.key !== key) return;
+      s.error = errText(error);
+    } finally {
+      if (gen === mountGen && s.key === key) { s.loading = false; render(); }
+    }
+  }
+
   async function save() {
     var f = state.form;
     if (!f || state.saving || !state.open || isPast()) return;
     var qty = Number(f.qty);
     if (!f.qty || Number.isNaN(qty)) { KT.toast("Enter a quantity.", "error"); return; }
-    if (f.kind !== "adjustment" && f.kind !== "count" && qty <= 0) {
+    if (f.kind !== "adjustment" && !isCount(f.kind) && qty <= 0) {
       KT.toast("Quantity must be more than zero.", "error"); return;
     }
-    if (f.kind === "count" && qty < 0) { KT.toast("A count cannot be negative.", "error"); return; }
+    if (isCount(f.kind) && qty < 0) { KT.toast("A count cannot be negative.", "error"); return; }
     if ((f.kind === "waste" || f.kind === "adjustment") && !f.reason) {
       KT.toast("Choose a reason.", "error"); return;
     }
     state.saving = true; render();
     try {
-      if (f.kind === "count") await svc.count(state.open, qty, f.note);
+      if (isCount(f.kind)) await svc.count(state.open, qty, f.note, f.kind === "opening");
       else await svc.record(state.open, f.kind, qty, f.reason, f.note);
       state.form = { kind: f.kind, qty: "", reason: "", note: "" };
       KT.toast("Recorded.", "success");
+      state.sales.key = null;
       await load();
+      if (state.open) loadSales();
     } catch (error) {
       KT.toast(KT.services.errorMessage(error), "error", { duration: 6000 });
     } finally {
@@ -749,7 +928,7 @@
     var t = today();
     if (!date || (t && date >= t)) state.date = null;
     else state.date = date;
-    state.open = null; state.form = null;
+    state.open = null; state.form = null; state.sales.key = null;
     load();
   }
 
@@ -820,6 +999,9 @@
       return;
     }
 
+    var cat = t.closest("[data-invcat]");
+    if (cat) { state.board.cat = cat.getAttribute("data-invcat"); render(); return; }
+
     var preset = t.closest("[data-invpreset]");
     if (preset) {
       state.hist.preset = preset.getAttribute("data-invpreset");
@@ -842,6 +1024,7 @@
       state.open = state.open === id ? null : id;
       state.form = { kind: "prepared", qty: "", reason: "", note: "" };
       render();
+      if (state.open) loadSales();
       return;
     }
 
@@ -863,6 +1046,7 @@
     if (!t.closest || !onPage()) return;
     if (t.closest("[data-invhq]")) { state.hist.q = t.value; render(); return; }
     if (t.closest("[data-invtrackq]")) { state.track.q = t.value; render(); return; }
+    if (t.closest("[data-invboardq]")) { state.board.q = t.value; render(); return; }
     if (!state.form) return;
     if (t.closest("[data-invqty]")) { state.form.qty = t.value; return; }
     if (t.closest("[data-invnote]")) { state.form.note = t.value; }
@@ -874,6 +1058,15 @@
     if (t.closest("[data-invdate]")) { if (t.value) goTo(t.value); return; }
     if (t.closest("[data-invhfrom]")) { state.hist.from = t.value; return; }
     if (t.closest("[data-invhto]")) { state.hist.to = t.value; return; }
+    if (t.closest("[data-invuncounted]")) { state.board.uncounted = t.checked; render(); return; }
+    if (t.closest("[data-invhcat]")) {
+      state.hist.cat = t.value;
+      var inCat = catMap();
+      if (state.hist.item && t.value && inCat[state.hist.item] !== t.value) {
+        state.hist.item = ""; state.hist.openDay = null; loadHistory(); return;
+      }
+      render(); return;
+    }
     if (t.closest("[data-invhitem]")) { state.hist.item = t.value; state.hist.openDay = null; loadHistory(); return; }
     if (t.closest("[data-invhkind]")) { state.hist.kind = t.value; render(); return; }
     if (t.closest("[data-invhgaps]")) { state.hist.gaps = t.checked; render(); return; }

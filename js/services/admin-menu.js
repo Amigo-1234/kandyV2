@@ -169,9 +169,10 @@ export const adminMenuService = {
     if (form.imageUrl !== undefined) payload.image_url = form.imageUrl || null;
 
     /* On CREATE only, the two existing inventory columns may be set: an item
-       added from the Inventory screen is stock-tracked from the start (the
-       inventory board lists tracks_stock items only). Edits never send them,
-       so this cannot reclassify an existing product. */
+       added from the Inventory screen goes on the prep list (tracks_stock)
+       from the start. Every product is on the inventory board either way
+       (0085). Edits never send them, so this cannot reclassify an existing
+       product. */
     const created = { section: form.categoryId };
     if (form.saleUnit) created.sale_unit = form.saleUnit;
     if (form.tracksStock === true) created.tracks_stock = true;
