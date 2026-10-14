@@ -1,7 +1,7 @@
 /* ==========================================================================
    Kandy's Treats — Inventory data access
    --------------------------------------------------------------------------
-   Four RPCs. No arithmetic happens here: the daily equation is defined once,
+   A handful of RPCs. No arithmetic happens here: the daily equation is defined once,
    in admin_inventory_day(), and this module only carries its answer to the
    screen. The end-of-day report calls the same function, so the two can never
    disagree.
@@ -38,7 +38,7 @@ export const adminInventoryService = {
   WASTE_REASONS,
   ADJUSTMENT_REASONS,
 
-  /** The day's picture for every tracked product. `day` is YYYY-MM-DD or null. */
+  /** The day's picture for every menu product (0085). `day` is YYYY-MM-DD or null. */
   async day(day) {
     const { data, error } = await supabase.rpc("admin_inventory_day",
       { p_day: day || null });
@@ -107,12 +107,25 @@ export const adminInventoryService = {
     return data;
   },
 
-  /** Record a physical count. Supervisor+; the server checks, not this. */
-  async count(menuItemId, qty, note) {
+  /**
+   * Record a physical count — an opening count (before service) or a
+   * closing count. Staff+ (0085); the server dates it and checks the tier.
+   */
+  async count(menuItemId, qty, note, opening) {
     const { data, error } = await supabase.rpc("inventory_count_record", {
       p_menu_item_id: menuItemId,
       p_qty: qty,
-      p_note: note || ""
+      p_note: note || "",
+      p_opening: !!opening
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  /** The orders behind a product's "sold" figure on a day (read-only, 0085). */
+  async sales(day, menuItemId) {
+    const { data, error } = await supabase.rpc("admin_inventory_sales", {
+      p_day: day || null, p_menu_item_id: menuItemId
     });
     if (error) throw error;
     return data;

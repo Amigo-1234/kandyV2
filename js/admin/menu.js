@@ -230,7 +230,7 @@
                       return '<option value="' + u.id + '"' +
                         ((f.saleUnit || "unit") === u.id ? " selected" : "") + ">" + u.label + "</option>";
                     }).join("") + "</select>",
-                  "Added from Inventory, so it is stock-tracked and appears on the inventory board.")
+                  "Every menu item appears on the inventory board by itself. Added from Inventory, so it also goes on the daily prep list.")
               : "") +
             field("status", "Availability",
               '<select class="input" name="status">' +

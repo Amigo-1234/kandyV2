@@ -125,13 +125,15 @@ export const adminExportsService = {
     if (error) throw error;
     const headers = ["business_date", "product", "sale_unit", "opening",
       "opening_established", "prepared", "consumed", "waste", "staff_meal",
-      "adjustment", "net_change", "expected_closing", "counted", "variance"];
+      "adjustment", "net_change", "expected_closing", "counted", "variance",
+      "category", "menu_status"];
     if (!data.tracked) return { name: "inventory", headers, rows: [], note: data.reason };
     return { name: "inventory", headers, rows: (data.items || []).map((i) => [
       data.business_date, i.name, i.sale_unit,
       i.opening, i.opening_established ? "yes" : "no",
       i.prepared, i.consumed, i.waste, i.staff_meal, i.adjustment,
-      i.net_change, i.expected_closing, i.counted, i.variance
+      i.net_change, i.expected_closing, i.counted, i.variance,
+      i.category || "", i.menu_status || ""
     ]) };
   },
 
