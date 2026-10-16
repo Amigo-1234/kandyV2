@@ -174,7 +174,7 @@
           "</div>" +
 
           '<div class="foot__notes">' +
-            '<div class="foot__note"><strong>Delivery</strong><span>Flat ' + KT.naira(KT.rules.DELIVERY_FEE) + ' anywhere we serve in ' + KT.config.serviceArea.state + ' State. Pickup is free — choose it in the basket.</span></div>' +
+            '<div class="foot__note"><strong>Delivery</strong><span>Flat ' + KT.naira(KT.rules.DELIVERY_FEE) + ' delivery in Iworoko. Ado-Ekiti and other towns: delivery prices may vary. Pickup is free — choose it in the basket.</span></div>' +
             '<div class="foot__note"><strong>Packaging</strong><span>Takeaway packs are added automatically: ₦200 per order, ₦300 when it includes ofada, or rice and beans together.</span></div>' +
             '<div class="foot__note"><strong>Payment</strong><span>Card and transfer payments are being switched on. Until then, place your basket and we will confirm payment with you directly.</span></div>' +
           "</div>" +

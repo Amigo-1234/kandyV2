@@ -50,7 +50,7 @@
         '<div class="wrap promostrip__inner">' +
           '<p class="promostrip__msg">' + KT.icon("bike", 16) +
             "<span>Flat <strong>" + KT.naira(KT.rules.DELIVERY_FEE) +
-            "</strong> delivery across " + KT.config.serviceArea.state + " State</span></p>" +
+            "</strong> delivery in Iworoko</span></p>" +
           '<p class="promostrip__msg promostrip__msg--alt">' + KT.icon("gift", 16) +
             "<span><strong>" + KT.rules.COUPONS.KANDY10.code + "</strong> — " +
             KT.rules.COUPONS.KANDY10.value + "% off over " +

@@ -62,7 +62,7 @@
 
           '<div class="pdp__info">' +
             '<div class="pdp__infocard"><span>' + KT.icon("bike", 18) + "</span>" +
-              "<strong>" + KT.naira(KT.rules.DELIVERY_FEE) + "</strong><em>delivery, Ado-Ekiti/Iworoko</em></div>" +
+              "<strong>" + KT.naira(KT.rules.DELIVERY_FEE) + "</strong><em>delivery in Iworoko; other towns may vary</em></div>" +
             '<div class="pdp__infocard"><span>' + KT.icon("clock", 18) + "</span>" +
               "<strong>" + KT.rules.ETA_TEXT.delivery + "</strong><em>typical delivery</em></div>" +
             '<div class="pdp__infocard"><span>' + KT.icon("pin", 18) + "</span>" +
