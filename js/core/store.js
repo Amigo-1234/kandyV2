@@ -309,11 +309,11 @@
     /* ---- Takeaway packs ------------------------------------------------ */
 
     /*
-       Grouping is OPERATIONAL, not financial. A pack tells the kitchen which
-       items go in which bag; it does not touch subtotal, packaging, delivery,
-       discount or total, and the server recomputes all of those from the menu
-       regardless of what this basket claims. Turning grouping on cannot make
-       an order cost more or less.
+       A pack tells the kitchen which items go in which bag, and — since 0086 —
+       each pack holding rice, spaghetti or beans is one plate of takeaway
+       packaging. It touches nothing else: subtotal, delivery, discount and
+       prices are unaffected, and the server recomputes the packaging from
+       the menu regardless of what this basket claims.
 
        Labels are generated — "Takeaway 1", "Takeaway 2" — and the customer is
        never asked to type one.
@@ -450,7 +450,9 @@
       var lines = cart.detailed();
       var totals = KT.rules.totals({
         items: lines.map(function (l) {
-          return { name: l.item.name, price: l.unit, qty: l.qty };
+          return { name: l.item.name, price: l.unit, qty: l.qty,
+                   packClass: l.item.packClass || null, saleUnit: l.item.saleUnit || null,
+                   group: l.group };
         }),
         fulfilment: state.fulfilment,
         coupon: KT.rules.coupon(state.couponCode),

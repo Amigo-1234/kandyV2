@@ -14,6 +14,8 @@
 
   /* functions/index.js: DELIVERY_FEE = 500 — flat, Ado-Ekiti/Iworoko only. */
   var DELIVERY_FEE = 500;
+  /* app_settings.takeaway_fee; replaced from the live setting at boot. */
+  var TAKEAWAY = { standard: 200, combined: 300 };
 
   /* functions/index.js: ORDER_STATUSES */
   var ORDER_STATUSES = ["New", "Preparing", "Out", "Completed"];
@@ -75,6 +77,7 @@
 
   var rules = {
     DELIVERY_FEE: DELIVERY_FEE,
+    TAKEAWAY_RATES: function () { return { standard: TAKEAWAY.standard, combined: TAKEAWAY.combined }; },
     ORDER_STATUSES: ORDER_STATUSES,
     STATUS_META: STATUS_META,
     STATUS_META_PICKUP: STATUS_META_PICKUP,
@@ -139,29 +142,60 @@
       return 0;
     },
 
-    /* functions/index.js: calculateTakeawayFee
-       Packaging is charged only when the order contains real food (not just
-       drinks). Ofada, or rice AND beans together, needs the bigger pack. */
-    takeawayFee: function (items) {
-      var hasFood = false;
-      var hasRice = false;
-      var hasBeans = false;
-      var hasOfada = false;
-
+    /**
+     * Takeaway packaging, per plate — the exact rule create_checkout_order()
+     * applies (0086). Classification is the menu row's packClass/saleUnit,
+     * never the dish name.
+     *
+     *   no packClass        free (drinks, proteins, shawarma, boxes, sides…)
+     *   scoop / cup dishes  one plate per takeaway pack (an ungrouped basket
+     *                       is one pack): `combined` if the pack has White
+     *                       Rice or Ofada, or any rice with beans, else
+     *                       `standard`
+     *   unit dishes         one plate per unit (Ewa Agoyin, swallow, soup)
+     *
+     * Items: {packClass, saleUnit, qty, group}. Display only — the server
+     * recomputes it and is what the customer is charged.
+     * @returns {{fee:number, plates:number}}
+     */
+    takeaway: function (items) {
+      var rates = TAKEAWAY;
+      var packs = {};
+      var fee = 0;
+      var plates = 0;
       (items || []).forEach(function (item) {
-        var name = String(item.name || "").toLowerCase();
-        if (/(coke|fanta|pepsi|soda|juice|chivita|hollandia|yogurt|water)/.test(name)) return;
-        if (/(rice|beans|ofada|amala|swallow|semo|eba|spaghetti|pepper soup|pounded yam|ewa agoyin)/.test(name)) {
-          hasFood = true;
+        var cls = item.packClass;
+        if (!cls) return;
+        var qty = Math.max(0, Math.trunc(Number(item.qty) || 0));
+        if (item.saleUnit === "scoop" || item.saleUnit === "cup") {
+          var key = item.group == null ? 0 : item.group;
+          var p = packs[key] || (packs[key] = { big: false, rice: false, beans: false });
+          if (cls === "large" || cls === "ofada") p.big = true;
+          if (cls === "rice" || cls === "large" || cls === "ofada") p.rice = true;
+          if (cls === "beans") p.beans = true;
+        } else {
+          fee += qty * (cls === "large" || cls === "ofada" ? rates.combined : rates.standard);
+          plates += qty;
         }
-        if (name.indexOf("rice") > -1) hasRice = true;
-        if (name.indexOf("beans") > -1) hasBeans = true;
-        if (name.indexOf("ofada") > -1) hasOfada = true;
       });
+      Object.keys(packs).forEach(function (k) {
+        var p = packs[k];
+        fee += p.big || (p.rice && p.beans) ? rates.combined : rates.standard;
+        plates += 1;
+      });
+      return { fee: fee, plates: plates };
+    },
 
-      if (!hasFood) return 0;
-      if (hasOfada || (hasRice && hasBeans)) return 300;
-      return 200;
+    takeawayFee: function (items) {
+      return rules.takeaway(items).fee;
+    },
+
+    /** The owner's takeaway_fee setting, read at boot (public). */
+    setTakeawayRates: function (value) {
+      var s = Number(value && value.standard);
+      var c = Number(value && value.combined);
+      if (Number.isFinite(s) && s >= 0) TAKEAWAY.standard = Math.round(s);
+      if (Number.isFinite(c) && c >= 0) TAKEAWAY.combined = Math.round(c);
     },
 
     deliveryFee: function (fulfilment, itemCount) {
@@ -229,7 +263,8 @@
         return sum + Number(i.price || 0) * Number(i.qty || 0);
       }, 0);
 
-      var takeawayFee = rules.takeawayFee(items);
+      var pack = rules.takeaway(items);
+      var takeawayFee = pack.fee;
       var deliveryFee = rules.deliveryFee(fulfilment, items.length);
       var discount = rules.couponDiscount(input.coupon, subtotal);
       var netAmount = subtotal + takeawayFee + deliveryFee - discount;
@@ -241,6 +276,7 @@
         count: items.reduce(function (n, i) { return n + Number(i.qty || 0); }, 0),
         subtotal: subtotal,
         takeawayFee: takeawayFee,
+        takeawayPlates: pack.plates,
         deliveryFee: deliveryFee,
         discount: discount,
         netAmount: netAmount,

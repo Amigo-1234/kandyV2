@@ -146,7 +146,9 @@
         KT.icon("close", 32) + "</div><h3>Could not load the team</h3><p>" + esc(state.error) +
         '</p><button class="btn btn--soft" type="button" data-team-reload>Try again</button></div></div>';
     }
-    if (state.loading) {
+    /* A refresh with results already showing (typing a search) keeps them
+       until the new ones arrive instead of flashing a skeleton. */
+    if (state.loading && !state.rows.length) {
       return '<div class="panel apanel">' + KT.loadingLabel("Loading team…") +
         KT.skeleton.lines(5) + "</div>";
     }
@@ -566,39 +568,82 @@
 
   /* ---- Shell ------------------------------------------------------------- */
 
-  function paint() {
-    var host = KT.qs("[data-admin-page]");
-    if (!host) return;
-    KT.mount(host,
+  /*
+     The page is two layers. The header and filter bar are mounted ONCE per
+     visit and then left alone: in particular the search <input> is never
+     re-created, so typing keeps focus (and, on iPhone, the keyboard stays
+     up) while results load. Everything that changes with data — the lede,
+     the action buttons, the roster, drawers and dialogs — is rendered into
+     its own slot below. Re-mounting the whole page on every keystroke was
+     what destroyed the focused field and closed the keyboard.
+  */
+  function ledeText() {
+    return "Who has access to the admin, and at what level." +
+      (!state.canChange
+        ? " Your role does not permit changing anyone's."
+        : state.viewerRole === "owner"
+          ? " You can change any role."
+          : " You can manage staff and supervisors; admins and owners are the " +
+            "owner's to appoint.");
+  }
+
+  function actionsHTML() {
+    /* Two ways to add a colleague: create the account now (primary), or
+       send a link they redeem themselves (the existing invitation flow). */
+    return invitableRoles().length
+      ? '<button class="btn btn--primary btn--sm team__createbtn" type="button" ' +
+          'data-create-open>' + KT.icon("plus", 16) + "Create staff account</button>" +
+        '<button class="btn btn--ghost btn--sm team__invitebtn" type="button" ' +
+          'data-invite-open>' + KT.icon("mail", 16) + "Invite teammate</button>"
+      : "";
+  }
+
+  function shellHTML() {
+    return '<div data-team-shell>' +
       '<header class="apage__head"><div><h1>Team &amp; roles</h1>' +
-        '<p class="apage__lede">Who has access to the admin, and at what level.' +
-        (!state.canChange
-          ? " Your role does not permit changing anyone's."
-          : state.viewerRole === "owner"
-            ? " You can change any role."
-            : " You can manage staff and supervisors; admins and owners are the " +
-              "owner's to appoint.") + "</p></div></header>" +
+        '<p class="apage__lede" data-team-lede></p></div></header>' +
       '<div class="fin__filters">' +
         '<label class="field fin__search"><span class="sr-only">Search team</span>' +
           '<input class="input" type="search" data-team-search placeholder="Name or email" ' +
-            'value="' + esc(state.search) + '"></label>' +
+            'autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" ' +
+            'enterkeyhint="search" value="' + esc(state.search) + '"></label>' +
         '<label class="field"><span class="sr-only">Role</span>' +
-          '<select class="select" data-team-filter>' +
-            (svc ? svc.ROLE_FILTERS : []).map(function (f) {
-              return '<option value="' + f.value + '"' +
-                (f.value === state.roleFilter ? " selected" : "") + ">" + f.label + "</option>";
-            }).join("") +
-          "</select></label>" +
+          '<select class="select" data-team-filter></select></label>' +
         '<button class="btn btn--ghost btn--sm" type="button" data-team-reload>Refresh</button>' +
-        /* Two ways to add a colleague: create the account now (primary), or
-           send a link they redeem themselves (the existing invitation flow). */
-        (invitableRoles().length
-          ? '<button class="btn btn--primary btn--sm team__createbtn" type="button" ' +
-              'data-create-open>' + KT.icon("plus", 16) + "Create staff account</button>" +
-            '<button class="btn btn--ghost btn--sm team__invitebtn" type="button" ' +
-              'data-invite-open>' + KT.icon("mail", 16) + "Invite teammate</button>"
-          : "") +
+        '<span class="team__actions" data-team-actions></span>' +
       "</div>" +
+      '<div data-team-body></div>' +
+    "</div>";
+  }
+
+  /** Replace a slot's markup only when it actually changed. */
+  function setSlot(node, html) {
+    if (node && node.__html !== html) { node.innerHTML = html; node.__html = html; }
+  }
+
+  function paint() {
+    var host = KT.qs("[data-admin-page]");
+    if (!host) return;
+    var shell = KT.qs("[data-team-shell]", host);
+    if (!shell) { KT.mount(host, shellHTML()); shell = KT.qs("[data-team-shell]", host); }
+
+    setSlot(KT.qs("[data-team-lede]", shell), esc(ledeText()));
+    setSlot(KT.qs("[data-team-actions]", shell), actionsHTML());
+
+    var select = KT.qs("[data-team-filter]", shell);
+    setSlot(select, (svc ? svc.ROLE_FILTERS : []).map(function (f) {
+      return '<option value="' + f.value + '">' + f.label + "</option>";
+    }).join(""));
+    if (select && select.value !== state.roleFilter) select.value = state.roleFilter;
+
+    /* Only when the code changed the query (e.g. reset after creating a
+       colleague) — never while someone is typing in the field. */
+    var input = KT.qs("[data-team-search]", shell);
+    if (input && input !== document.activeElement && input.value !== state.search) {
+      input.value = state.search;
+    }
+
+    KT.mount(KT.qs("[data-team-body]", shell),
       inviteListHTML() + listHTML() + detailHTML() + confirmHTML() +
       suspendConfirmHTML() +
       inviteFormHTML() + (state.issued ? issuedHTML() : "") +
@@ -607,19 +652,26 @@
 
   /* ---- Data -------------------------------------------------------------- */
 
+  var loadSeq = 0;
+
   async function load() {
+    /* Typing fires a search per pause; a slow early response must not land
+       on top of a later one, so only the newest request may paint. */
+    var seq = ++loadSeq;
     state.loading = true; state.error = null; paint();
     try {
       if (!svc) svc = (await import("../services/admin-team.js")).adminTeamService;
       var res = await svc.list({
         search: state.search, role: state.roleFilter,
         limit: svc.PAGE_SIZE, offset: state.offset });
+      if (seq !== loadSeq) return;
       /* Best-effort: the roster must still render if flags are unavailable
          (not yet migrated, or the viewer is below is_manager()). */
       try {
         var flagSvc = (await import("../services/admin-flags.js")).adminFlagsService;
         state.flags = await flagSvc.summary();
       } catch (_) { state.flags = {}; }
+      if (seq !== loadSeq) return;
       state.rows = res.rows || [];
       state.total = res.total || 0;
       state.canChange = !!res.can_change_roles;
@@ -633,6 +685,7 @@
          empty list. */
       loadInvites();
     } catch (error) {
+      if (seq !== loadSeq) return;
       state.loading = false;
       state.error = (KT.services && KT.services.errorMessage)
         ? KT.services.errorMessage(error) : String(error.message || error);

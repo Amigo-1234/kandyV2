@@ -55,7 +55,8 @@
      shipped and on every ungrouped one since, and that case renders the
      flat list this page has always shown, with no heading and no change.
 
-     No price per pack: packaging is one charge for the whole order.
+     No price per pack: the order's packaging total (per plate since 0086,
+     as charged) is shown once in the summary.
   */
   function orderItemHTML(l) {
     var item = KT.menu.byId(l.menuId || l.id);

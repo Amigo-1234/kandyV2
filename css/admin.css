@@ -1029,6 +1029,10 @@
 
 .fin__filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
 .fin__filters .field { margin: 0; }
+/* Team & roles keeps its action buttons in their own slot so the filter bar
+   (and the search field in it) is never re-rendered; the slot itself takes
+   no space, so the buttons lay out exactly as direct children did. */
+.team__actions { display: contents; }
 .fin__search { flex: 1 1 260px; }
 
 .fin__rows { display: grid; gap: 10px; }

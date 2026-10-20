@@ -88,13 +88,13 @@
   /* ---- Takeaway packs -------------------------------------------------- */
 
   /*
-     GROUPING IS FREE, IN BOTH SENSES. Splitting a basket into packs tells the
-     kitchen which items go in which bag; it does not change the subtotal, the
-     packaging charge, delivery, the coupon or the total. Packaging is still
-     one charge for the whole order — the server computes it from the food in
-     the basket and ignores packs entirely — so the strip below says so
-     outright rather than leaving the customer to wonder what a second bag
-     costs.
+     A PACK IS A PLATE. Splitting a basket into packs tells the kitchen which
+     items go in which bag, and each pack holding rice, spaghetti or beans is
+     one plate of takeaway packaging (0086): ₦300 with White Rice, Ofada, or
+     rice and beans, otherwise ₦200. Dishes sold as a whole plate (Ewa
+     Agoyin, swallow, pepper soup) are a plate each wherever they sit. The
+     strip says so outright, and the summary shows the packaging before the
+     customer pays; the server computes the same figure.
 
      Off by default. A customer who never touches it gets the flat basket that
      has always been here.
@@ -110,7 +110,8 @@
             '<span class="takeaway__icon">' + KT.icon("cart", 18) + "</span>" +
             "<div><strong>Splitting this between people?</strong>" +
             "<p>Group items into separate takeaway packs so the kitchen bags " +
-            "them apart. Packaging stays the same price.</p></div>" +
+            "them apart. Each pack of rice, spaghetti or beans is one plate of " +
+            "packaging.</p></div>" +
           "</div>" +
           '<button class="btn btn--soft btn--sm" type="button" data-takeaway-add>' +
             KT.icon("plus", 15) + "<span>Split into packs</span></button>" +
@@ -133,8 +134,10 @@
       '<div class="takeaway">' +
         '<div class="takeaway__head">' +
           "<strong>Takeaway packs</strong>" +
-          '<span class="takeaway__note">Packaging is charged once for the ' +
-            "whole order, however many packs you use.</span>" +
+          '<span class="takeaway__note">Packaging is charged per plate: each pack ' +
+            "of rice, spaghetti or beans is one plate (" + KT.naira(KT.rules.TAKEAWAY_RATES().combined) +
+            " with White Rice, Ofada or rice and beans, otherwise " +
+            KT.naira(KT.rules.TAKEAWAY_RATES().standard) + ").</span>" +
         "</div>" +
         '<div class="takeaway__tabs" role="group" aria-label="Choose the pack new items go into">' +
           tabs +
@@ -206,9 +209,8 @@
   /*
      The last thing a customer reads before paying. Only rendered for a
      grouped basket — an ungrouped order sees the summary panel exactly as it
-     was. No prices per pack, deliberately: packaging is one order-level
-     charge and printing a money column beside each pack would imply
-     otherwise.
+     was. Packaging is shown once, as a total in the summary below, rather
+     than as a money column beside each pack.
   */
   function packRecapHTML() {
     if (!KT.cart.grouped()) return "";

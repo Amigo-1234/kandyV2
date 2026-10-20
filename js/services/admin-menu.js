@@ -17,7 +17,18 @@ const BUCKET = "menu-images";
 
 const ITEM_COLUMNS =
   "id, name, blurb, description, price, category_id, section, status, " +
-  "image_key, image_url, is_featured, sort_order, created_at, updated_at";
+  "image_key, image_url, is_featured, sort_order, created_at, updated_at, pack_class, sale_unit";
+
+/* Takeaway packaging (menu_items.pack_class, 0086). The server prices
+   packaging from this; the labels say what each class does. */
+export const PACK_CLASSES = [
+  { id: "",         label: "None — no packaging (drinks, proteins, boxes, sides)" },
+  { id: "standard", label: "Plate meal — standard rate per plate" },
+  { id: "rice",     label: "Rice — standard plate, bigger rate with beans" },
+  { id: "large",    label: "White Rice — bigger rate per plate" },
+  { id: "ofada",    label: "Ofada — bigger rate per plate" },
+  { id: "beans",    label: "Beans — bigger rate when with rice" }
+];
 
 /* How an item is sold — the existing menu_items.sale_unit CHECK vocabulary. */
 export const SALE_UNITS = [
@@ -46,6 +57,8 @@ function toItem(r) {
     imageUrl: r.image_url || "",
     isFeatured: r.is_featured === true,
     sortOrder: Number(r.sort_order) || 0,
+    packClass: r.pack_class || "",
+    saleUnit: r.sale_unit || "unit",
     createdAt: r.created_at ? new Date(r.created_at) : null,
     updatedAt: r.updated_at ? new Date(r.updated_at) : null
   };
@@ -74,6 +87,9 @@ export function validate(form) {
   }
   if (form.saleUnit && !SALE_UNITS.some((u) => u.id === form.saleUnit)) {
     errors.saleUnit = "Choose how it is sold.";
+  }
+  if (form.packClass && !PACK_CLASSES.some((c) => c.id === form.packClass)) {
+    errors.packClass = "Choose a packaging type.";
   }
   return { valid: Object.keys(errors).length === 0, errors };
 }
@@ -167,6 +183,8 @@ export const adminMenuService = {
       updated_at: new Date().toISOString()
     };
     if (form.imageUrl !== undefined) payload.image_url = form.imageUrl || null;
+    /* Manager-only on the server too (enforce_menu_item_tier, 0086). */
+    if (form.packClass !== undefined) payload.pack_class = form.packClass || null;
 
     /* On CREATE only, the two existing inventory columns may be set: an item
        added from the Inventory screen goes on the prep list (tracks_stock)
