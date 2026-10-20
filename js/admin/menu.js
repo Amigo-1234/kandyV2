@@ -238,6 +238,13 @@
                   return '<option value="' + s.id + '"' +
                     ((f.status || "available") === s.id ? " selected" : "") + ">" + s.label + "</option>";
                 }).join("") + "</select>") +
+            field("packClass", "Takeaway packaging",
+              '<select class="input" name="packClass">' +
+                (svc ? svc.PACK_CLASSES : []).map(function (c) {
+                  return '<option value="' + c.id + '"' +
+                    ((f.packClass || "") === c.id ? " selected" : "") + ">" + c.label + "</option>";
+                }).join("") + "</select>",
+              "Scoop and cup dishes share one plate per takeaway pack; dishes sold per item are a plate each.") +
             '<div class="field mfield"><span class="field__label">Image</span>' +
               '<div class="mimage">' +
                 (preview ? '<img class="mimage__preview" src="' + esc(preview) + '" alt="">'
@@ -366,8 +373,8 @@
     state.form = item
       ? { name: item.name, blurb: item.blurb, description: item.description,
           price: item.price, categoryId: item.categoryId, status: item.status,
-          imageUrl: item.imageUrl }
-      : { name: "", blurb: "", description: "", price: "", categoryId: "", status: "available", imageUrl: "",
+          imageUrl: item.imageUrl, packClass: item.packClass || "" }
+      : { name: "", blurb: "", description: "", price: "", categoryId: "", status: "available", imageUrl: "", packClass: "",
           saleUnit: opts.fromInventory ? "unit" : "", tracksStock: opts.fromInventory === true };
     state.formErrors = {};
     render();
@@ -377,7 +384,7 @@
     var form = KT.qs("[data-mform]");
     if (!form) return state.form;
     var f = {};
-    ["name", "blurb", "description", "price", "categoryId", "status", "saleUnit"].forEach(function (k) {
+    ["name", "blurb", "description", "price", "categoryId", "status", "saleUnit", "packClass"].forEach(function (k) {
       var el = form.querySelector('[name="' + k + '"]');
       if (el) f[k] = el.value;
     });

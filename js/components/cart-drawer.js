@@ -80,7 +80,9 @@
       '<dl class="csum">' +
         "<div><dt>Subtotal</dt><dd>" + KT.naira(sum.subtotal) + "</dd></div>" +
         (sum.takeawayFee
-          ? "<div><dt>Packaging</dt><dd>" + KT.naira(sum.takeawayFee) + "</dd></div>"
+          ? "<div><dt>Packaging" + (sum.takeawayPlates > 1
+              ? ' <em class="csum__free">' + sum.takeawayPlates + " plates</em>" : "") +
+            "</dt><dd>" + KT.naira(sum.takeawayFee) + "</dd></div>"
           : "") +
         "<div><dt>" + (sum.fulfilment === "pickup" ? "Pickup" : "Delivery") +
           (sum.fulfilment === "pickup" ? ' <em class="csum__free">free</em>' : "") +

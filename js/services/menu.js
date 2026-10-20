@@ -48,7 +48,11 @@ function normalise(row) {
     blurb: row.blurb || (snapshot && snapshot.blurb) || "",
     description: row.description || (snapshot && snapshot.description) || "",
     rating: Number(row.rating) || 0,
-    tags: Array.isArray(row.tags) ? row.tags.slice() : []
+    tags: Array.isArray(row.tags) ? row.tags.slice() : [],
+    /* Takeaway packaging class and how it is sold (0086). Display only: the
+       server reads its own row when it prices the order. */
+    packClass: row.pack_class || null,
+    saleUnit: row.sale_unit || "unit"
   };
 }
 
@@ -81,7 +85,8 @@ function announce(source) {
 }
 
 const SELECT = "id, legacy_firestore_id, slug, name, blurb, description, price, " +
-               "category_id, section, status, image_key, image_url, rating, tags, is_quick_pick";
+               "category_id, section, status, image_key, image_url, rating, tags, is_quick_pick, " +
+               "pack_class, sale_unit";
 
 /*
    Dishes the inventory board says are finished (menu_stock_out(), 0082).
@@ -101,8 +106,20 @@ async function fetchStockOut() {
   }
 }
 
+/* The owner's packaging rates (app_settings.takeaway_fee, public read), so
+   the basket shows the same per-plate figure the server will charge. On any
+   failure the built-in ₦200/₦300 stand; the server is the authority. */
+async function fetchTakeawayRates() {
+  try {
+    const { data, error } = await supabase
+      .from("app_settings").select("value").eq("key", "takeaway_fee").maybeSingle();
+    if (!error && data && data.value) window.KT.rules.setTakeawayRates(data.value);
+  } catch { /* keep defaults */ }
+}
+
 async function fetchMenu() {
   const stockOut = fetchStockOut();
+  const rates = fetchTakeawayRates();
   const { data, error } = await supabase
     .from(TABLES.menuItems)
     .select(SELECT)
@@ -127,6 +144,7 @@ async function fetchMenu() {
     if (i.status === "available" && out.has(String(i.id))) { i.status = "sold_out"; i.stockOut = true; }
   });
   const quickPicks = rows.filter((r) => r.is_quick_pick).map((r) => r.id);
+  await rates;
   return { items, quickPicks };
 }
 
