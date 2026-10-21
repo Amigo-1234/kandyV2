@@ -36,7 +36,7 @@ export const KINDS = [
   { id: "received",   label: "Received",   hint: "Delivered or bought in", sup: false },
   { id: "used",       label: "Used",       hint: "Taken for cooking", sup: false },
   { id: "waste",      label: "Waste",      hint: "Spoiled or thrown away — needs a reason", sup: false },
-  { id: "adjustment", label: "Adjustment", hint: "Correcting the record (+ or −)", sup: true },
+  { id: "adjustment", label: "Adjustment", hint: "Correcting the record — choose Add stock or Remove stock", sup: true },
   { id: "count",      label: "Count",      hint: "What is actually in the store now", sup: true }
 ];
 

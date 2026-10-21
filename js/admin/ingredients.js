@@ -207,21 +207,71 @@
     "</article>";
   }
 
+  /*
+     Direction is chosen, never typed. iPhone's decimal keypad has no minus
+     key, so a signed "+ or −" box could only ever add: every adjustment
+     recorded before this change was positive, including one noted "1 pack
+     removed". An adjustment is now Add or Remove plus a positive quantity,
+     and only this screen turns that into the signed number the ledger has
+     always stored (ingredient_record accepts qty <> 0 for adjustments).
+  */
+  function effectOf(f) {
+    var q = Number(f.qty);
+    if (f.qty === "" || !Number.isFinite(q)) return null;
+    if (f.kind === "count") return { set: q };
+    if (f.kind === "received") return { delta: q };
+    if (f.kind === "used" || f.kind === "waste") return { delta: -q };
+    if (f.kind === "adjustment") {
+      if (f.dir !== "add" && f.dir !== "remove") return null;
+      return { delta: f.dir === "remove" ? -q : q };
+    }
+    return null;
+  }
+
+  /** "Now 20 kg → after 15 kg", from the register's on-hand figure. */
+  function previewHTML(it, f) {
+    var e = effectOf(f || {});
+    if (!e) return "";
+    var known = it.on_hand !== null && it.on_hand !== undefined;
+    if (e.set !== undefined) {
+      return "<span>After counting: <strong>" + qtyUnit(e.set, it.unit) + "</strong>" +
+        (known ? " (was " + qtyUnit(it.on_hand, it.unit) + ")" : "") + "</span>";
+    }
+    var sign = e.delta < 0 ? "−" : "+";
+    var change = sign + num(Math.abs(e.delta)) + " " + esc(it.unit);
+    if (!known) {
+      return "<span>" + change + ". Not counted yet, so the resulting stock is unknown until a count.</span>";
+    }
+    var after = Math.round((Number(it.on_hand) + e.delta) * 100) / 100;
+    return "<span>Now <strong>" + qtyUnit(it.on_hand, it.unit) + "</strong> → after <strong" +
+      (after < 0 ? ' class="is-negative"' : "") + ">" + qtyUnit(after, it.unit) + "</strong> (" + change + ")</span>" +
+      (after < 0 ? '<span class="ingpreview__warn">This leaves stock below zero. You will be asked to confirm.</span>' : "");
+  }
+
   function formHTML(it) {
-    var f = state.form || { kind: "received", qty: "", reason: "", note: "" };
+    var f = state.form || { kind: "received", qty: "", reason: "", note: "", dir: null };
     var kinds = svc.KINDS.filter(function (k) { return !k.sup || canManage(); });
     var meta = svc.KINDS.filter(function (k) { return k.id === f.kind; })[0] || svc.KINDS[0];
     var reasons = f.kind === "waste" ? svc.WASTE_REASONS : f.kind === "adjustment" ? svc.ADJUSTMENT_REASONS : [];
+    var adj = f.kind === "adjustment";
     return '<div class="ochips invkinds">' + kinds.map(function (k) {
         return '<button class="chip' + (f.kind === k.id ? " is-active" : "") + '" type="button" data-ingkind="' + k.id + '">' +
           esc(k.label) + "</button>";
       }).join("") + "</div>" +
       '<p class="invhint">' + esc(meta.hint) + "</p>" +
+      (adj
+        ? '<div class="ingdir" role="radiogroup" aria-label="Add or remove stock">' +
+            '<button class="ingdir__btn ingdir__btn--add' + (f.dir === "add" ? " is-active" : "") + '" type="button" ' +
+              'role="radio" aria-checked="' + (f.dir === "add") + '" data-ingdir="add">' + KT.icon("plus", 16) + "<span>Add stock</span></button>" +
+            '<button class="ingdir__btn ingdir__btn--remove' + (f.dir === "remove" ? " is-active" : "") + '" type="button" ' +
+              'role="radio" aria-checked="' + (f.dir === "remove") + '" data-ingdir="remove"><span class="ingdir__minus">−</span><span>Remove stock</span></button>' +
+          "</div>"
+        : "") +
       '<div class="invform">' +
-        '<label class="field invform__qty"><span class="field__label">' + (f.kind === "count" ? "Counted" : "Quantity") +
+        '<label class="field invform__qty"><span class="field__label">' +
+          (f.kind === "count" ? "Counted" : adj ? (f.dir === "remove" ? "Remove how much" : f.dir === "add" ? "Add how much" : "Quantity") : "Quantity") +
           " (" + esc(it.unit) + ")</span>" +
-          '<input class="input" type="number" step="0.25" inputmode="decimal" data-ingqty value="' + esc(f.qty) + '" placeholder="' +
-            (f.kind === "adjustment" ? "+ or −" : "0") + '"></label>' +
+          '<input class="input" type="number" min="0" step="any" inputmode="decimal" data-ingqty value="' + esc(f.qty) + '" placeholder="0"></label>' +
         (reasons.length ? '<label class="field invform__reason"><span class="field__label">Reason</span>' +
           '<select class="select" data-ingreason><option value="">Choose a reason…</option>' +
           reasons.map(function (r) {
@@ -230,6 +280,7 @@
         '<label class="field invform__note"><span class="field__label">Note <span class="invopt">optional</span></span>' +
           '<textarea class="textarea" rows="2" maxlength="500" data-ingnote placeholder="e.g. supplier, invoice no., what it was used for">' +
             esc(f.note) + "</textarea></label>" +
+        '<p class="ingpreview" data-ingpreview aria-live="polite">' + previewHTML(it, f) + "</p>" +
         '<button class="btn btn--primary invform__go" type="button" data-ingrecord' + (state.saving ? " disabled" : "") + ">" +
           (state.saving ? KT.spinner(15) + "<span>Saving…</span>" : "Record") + "</button>" +
       "</div>" +
@@ -237,7 +288,7 @@
   }
 
   function entryHTML(r, withName) {
-    var sign = r.kind === "used" || r.kind === "waste" ? "−" : r.kind === "count" ? "=" : (Number(r.qty) < 0 ? "" : "+");
+    var sign = r.kind === "used" || r.kind === "waste" ? "−" : r.kind === "count" ? "=" : (Number(r.qty) < 0 ? "−" : "+");
     return "<li>" +
       '<span class="invhist__kind invhist__kind--' + esc(r.kind === "received" ? "prepared" : r.kind) + '">' +
         esc(KIND_LABEL[r.kind] || r.kind) + "</span>" +
@@ -442,16 +493,30 @@
   async function record() {
     var f = state.form, id = state.open;
     if (!f || !id || state.saving || isPast()) return;
-    var qty = Number(f.qty);
-    if (f.qty === "" || Number.isNaN(qty)) { KT.toast("Enter a quantity.", "error"); return; }
-    if (f.kind === "count" && qty < 0) { KT.toast("A count cannot be negative.", "error"); return; }
-    if (f.kind !== "adjustment" && f.kind !== "count" && qty <= 0) { KT.toast("Quantity must be more than zero.", "error"); return; }
-    if (f.kind === "adjustment" && qty === 0) { KT.toast("An adjustment cannot be zero.", "error"); return; }
+    var raw = String(f.qty == null ? "" : f.qty).trim();
+    var qty = Number(raw);
+    if (raw === "" || !Number.isFinite(qty)) { KT.toast("Enter a quantity.", "error"); return; }
+    /* The field is a magnitude. Direction comes from the kind (or, for an
+       adjustment, the Add / Remove choice) — never from a typed sign. */
+    if (qty < 0) { KT.toast("Enter the amount without a minus sign — choose Remove to take stock away.", "error"); return; }
+    if (f.kind === "count" ? qty < 0 : qty <= 0) { KT.toast("Quantity must be more than zero.", "error"); return; }
+    if (Math.round(qty * 100) !== qty * 100) { KT.toast("Use at most two decimal places.", "error"); return; }
+    if (qty > 100000) { KT.toast("That quantity is too large.", "error"); return; }
+    if (f.kind === "adjustment" && f.dir !== "add" && f.dir !== "remove") { KT.toast("Choose Add stock or Remove stock.", "error"); return; }
     if ((f.kind === "waste" || f.kind === "adjustment") && !f.reason) { KT.toast("Choose a reason.", "error"); return; }
+    var item = ((state.data && state.data.items) || []).filter(function (x) { return x.id === id; })[0] || {};
+    var e = effectOf(f);
+    if (e && e.delta !== undefined && item.on_hand !== null && item.on_hand !== undefined &&
+        Number(item.on_hand) + e.delta < 0 &&
+        !window.confirm("This leaves " + item.name + " at " + num(Math.round((Number(item.on_hand) + e.delta) * 100) / 100) +
+                        " " + item.unit + " — below zero. Record it anyway?")) {
+      return;
+    }
+    var signed = f.kind === "adjustment" && f.dir === "remove" ? -qty : qty;
     state.saving = true; render();
     try {
-      await svc.record(id, f.kind, qty, f.reason, f.note);
-      state.form = { kind: f.kind, qty: "", reason: "", note: "" };
+      await svc.record(id, f.kind, signed, f.reason, f.note);
+      state.form = { kind: f.kind, qty: "", reason: "", note: "", dir: null };
       KT.toast("Recorded.", "success");
       await load();
     } catch (error) {
@@ -554,7 +619,7 @@
     if (open) {
       var id = open.getAttribute("data-ingopen");
       state.open = state.open === id ? null : id;
-      state.form = { kind: "received", qty: "", reason: "", note: "" };
+      state.form = { kind: "received", qty: "", reason: "", note: "", dir: null };
       render();
       if (state.open) loadRecent(state.open);
       return;
@@ -564,6 +629,14 @@
       state.form = state.form || {};
       state.form.kind = kind.getAttribute("data-ingkind");
       state.form.reason = "";
+      state.form.dir = null;     /* a direction never carries over between entry types */
+      render();
+      return;
+    }
+    var dir = t.closest("[data-ingdir]");
+    if (dir) {
+      state.form = state.form || {};
+      state.form.dir = dir.getAttribute("data-ingdir");
       render();
       return;
     }
@@ -578,7 +651,15 @@
     var fld = t.getAttribute && t.getAttribute("data-ingf");
     if (fld && state.edit && fld !== "active") { state.edit[fld] = t.value; return; }
     if (!state.form) return;
-    if (t.closest("[data-ingqty]")) { state.form.qty = t.value; return; }
+    if (t.closest("[data-ingqty]")) {
+      state.form.qty = t.value;
+      /* Update the preview in place: re-rendering would replace the focused
+         input and close the phone keyboard. */
+      var pv = KT.qs("[data-ingpreview]");
+      var it = ((state.data && state.data.items) || []).filter(function (x) { return x.id === state.open; })[0];
+      if (pv && it) pv.innerHTML = previewHTML(it, state.form);
+      return;
+    }
     if (t.closest("[data-ingnote]")) { state.form.note = t.value; }
   });
 

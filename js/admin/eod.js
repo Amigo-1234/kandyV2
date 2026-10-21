@@ -16,7 +16,8 @@
 
    PAST DAYS. A date picker and a strip of recent days open any earlier day.
    A past day is read-only: the handler's own report is shown as text, not a
-   form, and staff_day_report_save() refuses any day but today regardless.
+   form, and staff_day_report_save() refuses any day but today (or
+   yesterday before 04:00 Lagos, 0087) regardless.
    Supervisors can still mark a past report reviewed — that writes only the
    review columns, never the author's words.
 
@@ -43,7 +44,12 @@
     open: null,             /* staff_id whose report is expanded on the team tab */
     reviewing: null,        /* report id mid-review */
     date: null,             /* null = today; YYYY-MM-DD = a past day (read-only) */
-    index: null             /* day_report_index(): recent days and their status */
+    index: null,            /* day_report_index(): recent days and their status */
+    late: null,             /* yesterday's page while it is still open (before 04:00) */
+    filing: null,           /* "yesterday" | "today": which day the form files under */
+    expanded: {},           /* report id -> long report unfolded */
+    versions: {},           /* "staff|day" -> earlier versions (0087), fetched on open */
+    showVersions: {}        /* "staff|day" -> earlier versions listed */
   };
   var ctx = { role: "staff" };
 
@@ -128,7 +134,7 @@
       '<label class="eodf">' +
         '<span class="eodf__label">' + esc(f.label) + "</span>" +
         '<span class="eodf__hint">' + esc(f.hint) + "</span>" +
-        '<textarea class="input eodf__input" rows="2" data-eodfield="' + f.key + '" ' +
+        '<textarea class="input eodf__input" rows="3" data-eodfield="' + f.key + '" ' +
           'placeholder="Leave blank if there was nothing.">' + esc(v) + "</textarea>" +
       "</label>"
     );
@@ -137,14 +143,91 @@
   var FIELD_COL = { problems: "problems", customerIssues: "customer_issues",
                     stockIssues: "stock_issues", followUps: "follow_ups", notes: "notes" };
 
-  /** A report as text. Used for every past day, and for the team view. */
-  function saidHTML(r) {
+  /*
+     A report as text. Used for every past day, and for the team view.
+     Written on a phone as lists — one activity per line — so line breaks are
+     kept exactly as typed (.eodsaid__text is pre-wrap). Collapsing them ran
+     every list together into one sentence. A long report starts folded with
+     a "View full report" control; nothing is ever cut from what is stored.
+  */
+  var LONG_CHARS = 480, LONG_LINES = 10;
+  function isLong(r) {
+    var all = FIELDS.map(function (f) { return r[FIELD_COL[f.key]] || ""; }).join("\n");
+    return all.length > LONG_CHARS || all.split("\n").length > LONG_LINES;
+  }
+  function fieldsHTML(r) {
     var said = FIELDS.map(function (f) {
       var v = r[FIELD_COL[f.key]];
       if (!v) return "";
-      return '<div class="eodsaid"><dt>' + esc(f.label) + "</dt><dd>" + esc(v) + "</dd></div>";
+      return '<div class="eodsaid"><dt>' + esc(f.label) + '</dt><dd class="eodsaid__text">' + esc(v) + "</dd></div>";
     }).join("");
     return said ? '<dl class="eodsaidlist">' + said + "</dl>" : '<p class="odetail__muted">Nothing to flag was written.</p>';
+  }
+  function saidHTML(r) {
+    var body = fieldsHTML(r);
+    if (!r.id || !isLong(r)) return body;
+    var open = !!state.expanded[r.id];
+    return '<div class="eodlong' + (open ? " is-open" : "") + '" id="eodlong-' + esc(r.id) + '">' + body + "</div>" +
+      '<button class="btn btn--soft btn--sm eodlong__toggle" type="button" data-eodexpand="' + esc(r.id) + '" ' +
+        'aria-expanded="' + open + '" aria-controls="eodlong-' + esc(r.id) + '">' +
+        (open ? "Show less" : "View full report") + "</button>";
+  }
+
+  /* Earlier text kept when a report was changed or a draft discarded (0087).
+     Keyed by person and day, not report id: a discarded draft no longer has
+     a report row. */
+  function versionKey(staffId) {
+    return staffId + "|" + ((state.team && state.team.business_date) || "");
+  }
+  function versionsHTML(staffId) {
+    var key = versionKey(staffId);
+    var v = state.versions[key];
+    if (!v) return "";
+    if (v.loading) return '<p class="odetail__muted">Checking for earlier versions…</p>';
+    if (v.error) return '<p class="field__error">' + esc(v.error) + "</p>";
+    var list = v.data || [];
+    if (!list.length) return "";
+    var open = !!state.showVersions[key];
+    var lead = list.some(function (x) { return x.status === "submitted"; }) ? "Edited after submitting · "
+      : list.some(function (x) { return x.reason === "discarded"; }) ? "Discarded drafts kept · "
+      : "Earlier drafts · ";
+    return '<div class="eodversions">' +
+      '<button class="btn btn--ghost btn--sm" type="button" data-eodversions="' + esc(key) + '" aria-expanded="' + open + '">' +
+        KT.icon("clock", 14) + "<span>" + lead + list.length +
+        (list.length === 1 ? " earlier version" : " earlier versions") + "</span></button>" +
+      (open ? list.map(function (x) {
+        return '<div class="eodversion"><p class="eodversion__when">' + (x.reason === "discarded" ? "Discarded " : "Replaced ") +
+          esc(dayLabel(String(x.replaced_at).slice(0, 10))) +
+          " at " + clock(x.replaced_at) +
+          (x.status === "submitted" ? " · had been submitted " + (x.submitted_at ? clock(x.submitted_at) : "")
+                                    : " · was a draft") + "</p>" +
+          fieldsHTML(x) + "</div>";
+      }).join("") : "") +
+    "</div>";
+  }
+
+  /*
+     Which day the form is for. Before 04:00 Lagos time yesterday's report
+     is still open (0087), so a late shift files where it belongs instead of
+     landing on the new day and later being overwritten by it. The server
+     re-checks the day on every save.
+  */
+  function filingDay() {
+    return state.late && state.filing === "yesterday" ? state.late : state.mine;
+  }
+
+  function filingSwitchHTML() {
+    if (!state.late) return "";
+    function opt(id, d, note) {
+      var on = state.filing === id;
+      return '<button class="eodfiling__opt' + (on ? " is-active" : "") + '" type="button" role="radio" aria-checked="' + on +
+        '" data-eodfiling="' + id + '"><strong>' + esc(dayLabel(d.business_date)) + "</strong><span>" + esc(note) + "</span></button>";
+    }
+    return '<div class="eodfiling" role="radiogroup" aria-label="Which day is this report for?">' +
+      '<p class="eodfiling__q">Which day is this report for?</p>' +
+      opt("yesterday", state.late, "Yesterday — open until 04:00") +
+      opt("today", state.mine, "Today") +
+    "</div>";
   }
 
   function minePastHTML() {
@@ -168,6 +251,9 @@
           "</span></header>" +
         '<div class="panel apanel">' +
           (r ? saidHTML(r) : '<p class="odetail__muted">You did not write a report for this day.</p>') +
+          (r && r.versions ? '<p class="odetail__muted">' + r.versions + (r.versions === 1 ? " earlier version was" : " earlier versions were") +
+            " kept when you changed this report.</p>" : "") +
+          (d.editable ? '<p class="invhint">This day is still open until 04:00 — go back to today to finish it.</p>' : "") +
           (r && r.reviewed_at && r.review_note
             ? '<div class="eodreview"><strong>From management</strong><p>' + esc(r.review_note) + "</p></div>" : "") +
         "</div>" +
@@ -176,9 +262,9 @@
   }
 
   function mineHTML() {
-    var d = state.mine;
-    if (!d) return "";
+    if (!state.mine) return "";
     if (isPast()) return minePastHTML();
+    var d = filingDay();
     var r = d.report;
     var submitted = r && r.status === "submitted";
 
@@ -198,6 +284,7 @@
         '<header class="dsec__head"><h2>' + KT.icon("check", 17) + "Your day</h2>" +
           '<span class="dsec__hint">' + esc(dayLabel(d.business_date)) + "</span></header>" +
         '<div class="panel apanel">' +
+          filingSwitchHTML() +
           '<p class="eodlede">These come from the orders you moved. Nobody types them, ' +
             "and they cannot be edited.</p>" +
           activityHTML(d.activity) +
@@ -205,10 +292,13 @@
       "</section>" +
 
       '<section class="dsec">' +
-        '<header class="dsec__head"><h2>' + KT.icon("mail", 17) + "Your report</h2>" +
+        '<header class="dsec__head"><h2>' + KT.icon("mail", 17) + "Your report · " + esc(dayLabel(d.business_date)) + "</h2>" +
           '<span class="eodstatus">' + status + "</span></header>" +
         '<div class="panel apanel eodform">' +
-          '<p class="eodlede">Only what the system cannot see for itself.</p>' +
+          '<p class="eodlede">Only what the system cannot see for itself. Write one thing per line — ' +
+            "line breaks are kept.</p>" +
+          (r && r.versions ? '<p class="odetail__muted">' + r.versions + (r.versions === 1 ? " earlier version is" : " earlier versions are") +
+            " kept, so updating never loses what you sent before.</p>" : "") +
           FIELDS.map(fieldHTML).join("") +
           (r && r.reviewed_at && r.review_note
             ? '<div class="eodreview"><strong>From management</strong>' +
@@ -227,7 +317,10 @@
             (r && !submitted
               ? '<button class="btn btn--ghost" type="button" data-eoddiscard>Discard</button>'
               : "") +
-            (state.dirty ? '<span class="eodunsaved">Unsaved changes</span>' : "") +
+            /* Always in the page and toggled in place: re-rendering on the
+               first keystroke replaced the textarea and closed the phone
+               keyboard after one character. */
+            '<span class="eodunsaved" data-eodunsaved' + (state.dirty ? "" : " hidden") + ">Unsaved changes</span>" +
           "</div>" +
         "</div>" +
       "</section>"
@@ -245,6 +338,8 @@
       pill = '<span class="eodpill eodpill--done">' + clock(r.submitted_at) + "</span>";
     } else if (r) {
       pill = '<span class="eodpill eodpill--draft">Draft</span>';
+    } else if (p.versions) {
+      pill = '<span class="eodpill eodpill--draft">Draft discarded</span>';
     } else if (p.expected) {
       pill = '<span class="eodpill eodpill--missing">Not submitted</span>';
     } else {
@@ -257,8 +352,9 @@
         '<div class="eodperson__body">' +
           (r.status !== "submitted" ? '<p class="odetail__muted">Draft — not submitted.</p>' : "") +
           saidHTML(r) +
+          versionsHTML(p.staff_id) +
           (r.reviewed_at
-            ? '<p class="odetail__muted">Reviewed ' + clock(r.reviewed_at) +
+            ? '<p class="odetail__muted eodsaid__text">Reviewed ' + clock(r.reviewed_at) +
               (r.review_note ? " — " + esc(r.review_note) : "") + "</p>"
             : "") +
           '<div class="eodactions">' +
@@ -271,7 +367,8 @@
         "</div>";
     } else if (open) {
       body = '<div class="eodperson__body"><p class="odetail__muted">' +
-        "Nothing submitted yet, so there is nothing to read.</p></div>";
+        "Nothing submitted yet, so there is nothing to read.</p>" +
+        versionsHTML(p.staff_id) + "</div>";
     }
 
     return (
@@ -457,9 +554,19 @@
       state.index = got[1];
       state.team = got[2] || null;
       if (state.date && state.date >= state.index.today) state.date = null;
+      /* Late window (before 04:00): yesterday's report is still open. */
+      if (!isPast() && state.mine && state.mine.late_open_until) {
+        var late = await svc.staffDay(addDays(state.mine.business_date, -1));
+        if (gen !== mountGen) return;
+        state.late = late && late.editable ? late : null;
+        if (state.late && !state.filing) state.filing = "yesterday";
+      } else {
+        state.late = null;
+      }
+      if (!state.late) state.filing = "today";
       /* Never clobber what the person is in the middle of typing — and a
          past day never feeds the form. */
-      if (!state.dirty && !isPast()) state.draft = draftFrom(state.mine && state.mine.report);
+      if (!state.dirty && !isPast()) state.draft = draftFrom(filingDay() && filingDay().report);
     } catch (error) {
       if (gen !== mountGen) return;
       state.error = (KT.services && KT.services.errorMessage)
@@ -483,15 +590,26 @@
 
   async function save(submit) {
     if (state.saving || state.submitting || isPast()) return;
+    var d = filingDay();
+    var r = d && d.report;
+    if (submit && r && r.status === "submitted" && r.submitted_at &&
+        Date.now() - new Date(r.submitted_at).getTime() > 2 * 3600 * 1000 &&
+        !window.confirm("You already submitted the report for " + dayLabel(d.business_date) + " at " + clock(r.submitted_at) +
+                        ". Replace it with this version? The earlier text will be kept.")) {
+      return;
+    }
     if (submit) state.submitting = true; else state.saving = true;
     render();
     try {
-      await svc.save(state.draft, submit);
+      await svc.save(state.draft, submit, d && d.business_date);
       state.dirty = false;
       KT.toast(submit ? "Report submitted. Thank you." : "Draft saved.", "success");
       await load();
     } catch (error) {
-      KT.toast(KT.services.errorMessage(error), "error", { duration: 6000 });
+      KT.toast(KT.services.errorMessage(error), "error", { duration: 8000 });
+      /* The day closed while the form was open (04:00 passed): reload so the
+         form moves to today. What was typed stays in the draft. */
+      if (/has closed/i.test(String(error && error.message))) { state.filing = null; load(); }
     } finally {
       state.saving = false; state.submitting = false; render();
     }
@@ -499,7 +617,7 @@
 
   async function discard() {
     try {
-      await svc.discard();
+      await svc.discard(filingDay() && filingDay().business_date);
       state.dirty = false;
       state.draft = draftFrom(null);
       KT.toast("Draft discarded.", "success");
@@ -507,6 +625,26 @@
     } catch (error) {
       KT.toast(KT.services.errorMessage(error), "error");
     }
+  }
+
+  /** Earlier versions for the opened person on the shown day, fetched once —
+      whether or not they have a report now (a discarded draft has none). */
+  async function loadVersions(staffId) {
+    if (!state.team || !state.team.business_date) return;
+    var key = versionKey(staffId);
+    if (state.versions[key]) return;
+    var gen = mountGen;
+    state.versions[key] = { loading: true };
+    render();
+    try {
+      var out = await svc.versions(staffId, state.team.business_date);
+      if (gen !== mountGen) return;
+      state.versions[key] = { data: (out && out.versions) || [] };
+    } catch (error) {
+      if (gen !== mountGen) return;
+      state.versions[key] = { error: KT.services.errorMessage(error) };
+    }
+    render();
   }
 
   async function review(id, flag) {
@@ -532,7 +670,8 @@
     viewGen = gen;
     state = { loading: true, error: null, mine: null, team: null,
       tab: "mine", draft: null, dirty: false, saving: false,
-      submitting: false, open: null, reviewing: null, date: null, index: null };
+      submitting: false, open: null, reviewing: null, date: null, index: null,
+      late: null, filing: null, expanded: {}, versions: {}, showVersions: {} };
 
     /*
        This is a form of five textareas that a handler fills in on a phone.
@@ -569,7 +708,11 @@
     if (!f) return;
     state.draft = state.draft || draftFrom(null);
     state.draft[f.getAttribute("data-eodfield")] = f.value;
-    if (!state.dirty) { state.dirty = true; render(); }
+    if (!state.dirty) {
+      state.dirty = true;
+      var flag = KT.qs("[data-eodunsaved]");
+      if (flag) flag.hidden = false;
+    }
   });
 
   document.addEventListener("click", function (e) {
@@ -589,11 +732,40 @@
     if (t.closest("[data-eodsubmit]")) { save(true); return; }
     if (t.closest("[data-eoddiscard]")) { discard(); return; }
 
+    var filing = t.closest("[data-eodfiling]");
+    if (filing) {
+      var which = filing.getAttribute("data-eodfiling");
+      if (which === state.filing) return;
+      if (state.dirty && !window.confirm("You have unsaved changes. Switch day and leave them?")) return;
+      state.filing = which;
+      state.dirty = false;
+      state.draft = draftFrom(filingDay() && filingDay().report);
+      render();
+      return;
+    }
+
+    var exp = t.closest("[data-eodexpand]");
+    if (exp) {
+      var rid = exp.getAttribute("data-eodexpand");
+      state.expanded[rid] = !state.expanded[rid];
+      render();
+      return;
+    }
+
+    var vers = t.closest("[data-eodversions]");
+    if (vers) {
+      var vid = vers.getAttribute("data-eodversions");
+      state.showVersions[vid] = !state.showVersions[vid];
+      render();
+      return;
+    }
+
     var open = t.closest("[data-eodopen]");
     if (open) {
       var id = open.getAttribute("data-eodopen");
       state.open = state.open === id ? null : id;
       render();
+      if (state.open) loadVersions(state.open);
       return;
     }
 

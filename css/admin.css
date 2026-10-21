@@ -1033,6 +1033,27 @@
    (and the search field in it) is never re-rendered; the slot itself takes
    no space, so the buttons lay out exactly as direct children did. */
 .team__actions { display: contents; }
+
+/* Ingredients: adjustment direction and the before/after preview. */
+.ingdir { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 12px; }
+.ingdir__btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px;
+  border-radius: var(--r-md); border: 2px solid var(--line); background: var(--surface);
+  font: inherit; font-weight: 800; color: var(--ink-2); cursor: pointer;
+}
+.ingdir__minus { font-size: 1.3rem; line-height: 1; }
+.ingdir__btn--add.is-active { border-color: #1f8a4c; background: #e8f6ee; color: #14663a; }
+.ingdir__btn--remove.is-active { border-color: #c2412d; background: #fdeceb; color: #9a2f1f; }
+.ingpreview { margin: 0; font-size: 0.9rem; color: var(--ink-2); display: grid; gap: 4px; grid-column: 1 / -1; }
+.ingpreview:empty { display: none; }
+.ingpreview .is-negative, .ingpreview__warn { color: #b3261e; }
+.ingpreview__warn { font-weight: 700; font-size: 0.84rem; }
+:root[data-theme="dark"] .ingdir__btn--add.is-active { background: #10301f; color: #8fe0b0; }
+:root[data-theme="dark"] .ingdir__btn--remove.is-active { background: #3a1512; color: #f2a69c; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .ingdir__btn--add.is-active { background: #10301f; color: #8fe0b0; }
+  :root:not([data-theme="light"]) .ingdir__btn--remove.is-active { background: #3a1512; color: #f2a69c; }
+}
 .fin__search { flex: 1 1 260px; }
 
 .fin__rows { display: grid; gap: 10px; }
@@ -2866,7 +2887,7 @@
 }
 .eodreview strong { display: block; font-size: 0.8rem; letter-spacing: 0.04em;
   text-transform: uppercase; color: var(--kt-pink); margin-bottom: 4px; }
-.eodreview p { margin: 0; font-size: 0.9rem; }
+.eodreview p { margin: 0; font-size: 0.9rem; white-space: pre-wrap; }
 
 /* ---- Status pills ------------------------------------------------------- */
 
@@ -2945,6 +2966,31 @@
 .eodsaid dt { font-size: 0.78rem; font-weight: 800; color: var(--ink-3);
   text-transform: uppercase; letter-spacing: 0.04em; }
 .eodsaid dd { margin: 0; font-size: 0.92rem; overflow-wrap: anywhere; }
+.eodsaid__text { white-space: pre-wrap; }
+/* A long report starts folded; "View full report" opens it. Nothing is cut
+   from the stored text — the fold is presentation only. */
+.eodlong { position: relative; }
+.eodlong:not(.is-open) { max-height: 16em; overflow: hidden; }
+.eodlong:not(.is-open)::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3.5em;
+  background: linear-gradient(to bottom, transparent, var(--surface));
+  pointer-events: none;
+}
+.eodlong__toggle { justify-self: start; }
+.eodversions { display: grid; gap: 10px; }
+.eodversions > .btn { justify-self: start; display: inline-flex; gap: 6px; align-items: center; }
+.eodversion { border-left: 3px solid var(--line); padding: 4px 0 4px 12px; display: grid; gap: 6px; }
+.eodversion__when { margin: 0; font-size: 0.78rem; color: var(--ink-3); font-weight: 700; }
+.eodfiling { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 14px; }
+.eodfiling__q { grid-column: 1 / -1; margin: 0; font-weight: 800; font-size: 0.9rem; }
+.eodfiling__opt {
+  display: grid; gap: 2px; text-align: left; padding: 10px 12px; min-height: 52px;
+  border-radius: var(--r-md); border: 2px solid var(--line); background: var(--surface);
+  font: inherit; color: inherit; cursor: pointer;
+}
+.eodfiling__opt span { font-size: 0.78rem; color: var(--ink-3); }
+.eodfiling__opt.is-active { border-color: var(--kt-pink); background: var(--kt-pink-50); }
+.eodunsaved[hidden] { display: none; }
 
 @media (max-width: 620px) {
   .eodperson__head { gap: 8px; }
