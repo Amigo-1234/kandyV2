@@ -84,10 +84,10 @@ export const adminEodService = {
    * Writes only the review columns — the author's own text is not a parameter
    * of this call and cannot be reached by it.
    */
-  async versions(reportId) {
-    /* Earlier text of a report that was changed after submitting (0087).
-       Supervisors and above, or the report's author. */
-    const { data, error } = await supabase.rpc("admin_day_report_versions", { p_report_id: reportId });
+  async versions(staffId, day) {
+    /* Earlier text of one person's report for one day, including discarded
+       drafts (0087). Supervisors and above, or the person themself. */
+    const { data, error } = await supabase.rpc("admin_day_report_versions", { p_staff_id: staffId, p_day: day });
     if (error) throw error;
     return data;
   },

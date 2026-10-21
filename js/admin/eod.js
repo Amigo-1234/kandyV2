@@ -47,8 +47,8 @@
     late: null,             /* yesterday's page while it is still open (before 04:00) */
     filing: null,           /* "yesterday" | "today": which day the form files under */
     expanded: {},           /* report id -> long report unfolded */
-    versions: {},           /* report id -> earlier versions (0087), fetched on open */
-    showVersions: {}        /* report id -> earlier versions listed */
+    versions: {},           /* "staff|day" -> earlier versions (0087), fetched on open */
+    showVersions: {}        /* "staff|day" -> earlier versions listed */
   };
   var ctx = { role: "staff" };
 
@@ -172,22 +172,31 @@
         (open ? "Show less" : "View full report") + "</button>";
   }
 
-  /* Earlier text kept when a submitted report was changed (0087). */
-  function versionsHTML(r) {
-    var v = state.versions[r.id];
+  /* Earlier text kept when a report was changed or a draft discarded (0087).
+     Keyed by person and day, not report id: a discarded draft no longer has
+     a report row. */
+  function versionKey(staffId) {
+    return staffId + "|" + ((state.team && state.team.business_date) || "");
+  }
+  function versionsHTML(staffId) {
+    var key = versionKey(staffId);
+    var v = state.versions[key];
     if (!v) return "";
     if (v.loading) return '<p class="odetail__muted">Checking for earlier versions…</p>';
     if (v.error) return '<p class="field__error">' + esc(v.error) + "</p>";
     var list = v.data || [];
     if (!list.length) return "";
-    var open = !!state.showVersions[r.id];
+    var open = !!state.showVersions[key];
+    var lead = list.some(function (x) { return x.status === "submitted"; }) ? "Edited after submitting · "
+      : list.some(function (x) { return x.reason === "discarded"; }) ? "Discarded drafts kept · "
+      : "Earlier drafts · ";
     return '<div class="eodversions">' +
-      '<button class="btn btn--ghost btn--sm" type="button" data-eodversions="' + esc(r.id) + '" aria-expanded="' + open + '">' +
-        KT.icon("clock", 14) + "<span>" + (list.some(function (x) { return x.status === "submitted"; })
-          ? "Edited after submitting · " : "Earlier drafts · ") + list.length +
+      '<button class="btn btn--ghost btn--sm" type="button" data-eodversions="' + esc(key) + '" aria-expanded="' + open + '">' +
+        KT.icon("clock", 14) + "<span>" + lead + list.length +
         (list.length === 1 ? " earlier version" : " earlier versions") + "</span></button>" +
       (open ? list.map(function (x) {
-        return '<div class="eodversion"><p class="eodversion__when">Replaced ' + esc(dayLabel(String(x.replaced_at).slice(0, 10))) +
+        return '<div class="eodversion"><p class="eodversion__when">' + (x.reason === "discarded" ? "Discarded " : "Replaced ") +
+          esc(dayLabel(String(x.replaced_at).slice(0, 10))) +
           " at " + clock(x.replaced_at) +
           (x.status === "submitted" ? " · had been submitted " + (x.submitted_at ? clock(x.submitted_at) : "")
                                     : " · was a draft") + "</p>" +
@@ -328,6 +337,8 @@
       pill = '<span class="eodpill eodpill--done">' + clock(r.submitted_at) + "</span>";
     } else if (r) {
       pill = '<span class="eodpill eodpill--draft">Draft</span>';
+    } else if (p.versions) {
+      pill = '<span class="eodpill eodpill--draft">Draft discarded</span>';
     } else if (p.expected) {
       pill = '<span class="eodpill eodpill--missing">Not submitted</span>';
     } else {
@@ -340,7 +351,7 @@
         '<div class="eodperson__body">' +
           (r.status !== "submitted" ? '<p class="odetail__muted">Draft — not submitted.</p>' : "") +
           saidHTML(r) +
-          versionsHTML(r) +
+          versionsHTML(p.staff_id) +
           (r.reviewed_at
             ? '<p class="odetail__muted eodsaid__text">Reviewed ' + clock(r.reviewed_at) +
               (r.review_note ? " — " + esc(r.review_note) : "") + "</p>"
@@ -355,7 +366,8 @@
         "</div>";
     } else if (open) {
       body = '<div class="eodperson__body"><p class="odetail__muted">' +
-        "Nothing submitted yet, so there is nothing to read.</p></div>";
+        "Nothing submitted yet, so there is nothing to read.</p>" +
+        versionsHTML(p.staff_id) + "</div>";
     }
 
     return (
@@ -614,21 +626,22 @@
     }
   }
 
-  /** Earlier versions of the opened person's report, fetched once. */
+  /** Earlier versions for the opened person on the shown day, fetched once —
+      whether or not they have a report now (a discarded draft has none). */
   async function loadVersions(staffId) {
-    var p = state.team && (state.team.people || []).filter(function (x) { return x.staff_id === staffId; })[0];
-    var r = p && p.report;
-    if (!r || !r.id || state.versions[r.id]) return;
+    if (!state.team || !state.team.business_date) return;
+    var key = versionKey(staffId);
+    if (state.versions[key]) return;
     var gen = mountGen;
-    state.versions[r.id] = { loading: true };
+    state.versions[key] = { loading: true };
     render();
     try {
-      var out = await svc.versions(r.id);
+      var out = await svc.versions(staffId, state.team.business_date);
       if (gen !== mountGen) return;
-      state.versions[r.id] = { data: (out && out.versions) || [] };
+      state.versions[key] = { data: (out && out.versions) || [] };
     } catch (error) {
       if (gen !== mountGen) return;
-      state.versions[r.id] = { error: KT.services.errorMessage(error) };
+      state.versions[key] = { error: KT.services.errorMessage(error) };
     }
     render();
   }
