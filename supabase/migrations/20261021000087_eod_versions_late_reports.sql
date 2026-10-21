@@ -12,11 +12,15 @@
 
    WHAT THIS ADDS (approved 2026-10-21)
 
-   1. staff_day_report_versions — whenever the text of a SUBMITTED report is
-      changed, the previous text is copied here first (trigger). Drafts are
-      not versioned; review columns are not text and never create a version.
-      Read through admin_day_report_versions(): supervisors and above, or the
-      report's own author. No client grant on the table.
+   1. staff_day_report_versions — whenever the text of a report is changed
+      (draft or submitted), the previous text is copied here FIRST, in the
+      same transaction (BEFORE trigger); and when a draft is discarded, its
+      text is copied here before the row is deleted. So no report text can
+      disappear without a recoverable copy. Versions are never deleted with
+      their report (report_id is set null instead). Review columns are not
+      text and never create a version. Read through
+      admin_day_report_versions(): supervisors and above, or the report's own
+      author. No client grant on the table.
 
    2. Late-shift reports. Before 04:00 Lagos time, a handler may still write,
       submit or discard YESTERDAY's report — filed under yesterday, where it
@@ -42,9 +46,12 @@ begin;
 
 create table if not exists public.staff_day_report_versions (
   id              bigserial primary key,
-  report_id       uuid not null references public.staff_day_reports (id) on delete cascade,
+  /* Set null, never cascaded: a discarded draft's text outlives its row. */
+  report_id       uuid references public.staff_day_reports (id) on delete set null,
   staff_id        uuid not null,
   business_date   date not null,
+  status          text not null,                 -- status of the text when it was replaced
+  reason          text not null default 'edited' check (reason in ('edited', 'discarded')),
   problems        text not null default '',
   customer_issues text not null default '',
   stock_issues    text not null default '',
@@ -57,6 +64,8 @@ create table if not exists public.staff_day_report_versions (
 
 create index if not exists staff_day_report_versions_report_idx
   on public.staff_day_report_versions (report_id, replaced_at desc);
+create index if not exists staff_day_report_versions_staff_day_idx
+  on public.staff_day_report_versions (staff_id, business_date);
 
 alter table public.staff_day_report_versions enable row level security;
 revoke all on public.staff_day_report_versions from anon, authenticated;
@@ -65,20 +74,37 @@ comment on table public.staff_day_report_versions is
   'Earlier text of a submitted end-of-day report, kept whenever the author '
   'changes it (0087). Read via admin_day_report_versions() only.';
 
+/* Runs BEFORE the row changes, in the same transaction: if the copy cannot
+   be written, the edit or discard fails too. */
 create or replace function public.kt_keep_day_report_version()
 returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  v_text_changed boolean;
 begin
-  if old.status = 'submitted'
-     and (new.problems        is distinct from old.problems
-       or new.customer_issues is distinct from old.customer_issues
-       or new.stock_issues    is distinct from old.stock_issues
-       or new.follow_ups      is distinct from old.follow_ups
-       or new.notes           is distinct from old.notes) then
+  if tg_op = 'DELETE' then
+    if (old.problems || old.customer_issues || old.stock_issues || old.follow_ups || old.notes) <> '' then
+      insert into public.staff_day_report_versions
+        (report_id, staff_id, business_date, status, reason, problems, customer_issues,
+         stock_issues, follow_ups, notes, submitted_at, replaced_by)
+      values
+        (old.id, old.staff_id, old.business_date, old.status, 'discarded', old.problems, old.customer_issues,
+         old.stock_issues, old.follow_ups, old.notes, old.submitted_at, auth.uid());
+    end if;
+    return old;
+  end if;
+
+  v_text_changed := new.problems        is distinct from old.problems
+                 or new.customer_issues is distinct from old.customer_issues
+                 or new.stock_issues    is distinct from old.stock_issues
+                 or new.follow_ups      is distinct from old.follow_ups
+                 or new.notes           is distinct from old.notes;
+  if v_text_changed
+     and (old.problems || old.customer_issues || old.stock_issues || old.follow_ups || old.notes) <> '' then
     insert into public.staff_day_report_versions
-      (report_id, staff_id, business_date, problems, customer_issues,
+      (report_id, staff_id, business_date, status, reason, problems, customer_issues,
        stock_issues, follow_ups, notes, submitted_at, replaced_by)
     values
-      (old.id, old.staff_id, old.business_date, old.problems, old.customer_issues,
+      (old.id, old.staff_id, old.business_date, old.status, 'edited', old.problems, old.customer_issues,
        old.stock_issues, old.follow_ups, old.notes, old.submitted_at, auth.uid());
   end if;
   return new;
@@ -88,7 +114,7 @@ revoke all on function public.kt_keep_day_report_version() from public, anon, au
 
 drop trigger if exists staff_day_reports_keep_version on public.staff_day_reports;
 create trigger staff_day_reports_keep_version
-  before update on public.staff_day_reports
+  before update or delete on public.staff_day_reports
   for each row execute function public.kt_keep_day_report_version();
 
 create or replace function public.admin_day_report_versions(p_report_id uuid)
@@ -111,7 +137,7 @@ begin
     'report_id', v_rep.id,
     'versions', coalesce((
       select jsonb_agg(jsonb_build_object(
-               'id', v.id,
+               'id', v.id, 'status', v.status, 'reason', v.reason,
                'problems', v.problems, 'customer_issues', v.customer_issues,
                'stock_issues', v.stock_issues, 'follow_ups', v.follow_ups, 'notes', v.notes,
                'submitted_at', v.submitted_at, 'replaced_at', v.replaced_at)

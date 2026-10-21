@@ -183,11 +183,14 @@
     var open = !!state.showVersions[r.id];
     return '<div class="eodversions">' +
       '<button class="btn btn--ghost btn--sm" type="button" data-eodversions="' + esc(r.id) + '" aria-expanded="' + open + '">' +
-        KT.icon("clock", 14) + "<span>Edited after submitting · " + list.length +
+        KT.icon("clock", 14) + "<span>" + (list.some(function (x) { return x.status === "submitted"; })
+          ? "Edited after submitting · " : "Earlier drafts · ") + list.length +
         (list.length === 1 ? " earlier version" : " earlier versions") + "</span></button>" +
       (open ? list.map(function (x) {
         return '<div class="eodversion"><p class="eodversion__when">Replaced ' + esc(dayLabel(String(x.replaced_at).slice(0, 10))) +
-          " at " + clock(x.replaced_at) + (x.submitted_at ? " · had been submitted " + clock(x.submitted_at) : "") + "</p>" +
+          " at " + clock(x.replaced_at) +
+          (x.status === "submitted" ? " · had been submitted " + (x.submitted_at ? clock(x.submitted_at) : "")
+                                    : " · was a draft") + "</p>" +
           fieldsHTML(x) + "</div>";
       }).join("") : "") +
     "</div>";
