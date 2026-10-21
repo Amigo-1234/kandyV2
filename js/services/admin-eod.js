@@ -32,11 +32,12 @@ export const adminEodService = {
   /**
    * Save or submit one's own report.
    *
-   * The server decides the business date and stamps submitted_at, so neither
-   * can be argued with from here — this function cannot backdate a report or
-   * write anybody else's, because the RPC never takes a staff id.
+   * `day` is the business date the form is for. The server accepts only
+   * today, or yesterday until 04:00 Lagos time (0087), and stamps
+   * submitted_at itself — so this cannot backdate a report or write anybody
+   * else's, because the RPC never takes a staff id.
    */
-  async save(fields, submit) {
+  async save(fields, submit, day) {
     const f = fields || {};
     const { data, error } = await supabase.rpc("staff_day_report_save", {
       p_problems:        f.problems || "",
@@ -44,15 +45,16 @@ export const adminEodService = {
       p_stock_issues:    f.stockIssues || "",
       p_follow_ups:      f.followUps || "",
       p_notes:           f.notes || "",
-      p_submit:          !!submit
+      p_submit:          !!submit,
+      p_day:             day || null
     });
     if (error) throw error;
     return data;
   },
 
-  /** Throw away today's untouched draft. Own draft only; never a submission. */
-  async discard() {
-    const { data, error } = await supabase.rpc("staff_day_report_discard", {});
+  /** Throw away an untouched draft for an open day. Own draft only; never a submission. */
+  async discard(day) {
+    const { data, error } = await supabase.rpc("staff_day_report_discard", { p_day: day || null });
     if (error) throw error;
     return data;
   },
@@ -82,6 +84,14 @@ export const adminEodService = {
    * Writes only the review columns — the author's own text is not a parameter
    * of this call and cannot be reached by it.
    */
+  async versions(reportId) {
+    /* Earlier text of a report that was changed after submitting (0087).
+       Supervisors and above, or the report's author. */
+    const { data, error } = await supabase.rpc("admin_day_report_versions", { p_report_id: reportId });
+    if (error) throw error;
+    return data;
+  },
+
   async review(reportId, needsFollowUp, note) {
     const { data, error } = await supabase.rpc("admin_review_day_report", {
       p_report_id: reportId,
