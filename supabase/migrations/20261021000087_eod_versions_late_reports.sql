@@ -475,4 +475,47 @@ $$;
 revoke all on function public.staff_day_report(date) from public, anon;
 grant execute on function public.staff_day_report(date) to authenticated;
 
+/* ---- 3. Safety check: one entry point each, no direct writes --------------
+   staff_day_report_save(text x5, boolean, date) and
+   staff_day_report_discard(date) have had these exact signatures since
+   0052 / 0053, so the CREATE OR REPLACEs above replace them in place: no
+   older overload is left behind for PostgREST to resolve to, and nothing
+   needs dropping. This block proves it at apply time: if any other
+   overload of these functions exists, or a client role can write
+   staff_day_reports directly (which would skip the 04:00 rule), the whole
+   migration is rolled back instead of half-applied. */
+do $guard$
+declare
+  v_name  text;
+  v_sig   text;
+  v_n     integer;
+  v_want  text[][] := array[
+    ['staff_day_report_save',     'staff_day_report_save(text,text,text,text,text,boolean,date)'],
+    ['staff_day_report_discard',  'staff_day_report_discard(date)'],
+    ['staff_day_report',          'staff_day_report(date)'],
+    ['admin_day_reports',         'admin_day_reports(date)'],
+    ['admin_day_report_versions', 'admin_day_report_versions(uuid,date)'],
+    ['kt_report_day_open',        'kt_report_day_open(date)']];
+begin
+  for i in 1 .. array_length(v_want, 1) loop
+    v_name := v_want[i][1];
+    select count(*), min(p.oid::regprocedure::text) into v_n, v_sig
+      from pg_proc p
+     where p.proname = v_name
+       and p.pronamespace = 'public'::regnamespace;
+    if v_n <> 1 or v_sig <> v_want[i][2] then
+      raise exception '0087 aborted: expected exactly %, found % function(s) named % (%)',
+        v_want[i][2], v_n, v_name, v_sig;
+    end if;
+  end loop;
+
+  if exists (select 1 from information_schema.role_table_grants
+              where table_schema = 'public' and table_name in ('staff_day_reports', 'staff_day_report_versions')
+                and grantee in ('anon', 'authenticated', 'PUBLIC')
+                and privilege_type in ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')) then
+    raise exception '0087 aborted: a client role can write end-of-day reports directly';
+  end if;
+end
+$guard$;
+
 commit;

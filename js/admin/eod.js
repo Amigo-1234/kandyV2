@@ -16,7 +16,8 @@
 
    PAST DAYS. A date picker and a strip of recent days open any earlier day.
    A past day is read-only: the handler's own report is shown as text, not a
-   form, and staff_day_report_save() refuses any day but today regardless.
+   form, and staff_day_report_save() refuses any day but today (or
+   yesterday before 04:00 Lagos, 0087) regardless.
    Supervisors can still mark a past report reviewed — that writes only the
    review columns, never the author's words.
 
