@@ -23,6 +23,8 @@
               l.item.name + "</a></h4>" +
             '<span class="cline__total price">' + KT.naira(l.total) + "</span>" +
           "</div>" +
+          /* In the slide-out basket a split order says which pack each line is in. */
+          (compact && l.group != null ? '<span class="cline__pack">' + l.groupLabel + "</span>" : "") +
           '<p class="cline__extras' + (l.soldOut ? '" style="color:var(--chili)' : "") +
             '">' + (l.soldOut ? "Sold out — remove to continue" : KT.naira(l.unit) + " each") +
             "</p>" +

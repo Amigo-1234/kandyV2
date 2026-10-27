@@ -554,6 +554,37 @@
 }
 .takeaway__tab--add { display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; }
 .takeaway__hint { margin: 8px 0 0; font-size: 0.8rem; color: var(--ink-2); }
+.takeaway__off {
+  margin-top: 8px; padding: 6px 0; border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: 0.8rem; font-weight: 600; color: var(--ink-2);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.takeaway__later { margin: 14px 0 0; font-size: 0.85rem; color: var(--ink-2); text-align: center; }
+
+/* Menu page: one row under the filters, inside the sticky toolbar. */
+.menu__takeaway { padding-bottom: 10px; }
+.takeaway--compact {
+  display: flex; align-items: center; gap: 8px; margin: 0; padding: 8px 10px;
+  border-radius: var(--r-md, 14px); min-width: 0;
+}
+/* Stays one row on phones too (the cart's version stacks at 420px). */
+.takeaway--compact.takeaway--off { justify-content: space-between; flex-wrap: nowrap; flex-direction: row; align-items: center; }
+.takeaway--compact.takeaway--off .btn { width: auto; }
+.takeaway--compact > span { font-size: 0.82rem; color: var(--ink-2); min-width: 0; }
+.takeaway--compact > span strong { color: var(--ink); }
+.takeaway--compact .btn { flex: none; width: auto; }
+.takeaway--compact .takeaway__tabs { flex: 1; min-width: 0; padding-bottom: 0; }
+.takeaway--compact .takeaway__tab { min-height: 36px; min-width: 36px; padding: 0 10px; font-size: 0.85rem; }
+.takeaway--compact .takeaway__off { margin: 0; flex: none; }
+.takeaway__lead { flex: none; font-size: 0.78rem; font-weight: 700; color: var(--ink-2); }
+@media (max-width: 520px) {
+  .takeaway--compact.takeaway--off > span { font-size: 0.8rem; }
+}
+
+.cline__pack {
+  display: inline-block; margin: 2px 0; padding: 1px 8px; border-radius: var(--r-pill);
+  background: var(--kt-pink-50); color: var(--kt-pink); font-size: 0.72rem; font-weight: 700;
+}
 
 .cpack { margin-bottom: 18px; }
 .cpack__head {

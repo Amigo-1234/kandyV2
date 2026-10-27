@@ -68,7 +68,8 @@
          its dishes are not loaded yet, or a returning customer's session is
          still restoring and the store is still on the guest basket. */
       var waiting = (stored.length && !KT.menu.live && !menuHeard) || KT.authResolving();
-      host.innerHTML = waiting ? pendingHTML(stored) : KT.components.cartEmpty();
+      host.innerHTML = waiting ? pendingHTML(stored)
+        : KT.components.cartEmpty() + KT.components.takeawayStrip();
       return;
     }
 
@@ -79,7 +80,7 @@
           KT.icon("trash", 15) + "<span>Empty basket</span></button>" +
       "</div>" +
       KT.components.cartProgress(KT.cart.summary()) +
-      takeawayHTML() +
+      KT.components.takeawayStrip() +
       basketHTML(lines);
 
     KT.images.bindAll(host);
@@ -99,58 +100,8 @@
      Off by default. A customer who never touches it gets the flat basket that
      has always been here.
   */
-  function takeawayHTML() {
-    var groups = KT.cart.groupCount();
-    var atMax = groups >= KT.cart.maxGroups();
-
-    if (!groups) {
-      return (
-        '<div class="takeaway takeaway--off">' +
-          '<div class="takeaway__intro">' +
-            '<span class="takeaway__icon">' + KT.icon("cart", 18) + "</span>" +
-            "<div><strong>Splitting this between people?</strong>" +
-            "<p>Group items into separate takeaway packs so the kitchen bags " +
-            "them apart. Each pack of rice, spaghetti or beans is one plate of " +
-            "packaging.</p></div>" +
-          "</div>" +
-          '<button class="btn btn--soft btn--sm" type="button" data-takeaway-add>' +
-            KT.icon("plus", 15) + "<span>Split into packs</span></button>" +
-        "</div>"
-      );
-    }
-
-    var active = KT.cart.activeGroup();
-    var tabs = "";
-    for (var g = 1; g <= groups; g += 1) {
-      tabs +=
-        '<button class="takeaway__tab' + (g === active ? " is-active" : "") + '" ' +
-          'type="button" data-takeaway-pick="' + g + '" ' +
-          'aria-pressed="' + (g === active ? "true" : "false") + '">' +
-          "Takeaway " + g +
-        "</button>";
-    }
-
-    return (
-      '<div class="takeaway">' +
-        '<div class="takeaway__head">' +
-          "<strong>Takeaway packs</strong>" +
-          '<span class="takeaway__note">Packaging is charged per plate: each pack ' +
-            "of rice, spaghetti or beans is one plate (" + KT.naira(KT.rules.TAKEAWAY_RATES().combined) +
-            " with White Rice, Ofada or rice and beans, otherwise " +
-            KT.naira(KT.rules.TAKEAWAY_RATES().standard) + ").</span>" +
-        "</div>" +
-        '<div class="takeaway__tabs" role="group" aria-label="Choose the pack new items go into">' +
-          tabs +
-          (atMax ? "" :
-            '<button class="takeaway__tab takeaway__tab--add" type="button" ' +
-              'data-takeaway-add aria-label="Add another takeaway pack">' +
-              KT.icon("plus", 15) + "</button>") +
-        "</div>" +
-        '<p class="takeaway__hint">New items go into <strong>Takeaway ' +
-          active + "</strong>.</p>" +
-      "</div>"
-    );
-  }
+  /* The strip itself is KT.components.takeawayStrip (js/components/
+     takeaway.js), shared with the menu page so both show the same choice. */
 
   /* Grouped baskets render pack by pack, each with its own heading, count and
      a control to drop that pack. An ungrouped basket renders exactly the flat
@@ -691,19 +642,7 @@
          price: the summary is recomputed from the same lines by the same
          KT.rules call as before, and the server recomputes it again at
          checkout regardless of what the basket claims. */
-      var addPack = e.target.closest("[data-takeaway-add]");
-      if (addPack) {
-        var made = KT.cart.addGroup();
-        if (made == null) {
-          KT.toast("That is as many packs as one order can have.", "info");
-        } else {
-          KT.toast("Takeaway " + made + " added.", "success");
-        }
-      }
-
-      var pick = e.target.closest("[data-takeaway-pick]");
-      if (pick) KT.cart.setActiveGroup(pick.getAttribute("data-takeaway-pick"));
-
+      /* Add / pick / don't split are handled by js/components/takeaway.js. */
       var drop = e.target.closest("[data-takeaway-drop]");
       if (drop) KT.cart.removeGroup(drop.getAttribute("data-takeaway-drop"));
 

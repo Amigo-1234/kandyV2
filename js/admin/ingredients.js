@@ -126,6 +126,34 @@
 
   /* ---- Register form ---------------------------------------------------- */
 
+  /*
+     "Measured in". Once stock has been recorded the unit is fixed (the server
+     refuses a change too), so it is shown as a locked value with the reason —
+     not as a disabled dropdown, which looked usable but did nothing when
+     tapped. Saving still sends the existing unit unchanged.
+  */
+  function unitFieldHTML(f) {
+    var known = svc.UNITS.filter(function (u) { return u.id === f.unit; })[0];
+    if (f.hasEntries) {
+      return '<div class="field"><span class="field__label" id="ingUnitLabel">Measured in</span>' +
+        '<div class="ingunit-locked" role="textbox" aria-readonly="true" aria-labelledby="ingUnitLabel" ' +
+          'aria-describedby="ingUnitWhy" data-ingunit-locked>' + KT.icon("lock", 15) +
+          "<span>" + esc(known ? known.label : f.unit) + "</span></div>" +
+        '<span class="field__hint" id="ingUnitWhy">Locked because stock has already been recorded in ' +
+          esc(unitLabel(f.unit)) + ". Changing it would change what those past entries mean. " +
+          "To measure it differently, archive this ingredient and add a new one.</span></div>";
+    }
+    /* A unit outside the list (should not happen) stays visible and selected
+       rather than the dropdown silently showing "Choose a unit…". */
+    var extra = f.unit && !known ? '<option value="' + esc(f.unit) + '" selected>' + esc(f.unit) + "</option>" : "";
+    return '<label class="field"><span class="field__label">Measured in</span>' +
+      '<select class="select" data-ingf="unit">' +
+        '<option value="">Choose a unit…</option>' + extra +
+        svc.UNITS.map(function (u) {
+          return '<option value="' + u.id + '"' + (f.unit === u.id ? " selected" : "") + ">" + esc(u.label) + "</option>";
+        }).join("") + "</select></label>";
+  }
+
   function editHTML() {
     var f = state.edit;
     if (!f) return "";
@@ -136,14 +164,7 @@
       '<div class="ingedit__grid">' +
         '<label class="field"><span class="field__label">Name</span>' +
           '<input class="input" data-ingf="name" maxlength="60" value="' + esc(f.name) + '" placeholder="e.g. Rice (50kg bag)"></label>' +
-        '<label class="field"><span class="field__label">Measured in</span>' +
-          '<select class="select" data-ingf="unit"' + (f.hasEntries ? " disabled" : "") + ">" +
-            '<option value="">Choose a unit…</option>' +
-            svc.UNITS.map(function (u) {
-              return '<option value="' + u.id + '"' + (f.unit === u.id ? " selected" : "") + ">" + esc(u.label) + "</option>";
-            }).join("") + "</select>" +
-          (f.hasEntries ? '<span class="field__hint">Fixed once stock has been recorded, so past entries keep their meaning.</span>' : "") +
-        "</label>" +
+        unitFieldHTML(f) +
         '<label class="field"><span class="field__label">Category</span><select class="select" data-ingf="category">' +
           svc.CATEGORIES.map(function (c) {
             return '<option value="' + c.id + '"' + (f.category === c.id ? " selected" : "") + ">" + esc(c.label) + "</option>";
