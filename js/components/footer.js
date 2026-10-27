@@ -182,6 +182,11 @@
           '<div class="foot__bar">' +
             "<p>© " + new Date().getFullYear() + " Kandy's Treats. All rights reserved.</p>" +
             legalHTML() +
+            /* Developer credit: deliberately the quietest line in the footer.
+               Storefront only — not in the admin app or customer emails. */
+            '<p class="foot__credit">Built with care by ' +
+              '<a href="https://amigodev.com.ng" target="_blank" rel="noopener" ' +
+                'aria-label="AmigoDev (opens in a new tab)">AmigoDev</a></p>' +
           "</div>" +
         "</div>" +
       "</footer>";
