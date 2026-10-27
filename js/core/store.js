@@ -136,7 +136,11 @@
         return l.group && l.group > n ? l.group : n;
       }, 0);
       if (highest > state.groups) state.groups = Math.min(MAX_GROUPS, highest);
-      state.activeGroup = state.groups > 0 ? 1 : null;
+      /* Keep the pack the customer last chose, so moving between the menu
+         and the cart (or reloading) never quietly sends new items to
+         Takeaway 1 instead. Anything out of range falls back to 1. */
+      var ag = parsed && !Array.isArray(parsed) ? Math.trunc(Number(parsed.activeGroup)) : 0;
+      state.activeGroup = state.groups > 0 ? (ag >= 1 && ag <= state.groups ? ag : 1) : null;
     } catch (e) {
       state.lines = [];
       state.groups = 0;
@@ -331,7 +335,9 @@
       var g = cleanGroup(group);
       if (state.groups === 0) return;
       state.activeGroup = g == null ? 1 : g;
-      emit();
+      /* Saved, not just announced: the menu and the cart are separate page
+         loads, and the pack chosen on one must be the pack used on the other. */
+      write();
     },
 
     /**
@@ -372,6 +378,25 @@
       } else {
         state.activeGroup = Math.min(state.activeGroup || 1, state.groups);
       }
+      write();
+    },
+
+    /**
+     * Turns splitting off without removing anything: every pack goes back
+     * into one basket, and the same dish in two packs becomes one line with
+     * the quantities added (capped at the usual per-line maximum).
+     */
+    ungroup: function () {
+      if (state.groups === 0) return;
+      var merged = [];
+      state.lines.forEach(function (l) {
+        var same = merged.filter(function (m) { return m.menuId === l.menuId; })[0];
+        if (same) same.qty = Math.min(cfg.limits.maxQty, same.qty + l.qty);
+        else merged.push({ menuId: l.menuId, qty: l.qty, group: null });
+      });
+      state.lines = merged;
+      state.groups = 0;
+      state.activeGroup = null;
       write();
     },
 
@@ -555,7 +580,10 @@
         return l.group && l.group > n ? l.group : n;
       }, 0);
       if (highest > state.groups) state.groups = Math.min(MAX_GROUPS, highest);
-      state.activeGroup = state.groups > 0 ? 1 : null;
+      /* read() restored the chosen pack; only repair it if out of range. */
+      if (!(state.groups > 0 && state.activeGroup >= 1 && state.activeGroup <= state.groups)) {
+        state.activeGroup = state.groups > 0 ? 1 : null;
+      }
       write();
     },
 

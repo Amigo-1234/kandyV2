@@ -3384,6 +3384,13 @@ div.invday__head { cursor: default; }
 .ingedit__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 12px 0; }
 .ingedit__grid .field { margin: 0; }
 .ingedit__grid .input, .ingedit__grid .select, .ingedit__grid .textarea { font-size: 16px; }
+/* A unit that can no longer change: plainly read-only, not a dead dropdown. */
+.ingunit-locked {
+  display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 0 16px;
+  border-radius: var(--r-sm); border: 1.5px dashed var(--line-2);
+  background: var(--surface-2, rgba(0, 0, 0, 0.03)); color: var(--ink-2); font-size: 16px; font-weight: 600;
+}
+.ingunit-locked svg { flex: none; color: var(--ink-3); }
 .ingedit__notes { grid-column: 1 / -1; }
 .ingedit__actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .ingrow .invrow__body h4 { margin: 6px 0 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-3); }
