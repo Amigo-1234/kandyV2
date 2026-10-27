@@ -160,3 +160,22 @@
 .foot__legal a:hover {
   color: #fff;
 }
+
+/* Developer credit — smaller and dimmer than the copyright line beside it,
+   so Kandy's stays the only brand that reads as a brand. */
+.foot__credit {
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+.foot__credit a {
+  color: rgba(255, 255, 255, 0.72);
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.25);
+  text-underline-offset: 3px;
+  transition: color var(--t-fast) linear;
+}
+.foot__credit a:hover,
+.foot__credit a:focus-visible {
+  color: var(--kt-pink-bright);
+  text-decoration-color: currentColor;
+}
